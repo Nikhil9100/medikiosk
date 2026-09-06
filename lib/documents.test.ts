@@ -38,6 +38,7 @@ describe("document domain", () => {
     expect(document.mimeType).toBe("application/pdf");
     expect(document.provenance).toBe("PATIENT");
     expect(document.ocrStatus).toBe("NOT_STARTED");
+    expect(document.extractionStatus).toBe("NOT_STARTED");
     expect(document.verificationStatus).toBe("UNVERIFIED");
     expect(document.errors).toEqual([]);
     expect(document.extractedFacts).toEqual([]);
@@ -58,8 +59,12 @@ describe("document domain", () => {
     expect(transitionProcessingStatus("READY_FOR_OCR", "OCR_PROCESSING")).toBe(true);
     expect(transitionProcessingStatus("OCR_PROCESSING", "OCR_COMPLETE")).toBe(true);
     expect(transitionProcessingStatus("OCR_COMPLETE", "EXTRACTION_PROCESSING")).toBe(true);
+    expect(transitionProcessingStatus("OCR_COMPLETE", "NEEDS_REVIEW")).toBe(false);
     expect(transitionProcessingStatus("EXTRACTION_COMPLETE", "NEEDS_REVIEW")).toBe(true);
-    expect(transitionProcessingStatus("NEEDS_REVIEW", "VERIFIED")).toBe(true);
+    expect(transitionProcessingStatus("EXTRACTION_COMPLETE", "VERIFIED")).toBe(false);
+    expect(transitionProcessingStatus("NEEDS_REVIEW", "VERIFIED")).toBe(false);
+    expect(transitionProcessingStatus("FAILED", "OCR_COMPLETE")).toBe(true);
+    expect(transitionProcessingStatus("FAILED", "READY_FOR_OCR")).toBe(true);
     expect(transitionProcessingStatus("VERIFIED", "FAILED")).toBe(true);
     expect(transitionProcessingStatus("VERIFIED", "READY_FOR_OCR")).toBe(false);
   });

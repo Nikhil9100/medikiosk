@@ -1,5 +1,11 @@
 import type { DocumentRecord, DocumentWithOcr } from "@/lib/documents";
 import type { OcrResult } from "./types";
+import type { ExtractedEvidenceItem, ExtractionRun, EvidenceVerificationState } from "@/lib/extraction/types";
+
+export type DocumentWithExtraction = DocumentRecord & {
+  ocrResults: OcrResult[];
+  extractionRun: ExtractionRun | null;
+};
 
 export interface DocumentRepository {
   save(document: DocumentRecord, buffer?: ArrayBuffer): Promise<DocumentRecord>;
@@ -11,12 +17,21 @@ export interface DocumentRepository {
   addOcrResult(documentId: string, result: OcrResult): Promise<DocumentWithOcr | null>;
   getDocumentWithOcr(documentId: string): Promise<DocumentWithOcr | null>;
   getSessionDocumentsWithOcr(sessionId: string): Promise<DocumentWithOcr[]>;
+  saveExtractionRun(documentId: string, run: ExtractionRun): Promise<ExtractionRun | null>;
+  getExtractionRun(documentId: string): Promise<ExtractionRun | null>;
+  getDocumentWithExtraction(documentId: string): Promise<DocumentWithExtraction | null>;
+  updateEvidenceVerification(
+    documentId: string,
+    itemId: string,
+    verificationState: EvidenceVerificationState,
+  ): Promise<ExtractedEvidenceItem | null>;
 }
 
 export class InMemoryDocumentRepository implements DocumentRepository {
   private documents = new Map<string, DocumentRecord>();
   private buffers = new Map<string, ArrayBuffer>();
   private ocrResults = new Map<string, OcrResult[]>();
+  private extractionRuns = new Map<string, ExtractionRun>();
 
   async save(document: DocumentRecord, buffer?: ArrayBuffer): Promise<DocumentRecord> {
     this.documents.set(document.id, document);
@@ -45,6 +60,7 @@ export class InMemoryDocumentRepository implements DocumentRepository {
   async delete(id: string): Promise<boolean> {
     this.buffers.delete(id);
     this.ocrResults.delete(id);
+    this.extractionRuns.delete(id);
     return this.documents.delete(id);
   }
 
@@ -85,6 +101,47 @@ export class InMemoryDocumentRepository implements DocumentRepository {
         return { ...doc, ocrResults: results };
       }),
     );
+  }
+
+  async saveExtractionRun(documentId: string, run: ExtractionRun): Promise<ExtractionRun | null> {
+    const document = this.documents.get(documentId);
+    if (!document) return null;
+    this.extractionRuns.set(documentId, run);
+    return run;
+  }
+
+  async getExtractionRun(documentId: string): Promise<ExtractionRun | null> {
+    return this.extractionRuns.get(documentId) ?? null;
+  }
+
+  async getDocumentWithExtraction(documentId: string): Promise<DocumentWithExtraction | null> {
+    const document = this.documents.get(documentId);
+    if (!document) return null;
+    return {
+      ...document,
+      ocrResults: this.ocrResults.get(documentId) ?? [],
+      extractionRun: this.extractionRuns.get(documentId) ?? null,
+    };
+  }
+
+  async updateEvidenceVerification(
+    documentId: string,
+    itemId: string,
+    verificationState: EvidenceVerificationState,
+  ): Promise<ExtractedEvidenceItem | null> {
+    const run = this.extractionRuns.get(documentId);
+    if (!run) return null;
+    const itemIndex = run.items.findIndex((item) => item.id === itemId);
+    if (itemIndex < 0) return null;
+
+    const updatedItem: ExtractedEvidenceItem = {
+      ...run.items[itemIndex],
+      verificationState,
+    };
+    const updatedItems = [...run.items];
+    updatedItems[itemIndex] = updatedItem;
+    this.extractionRuns.set(documentId, { ...run, items: updatedItems });
+    return updatedItem;
   }
 }
 

@@ -33,6 +33,26 @@ export const OcrStatus = z.enum([
   "UNAVAILABLE",
 ]);
 
+export const ExtractionStatus = z.enum([
+  "NOT_STARTED",
+  "PROCESSING",
+  "COMPLETED",
+  "FAILED",
+  "NOT_CONFIGURED",
+  "UNAVAILABLE",
+  "MALFORMED_RESPONSE",
+]);
+
+export const ExtractionProviderState = z.enum([
+  "NOT_CONFIGURED",
+  "UNAVAILABLE",
+  "SUCCESS",
+  "MALFORMED_RESPONSE",
+  "FAILED",
+]);
+
+export const FailureStage = z.enum(["OCR", "EXTRACTION"]);
+
 export const VerificationStatus = z.enum([
   "UNVERIFIED",
   "PENDING_REVIEW",
@@ -49,6 +69,9 @@ export const DocumentProvenance = z.enum([
 export type DocumentType = z.infer<typeof DocumentType>;
 export type ProcessingStatus = z.infer<typeof ProcessingStatus>;
 export type OcrStatus = z.infer<typeof OcrStatus>;
+export type ExtractionStatus = z.infer<typeof ExtractionStatus>;
+export type ExtractionProviderState = z.infer<typeof ExtractionProviderState>;
+export type FailureStage = z.infer<typeof FailureStage>;
 export type VerificationStatus = z.infer<typeof VerificationStatus>;
 export type DocumentProvenance = z.infer<typeof DocumentProvenance>;
 
@@ -80,6 +103,9 @@ export const DocumentRecordSchema = z.object({
   processingStatus: ProcessingStatus,
   provenance: DocumentProvenance,
   ocrStatus: OcrStatus,
+  extractionStatus: ExtractionStatus.default("NOT_STARTED"),
+  aiProviderState: ExtractionProviderState.optional(),
+  failureStage: FailureStage.optional(),
   verificationStatus: VerificationStatus,
   errors: z.array(z.string()).default([]),
   extractedFacts: z.array(ExtractedFactSchema).default([]),
@@ -190,6 +216,7 @@ export function createDocumentRecord(sessionId: string, file: File, documentType
     processingStatus: "RECEIVED",
     provenance: "PATIENT",
     ocrStatus: "NOT_STARTED",
+    extractionStatus: "NOT_STARTED",
     verificationStatus: "UNVERIFIED",
     errors: [],
     extractedFacts: [],
@@ -204,12 +231,12 @@ export function transitionProcessingStatus(current: ProcessingStatus, next: Proc
     "VALIDATING": ["READY_FOR_OCR", "FAILED"],
     "READY_FOR_OCR": ["OCR_PROCESSING", "FAILED"],
     "OCR_PROCESSING": ["OCR_COMPLETE", "FAILED"],
-    "OCR_COMPLETE": ["EXTRACTION_PROCESSING", "NEEDS_REVIEW", "FAILED"],
-    "EXTRACTION_PROCESSING": ["EXTRACTION_COMPLETE", "NEEDS_REVIEW", "FAILED"],
-    "EXTRACTION_COMPLETE": ["NEEDS_REVIEW", "VERIFIED", "FAILED"],
-    "NEEDS_REVIEW": ["VERIFIED", "FAILED"],
+    "OCR_COMPLETE": ["EXTRACTION_PROCESSING", "FAILED"],
+    "EXTRACTION_PROCESSING": ["EXTRACTION_COMPLETE", "FAILED"],
+    "EXTRACTION_COMPLETE": ["NEEDS_REVIEW", "FAILED"],
+    "NEEDS_REVIEW": ["FAILED"],
     "VERIFIED": ["FAILED"],
-    "FAILED": ["READY_FOR_OCR"],
+    "FAILED": ["READY_FOR_OCR", "OCR_COMPLETE", "EXTRACTION_PROCESSING"],
   };
 
   return allowedTransitions[current]?.includes(next) ?? false;
