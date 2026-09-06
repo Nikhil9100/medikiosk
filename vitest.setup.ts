@@ -1,3 +1,4 @@
+import { vi } from "vitest";
 import "@testing-library/jest-dom/vitest";
 
 const createStorage = () => {
@@ -28,3 +29,5 @@ Object.defineProperty(window, "localStorage", {
   value: createStorage(),
   configurable: true,
 });
+
+vi.mock("server-only", () => ({}));

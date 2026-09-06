@@ -93,7 +93,7 @@ export default function PatientDocumentsPage() {
         updatedAt: string;
         processingStatus: "RECEIVED" | "VALIDATING" | "READY_FOR_OCR" | "OCR_PROCESSING" | "OCR_COMPLETE" | "EXTRACTION_PROCESSING" | "EXTRACTION_COMPLETE" | "NEEDS_REVIEW" | "VERIFIED" | "FAILED";
         provenance: "PATIENT" | "SYSTEM" | "DOCTOR";
-        ocrStatus: "NOT_STARTED" | "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED";
+        ocrStatus: "NOT_STARTED" | "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED" | "NOT_CONFIGURED" | "UNAVAILABLE";
         verificationStatus: "UNVERIFIED" | "PENDING_REVIEW" | "VERIFIED" | "REJECTED";
         errors: string[];
         extractedFacts: Array<{
@@ -105,6 +105,33 @@ export default function PatientDocumentsPage() {
           confidence?: number;
         }>;
         sourceReference?: { page?: number; section?: string };
+        ocrResults: Array<{
+          documentId: string;
+          sessionId: string;
+          pages: Array<{
+            pageNumber: number;
+            extractedText: string;
+            confidence?: number;
+            boundingBoxes?: Array<{
+              x: number;
+              y: number;
+              width: number;
+              height: number;
+              text: string;
+              confidence?: number;
+            }>;
+            language?: string;
+          }>;
+          providerMetadata: {
+            provider: string;
+            model?: string;
+            language: string;
+            createdAt: string;
+          };
+          handwritingDetected: boolean;
+          processingDurationMs?: number;
+          createdAt: string;
+        }>;
       };
       const updatedDocuments = [...workflow.documents, document];
       setDocuments(updatedDocuments);
@@ -121,6 +148,91 @@ export default function PatientDocumentsPage() {
     const updatedDocuments = workflow.documents.filter((doc) => doc.id !== documentId);
     setDocuments(updatedDocuments);
     void syncSession({ documents: updatedDocuments as unknown as Array<Record<string, unknown>> });
+  }
+
+  async function handleStartOcr(documentId: string) {
+    if (isUploading) return;
+
+    setIsUploading(true);
+    setUploadError("");
+
+    try {
+      const response = await fetch(`/api/patient/documents/${documentId}/ocr`, {
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "OCR failed");
+      }
+
+      const data = await response.json();
+      
+      const updatedDocuments = workflow.documents.map((doc) =>
+        doc.id === documentId
+          ? { ...doc, processingStatus: (data.status as "RECEIVED" | "VALIDATING" | "READY_FOR_OCR" | "OCR_PROCESSING" | "OCR_COMPLETE" | "EXTRACTION_PROCESSING" | "EXTRACTION_COMPLETE" | "NEEDS_REVIEW" | "VERIFIED" | "FAILED") ?? doc.processingStatus, ocrStatus: (data.ocrStatus as "NOT_STARTED" | "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED" | "NOT_CONFIGURED" | "UNAVAILABLE") ?? doc.ocrStatus }
+          : doc,
+      );
+      setDocuments(updatedDocuments);
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : "OCR failed");
+    } finally {
+      setIsUploading(false);
+    }
+  }
+
+  async function handleRetryOcr(documentId: string) {
+    if (isUploading) return;
+
+    setIsUploading(true);
+    setUploadError("");
+
+    try {
+      const response = await fetch(`/api/patient/documents/${documentId}/ocr/retry`, {
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "OCR retry failed");
+      }
+
+      const data = await response.json();
+      
+      const updatedDocuments = workflow.documents.map((doc) =>
+        doc.id === documentId
+          ? { ...doc, processingStatus: (data.status as "RECEIVED" | "VALIDATING" | "READY_FOR_OCR" | "OCR_PROCESSING" | "OCR_COMPLETE" | "EXTRACTION_PROCESSING" | "EXTRACTION_COMPLETE" | "NEEDS_REVIEW" | "VERIFIED" | "FAILED") ?? doc.processingStatus, ocrStatus: (data.ocrStatus as "NOT_STARTED" | "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED" | "NOT_CONFIGURED" | "UNAVAILABLE") ?? doc.ocrStatus }
+          : doc,
+      );
+      setDocuments(updatedDocuments);
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : "OCR retry failed");
+    } finally {
+      setIsUploading(false);
+    }
+  }
+
+  async function handleRefreshOcrStatus(documentId: string) {
+    try {
+      const response = await fetch(`/api/patient/documents/${documentId}/ocr`);
+      if (!response.ok) return;
+
+      const data = await response.json();
+      
+      const updatedDocuments = workflow.documents.map((doc) =>
+        doc.id === documentId
+          ? {
+              ...doc,
+              processingStatus: (data.processingStatus as "RECEIVED" | "VALIDATING" | "READY_FOR_OCR" | "OCR_PROCESSING" | "OCR_COMPLETE" | "EXTRACTION_PROCESSING" | "EXTRACTION_COMPLETE" | "NEEDS_REVIEW" | "VERIFIED" | "FAILED") ?? doc.processingStatus,
+              ocrStatus: (data.ocrStatus as "NOT_STARTED" | "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED" | "NOT_CONFIGURED" | "UNAVAILABLE") ?? doc.ocrStatus,
+              ocrResults: (data.ocrResults as Array<{ documentId: string; sessionId: string; pages: Array<{ pageNumber: number; extractedText: string; confidence?: number; boundingBoxes?: Array<{ x: number; y: number; width: number; height: number; text: string; confidence?: number }>; language?: string }>; providerMetadata: { provider: string; model?: string; language: string; createdAt: string }; handwritingDetected: boolean; processingDurationMs?: number; createdAt: string }>) ?? doc.ocrResults,
+            }
+          : doc,
+      );
+      setDocuments(updatedDocuments);
+    } catch {
+      // Silently fail status refresh
+    }
   }
 
   return (
@@ -189,15 +301,75 @@ export default function PatientDocumentsPage() {
                     <span className="document-item__meta">
                       {SUPPORTED_DISPLAY_TYPES[document.mimeType] || document.mimeType} • {document.processingStatus}
                     </span>
+                    {document.ocrStatus !== "NOT_STARTED" && (
+                      <span className="document-item__ocr-status">
+                        OCR: {document.ocrStatus}
+                      </span>
+                    )}
                   </div>
-                  <button
-                    type="button"
-                    className="document-item__remove"
-                    onClick={() => handleRemoveDocument(document.id)}
-                    aria-label={`Remove ${document.originalFilename}`}
-                  >
-                    {t("documentRemove")}
-                  </button>
+                  <div className="document-item__actions">
+                    {document.processingStatus === "RECEIVED" || document.processingStatus === "READY_FOR_OCR" ? (
+                      <button
+                        type="button"
+                        className="primary-button primary-button--compact"
+                        onClick={() => handleStartOcr(document.id)}
+                        disabled={isUploading}
+                      >
+                        {t("documentStartOcr")}
+                      </button>
+                    ) : document.processingStatus === "FAILED" ? (
+                      <button
+                        type="button"
+                        className="primary-button primary-button--compact"
+                        onClick={() => handleRetryOcr(document.id)}
+                        disabled={isUploading}
+                      >
+                        {t("documentRetryOcr")}
+                      </button>
+                    ) : null}
+                    {document.processingStatus === "OCR_PROCESSING" && (
+                      <button
+                        type="button"
+                        className="primary-button primary-button--compact"
+                        onClick={() => handleRefreshOcrStatus(document.id)}
+                        disabled={isUploading}
+                      >
+                        {t("documentRefreshStatus")}
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className="document-item__remove"
+                      onClick={() => handleRemoveDocument(document.id)}
+                      aria-label={`Remove ${document.originalFilename}`}
+                    >
+                      {t("documentRemove")}
+                    </button>
+                  </div>
+                  {document.ocrResults && document.ocrResults.length > 0 && (
+                    <div className="document-item__ocr-results">
+                      {document.ocrResults.map((result, index) => (
+                        <div key={index} className="ocr-result">
+                          <p className="ocr-result__meta">
+                            {t("documentOcrProvider")}: {result.providerMetadata.provider}
+                            {result.providerMetadata.language && ` • ${result.providerMetadata.language}`}
+                          </p>
+                          {result.handwritingDetected && (
+                            <p className="ocr-result__handwriting">{t("documentHandwritingDetected")}</p>
+                          )}
+                          {result.pages.map((page) => (
+                            <div key={page.pageNumber} className="ocr-page">
+                              <p className="ocr-page__header">
+                                {t("documentPage")} {page.pageNumber}
+                                {page.confidence !== undefined && ` • ${Math.round(page.confidence * 100)}% ${t("documentConfidence")}`}
+                              </p>
+                              <p className="ocr-page__text">{page.extractedText || t("documentNoTextExtracted")}</p>
+                            </div>
+                          ))}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </li>
               ))}
             </ul>

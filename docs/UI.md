@@ -39,6 +39,17 @@ The documents page uses:
 - Accessible error announcements
 - Responsive layout for kiosk/tablet/mobile/desktop
 
+## Phase 6B OCR UI patterns
+The documents page now includes OCR status and results display:
+- Each document shows its current `processingStatus` and `ocrStatus`.
+- Documents in `RECEIVED`, `READY_FOR_OCR`, or `FAILED` states show a "Process with OCR" button.
+- Documents in `FAILED` state show a "Retry OCR" button that calls the retry endpoint.
+- Documents in `OCR_PROCESSING` state show a "Refresh status" button.
+- Completed OCR results display page-level provenance with page numbers, extracted text, optional confidence scores, and provider metadata.
+- Handwriting detection results are shown honestly. The Tesseract provider does not claim handwriting support, so the UI never labels ordinary OCR output as handwriting-recognized.
+- OCR output is presented as candidate information only. The UI never treats OCR text as confirmed clinical facts.
+- The six-language architecture is preserved. OCR language selection is explicit and mapped from the selected application language.
+
 ## Voice design decisions
 Voice controls are optional and additive. The patient can always use typed or touch input. Voice transcripts are shown for review before acceptance. The UI never mentions STT, TTS, API, provider, or backend. Controls use semantic buttons with accessible names, visible focus, and 44px+ touch targets.
 

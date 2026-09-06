@@ -28,9 +28,23 @@ Provenance should use:
 - SYSTEM
 
 ## Document and OCR provenance
-Medical documents are input artifacts, not confirmed clinical facts. Any candidate fact extracted from OCR or AI normalization must carry `OCR` or `AI` provenance respectively and must remain unverified until the patient or doctor explicitly verifies it. The processing state machine tracks documents through: RECEIVED → VALIDATING → READY_FOR_OCR → OCR_PROCESSING → OCR_COMPLETE → EXTRACTION_PROCESSING → EXTRACTION_COMPLETE → NEEDS_REVIEW → VERIFIED → FAILED.
+Medical documents are input artifacts, not confirmed clinical facts. Any candidate fact extracted from OCR or AI normalization must carry `OCR` or `AI` provenance respectively and must remain unverified until the patient or doctor explicitly verifies it. The processing state machine tracks documents through: RECEIVED → READY_FOR_OCR → OCR_PROCESSING → OCR_COMPLETE or FAILED.
 
 Candidate facts from OCR/AI must never silently become `KNOWN` clinical facts without verification. Missing document information must remain missing; never convert missing to "No" or any negative finding.
+
+## OCR review boundary
+OCR output is presented as extracted text and candidate information only. The patient and physician verification steps remain separate operations. The system never automatically creates `KNOWN` clinical facts from OCR results. All OCR results carry `OCR` provenance and remain in `UNVERIFIED` state.
+
+Page-level provenance is preserved for every OCR result. Each page result includes:
+- `pageNumber`: 1-based page index
+- `extractedText`: the text extracted from that page
+- `confidence`: optional confidence score when returned by the OCR engine
+- `language`: the OCR language used
+- `providerMetadata`: provider name, model, and processing timestamp
+
+Handwriting recognition is not claimed. The Tesseract provider returns `supportsHandwriting: false` honestly. If handwriting support is unavailable, the system exposes that state explicitly.
+
+OCR failures are represented with explicit error states (`PROVIDER_UNAVAILABLE`, `PROVIDER_TIMEOUT`, `OCR_FAILED`, `OCR_NOT_CONFIGURED`). Failed jobs can be retried safely without duplicating or corrupting existing results.
 
 ## Voice provenance
 Voice input is an alternative input modality, not a separate diagnostic system. Voice-derived facts must carry `VOICE` provenance and must never be silently relabeled as `PATIENT` or `AI`. The patient reviews and edits every transcript before it becomes a clinical fact. If the transcript is unclear or confidence is insufficient, the engine preserves `UNKNOWN`, `NOT_ASKED`, or `DECLINED` semantics; it never infers or fabricates symptoms.

@@ -57,6 +57,72 @@ Returns the list of documents for the current session.
 Response:
 - `documents`: array of document records
 
+### `POST /api/patient/documents/[id]/ocr`
+
+Starts OCR processing for a document. Validates session ownership and document ownership. Only documents with status `READY_FOR_OCR` or `FAILED` can be processed.
+
+Request: empty body
+
+Response:
+- `status`: processing status after OCR
+- `ocrStatus`: OCR completion status
+
+Errors:
+- `401`: Authentication required
+- `404`: No active session or document not found
+- `403`: Access denied (document does not belong to session)
+- `409`: OCR already completed, in progress, or document not in valid state
+- `410`: Document buffer not available (raw bytes were not persisted)
+- `500`: OCR processing failed
+
+### `GET /api/patient/documents/[id]/ocr`
+
+Returns OCR status and results for a document.
+
+Response:
+- `id`: document UUID
+- `ocrStatus`: OCR status
+- `processingStatus`: processing status
+- `ocrResults`: array of OCR result objects
+
+OCR result object:
+- `documentId`: document UUID
+- `sessionId`: session UUID
+- `pages`: array of page-level results
+- `providerMetadata`: provider name, model, language, createdAt
+- `handwritingDetected`: boolean (always `false` for Tesseract)
+- `processingDurationMs`: optional processing time
+- `createdAt`: ISO timestamp
+
+Page result object:
+- `pageNumber`: 1-based page index
+- `extractedText`: extracted text content
+- `confidence`: optional confidence score (0–1) when provided by engine
+- `boundingBoxes`: optional bounding box data
+- `language`: OCR language code used
+
+Errors:
+- `401`: Authentication required
+- `404`: No active session or document not found
+- `403`: Access denied
+
+### `POST /api/patient/documents/[id]/ocr/retry`
+
+Retries a failed OCR job. Only documents with `processingStatus: "FAILED"` can be retried.
+
+Request: empty body
+
+Response:
+- `status`: processing status after retry
+- `ocrStatus`: OCR completion status
+
+Errors:
+- `401`: Authentication required
+- `404`: No active session or document not found
+- `403`: Access denied
+- `409`: Document is not in failed state
+- `500`: OCR retry failed
+
 ### `POST /api/voice/transcribe`
 
 Server-side speech-to-text endpoint. Accepts `multipart/form-data` with an audio file and a language code. The server maps the application language to the Sarvam BCP-47 code, forwards the audio to Sarvam Saaras v4, and returns the transcript. The API key is never exposed to the client.

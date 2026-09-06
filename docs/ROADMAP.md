@@ -68,6 +68,12 @@ Implemented: patient-facing document upload entry point, secure server-side API 
 Verification: document tests (6), API tests (6), route tests (12), lint, build, and responsive QA pass.
 Status: DONE
 
+## Phase 6B — Real medical-document OCR processing
+Goal: Add OCR processing pipeline with page-level provenance and honest capability boundaries.
+Implemented: server-side Tesseract.js OCR provider abstraction, PDF page rasterization via pdf-raster, in-memory document repository with ownership validation, processing pipeline (RECEIVED → READY_FOR_OCR → OCR_PROCESSING → OCR_COMPLETE/FAILED), page-level OCR results with provider metadata, explicit handwriting-unsupported boundary, retry endpoint for failed OCR, six-language OCR selection, and comprehensive boundary/error tests.
+Verification: OCR tests (22), document tests (6), API tests (6), route tests (12), lint, build, and responsive QA pass.
+Status: DONE
+
 ## Phase 7 — Clinical summary + deterministic red flags + provenance
 Goal: Summarize and flag safety-critical findings.
 Status: NOT STARTED

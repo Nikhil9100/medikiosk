@@ -114,6 +114,14 @@ const english = {
   documentFileTooLarge: "This file is too large. Maximum size is 20MB.",
   documentsListTitle: "Uploaded documents",
   documentsComplete: "Continue to home",
+  documentStartOcr: "Process with OCR",
+  documentRetryOcr: "Retry OCR",
+  documentRefreshStatus: "Refresh status",
+  documentOcrProvider: "OCR provider",
+  documentHandwritingDetected: "Handwriting detected",
+  documentPage: "Page",
+  documentConfidence: "confidence",
+  documentNoTextExtracted: "No text extracted from this page.",
 } as const;
 
 export type TranslationKey = keyof typeof english;

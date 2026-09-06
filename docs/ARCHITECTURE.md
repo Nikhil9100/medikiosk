@@ -39,6 +39,19 @@ Medical documents are handled through a dedicated patient-facing upload flow int
 
 The server-side API (`POST /api/patient/documents`) validates MIME types via magic bytes and enforces a 20MB size limit. Documents are tracked client-side with a processing state machine; no permanent object storage is introduced in Phase 6A. The OCR provider boundary is clean and deterministic, with test doubles only in tests.
 
+## Phase 6B OCR processing
+OCR processing is implemented as a server-side pipeline behind a repository interface so persistence can later be replaced by Supabase/object storage without changing OCR business logic. The current implementation uses an in-memory store for the hackathon stage.
+
+The OCR provider abstraction (`lib/ocr/provider.ts`) defines a typed interface with `processImage(buffer, language, pageNumber)` and exposes `supportsHandwriting` honestly. Tesseract.js is the default provider. It is server-side only and accepts image buffers such as PNG/JPEG. The system does not claim reliable handwriting recognition; `supportsHandwriting` is `false`.
+
+PDF page rasterization is handled by `lib/ocr/page-renderer.ts` using `pdf-raster`, which uses PDFium for high-performance server-side rendering. The renderer produces PNG buffers per page, preserving page-level source information. The renderer interface can be replaced later without changing pipeline logic.
+
+The processing pipeline (`lib/ocr/pipeline.ts`) enforces state transitions: `RECEIVED → READY_FOR_OCR → OCR_PROCESSING → OCR_COMPLETE` or `FAILED`. OCR output is stored as unverified candidate data with `OCR` provenance. No automatic clinical fact confirmation occurs. The patient and physician verification steps remain separate operations.
+
+The OCR API routes (`POST /api/patient/documents/[id]/ocr`, `GET /api/patient/documents/[id]/ocr`, `POST /api/patient/documents/[id]/ocr/retry`) validate session ownership and document ownership on every request. The document upload API (`POST /api/patient/documents`) now stores the raw buffer server-side for later OCR processing, linked to a real session ID from the HTTP-only cookie.
+
+Six-language OCR selection is explicit. The application language is mapped to Tesseract language codes (`en` → `eng`, `hi` → `hin`, `bn` → `ben`, `te` → `tel`, `ta` → `tam`, `mr` → `mar`). Unsupported languages throw explicit errors.
+
 ## Phase 5 Sarvam voice
 Voice is implemented as an optional input/output modality behind a server-side provider boundary. The browser never calls Sarvam directly. All voice requests go through MediKiosk server API routes (`POST /api/voice/transcribe` and `POST /api/voice/speak`), which validate payloads, enforce language mapping, and forward requests to Sarvam using the server-side `SARVAM_API_KEY`.
 

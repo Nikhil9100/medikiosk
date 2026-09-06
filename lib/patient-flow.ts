@@ -32,7 +32,7 @@ export const PatientWorkflowSchema = z.object({
     updatedAt: z.string().datetime(),
     processingStatus: z.enum(["RECEIVED", "VALIDATING", "READY_FOR_OCR", "OCR_PROCESSING", "OCR_COMPLETE", "EXTRACTION_PROCESSING", "EXTRACTION_COMPLETE", "NEEDS_REVIEW", "VERIFIED", "FAILED"]),
     provenance: z.enum(["PATIENT", "SYSTEM", "DOCTOR"]),
-    ocrStatus: z.enum(["NOT_STARTED", "PENDING", "PROCESSING", "COMPLETED", "FAILED"]),
+    ocrStatus: z.enum(["NOT_STARTED", "PENDING", "PROCESSING", "COMPLETED", "FAILED", "NOT_CONFIGURED", "UNAVAILABLE"]),
     verificationStatus: z.enum(["UNVERIFIED", "PENDING_REVIEW", "VERIFIED", "REJECTED"]),
     errors: z.array(z.string()).default([]),
     extractedFacts: z.array(z.object({
@@ -50,6 +50,33 @@ export const PatientWorkflowSchema = z.object({
       page: z.number().optional(),
       section: z.string().optional(),
     }).optional(),
+    ocrResults: z.array(z.object({
+      documentId: z.string().uuid(),
+      sessionId: z.string().min(1),
+      pages: z.array(z.object({
+        pageNumber: z.number().int().positive(),
+        extractedText: z.string(),
+        confidence: z.number().min(0).max(1).optional(),
+        boundingBoxes: z.array(z.object({
+          x: z.number(),
+          y: z.number(),
+          width: z.number(),
+          height: z.number(),
+          text: z.string(),
+          confidence: z.number().min(0).max(1).optional(),
+        })).optional(),
+        language: z.string().optional(),
+      })),
+      providerMetadata: z.object({
+        provider: z.string().min(1),
+        model: z.string().min(1).optional(),
+        language: z.string().min(1),
+        createdAt: z.string().datetime(),
+      }),
+      handwritingDetected: z.boolean().default(false),
+      processingDurationMs: z.number().int().nonnegative().optional(),
+      createdAt: z.string().datetime(),
+    })).default([]),
   })).default([]),
 });
 

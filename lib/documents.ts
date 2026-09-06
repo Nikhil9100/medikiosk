@@ -29,6 +29,8 @@ export const OcrStatus = z.enum([
   "PROCESSING",
   "COMPLETED",
   "FAILED",
+  "NOT_CONFIGURED",
+  "UNAVAILABLE",
 ]);
 
 export const VerificationStatus = z.enum([
@@ -85,9 +87,66 @@ export const DocumentRecordSchema = z.object({
     page: z.number().optional(),
     section: z.string().optional(),
   }).optional(),
+  ocrResults: z.array(z.object({
+    documentId: z.string().uuid(),
+    sessionId: z.string().min(1),
+    pages: z.array(z.object({
+      pageNumber: z.number().int().positive(),
+      extractedText: z.string(),
+      confidence: z.number().min(0).max(1).optional(),
+      boundingBoxes: z.array(z.object({
+        x: z.number(),
+        y: z.number(),
+        width: z.number(),
+        height: z.number(),
+        text: z.string(),
+        confidence: z.number().min(0).max(1).optional(),
+      })).optional(),
+      language: z.string().optional(),
+    })),
+    providerMetadata: z.object({
+      provider: z.string().min(1),
+      model: z.string().min(1).optional(),
+      language: z.string().min(1),
+      createdAt: z.string().datetime(),
+    }),
+    handwritingDetected: z.boolean().default(false),
+    processingDurationMs: z.number().int().nonnegative().optional(),
+    createdAt: z.string().datetime(),
+  })).default([]),
 });
 
 export type DocumentRecord = z.infer<typeof DocumentRecordSchema>;
+
+export type DocumentWithOcr = DocumentRecord & {
+  ocrResults: Array<{
+    documentId: string;
+    sessionId: string;
+    pages: Array<{
+      pageNumber: number;
+      extractedText: string;
+      confidence?: number;
+      boundingBoxes?: Array<{
+        x: number;
+        y: number;
+        width: number;
+        height: number;
+        text: string;
+        confidence?: number;
+      }>;
+      language?: string;
+    }>;
+    providerMetadata: {
+      provider: string;
+      model?: string;
+      language: string;
+      createdAt: string;
+    };
+    handwritingDetected: boolean;
+    processingDurationMs?: number;
+    createdAt: string;
+  }>;
+};
 
 export const DocumentUploadSchema = z.object({
   file: z.instanceof(File),
@@ -135,6 +194,7 @@ export function createDocumentRecord(sessionId: string, file: File, documentType
     errors: [],
     extractedFacts: [],
     sourceReference: undefined,
+    ocrResults: [],
   };
 }
 
