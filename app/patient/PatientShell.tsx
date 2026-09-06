@@ -1,0 +1,201 @@
+"use client";
+
+import { createContext, useContext, useEffect, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { getTranslation, type TranslationKey } from "@/lib/i18n";
+import {
+  defaultPatientWorkflow,
+  previousStep,
+  type ConsentStatus,
+  type PatientLanguage,
+  type PatientStep,
+  type PatientWorkflow,
+} from "@/lib/patient-flow";
+
+const languageStorageKey = "medikiosk.patient.language";
+const stepByPath: Record<string, PatientStep> = {
+  "/patient": "welcome",
+  "/patient/language": "language",
+  "/patient/consent": "consent",
+  "/patient/start": "start",
+};
+const stepOrder: PatientStep[] = ["language", "consent", "start"];
+
+type PatientContextValue = {
+  workflow: PatientWorkflow;
+  setLanguage: (language: PatientLanguage) => void;
+  setConsentStatus: (status: ConsentStatus) => void;
+  t: (key: TranslationKey) => string;
+  openHelp: () => void;
+};
+
+const PatientContext = createContext<PatientContextValue | null>(null);
+
+function createSessionId() {
+  return typeof crypto.randomUUID === "function" ? crypto.randomUUID() : `session-${Date.now()}`;
+}
+
+export function PatientShell({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const [workflow, setWorkflow] = useState(defaultPatientWorkflow);
+  const [isReady, setIsReady] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
+  const currentStep = stepByPath[pathname] ?? "welcome";
+  const language = workflow.language;
+  const t = (key: TranslationKey) => getTranslation(language, key);
+
+  useEffect(() => {
+    const storedLanguage = window.localStorage.getItem(languageStorageKey);
+    const parsedLanguage = storedLanguage === "hi" ? "hi" : "en";
+    // Persisted browser preferences hydrate after the server-rendered shell mounts.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setWorkflow((current) => ({
+      ...current,
+      language: parsedLanguage,
+      currentStep,
+      sessionId: current.sessionId || createSessionId(),
+    }));
+    setIsReady(true);
+  }, [currentStep]);
+
+  useEffect(() => {
+    if (!isReady) return;
+    window.localStorage.setItem(languageStorageKey, workflow.language);
+    document.documentElement.lang = workflow.language === "hi" ? "hi" : "en";
+  }, [isReady, workflow.language]);
+
+  useEffect(() => {
+    if (!isReady || pathname === "/patient") return;
+    if (currentStep === "start" && workflow.consentStatus !== "ACCEPTED") {
+      router.replace("/patient/consent");
+    }
+  }, [currentStep, isReady, pathname, router, workflow.consentStatus]);
+
+  function setLanguage(nextLanguage: PatientLanguage) {
+    setWorkflow((current) => ({ ...current, language: nextLanguage }));
+  }
+
+  function setConsentStatus(consentStatus: ConsentStatus) {
+    setWorkflow((current) => ({ ...current, consentStatus }));
+  }
+
+  function goBack() {
+    const priorStep = previousStep(currentStep);
+    router.push(priorStep === "welcome" ? "/patient" : `/patient/${priorStep}`);
+  }
+
+  const progressIndex = stepOrder.indexOf(currentStep);
+
+  if (!isReady) {
+    return <LoadingState />;
+  }
+
+  return (
+    <PatientContext.Provider value={{ workflow, setLanguage, setConsentStatus, t, openHelp: () => setHelpOpen(true) }}>
+      <div className="patient-app">
+      <header className="patient-header">
+        <div className="patient-header__inner">
+          <a className="brand-lockup" href="/patient" aria-label={`${t("brand")} home`}>
+            <span className="brand-lockup__mark" aria-hidden="true">M</span>
+            <span>
+              <strong>{t("brand")}</strong>
+              <span>{t("serviceName")}</span>
+            </span>
+          </a>
+          <div className="patient-header__actions">
+            <button className="header-action" type="button" onClick={() => router.push("/patient/language")}>
+              <span aria-hidden="true">Aa</span>
+              <span>{language === "hi" ? "हिंदी" : "English"}</span>
+            </button>
+            <button className="header-action" type="button" onClick={() => setHelpOpen(true)}>
+              <span aria-hidden="true">?</span>
+              <span>{t("needHelp")}</span>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main className="patient-main">
+        <div className="patient-main__inner">
+          {currentStep !== "welcome" && (
+            <ProgressIndicator currentStep={currentStep} progressIndex={progressIndex} t={t} />
+          )}
+          {children}
+        </div>
+      </main>
+
+      {currentStep !== "welcome" && (
+        <footer className="patient-footer">
+          <button type="button" className="back-button" onClick={goBack}>
+            <span aria-hidden="true">←</span> {t("consentBack")}
+          </button>
+        </footer>
+      )}
+
+      {helpOpen && (
+        <div className="dialog-backdrop" role="presentation" onMouseDown={() => setHelpOpen(false)}>
+          <section className="help-dialog" role="dialog" aria-modal="true" aria-labelledby="help-title" onMouseDown={(event) => event.stopPropagation()}>
+            <div className="help-dialog__icon" aria-hidden="true">?</div>
+            <h2 id="help-title">{t("helpTitle")}</h2>
+            <p>{t("helpDescription")}</p>
+            <button type="button" className="primary-button primary-button--compact" onClick={() => setHelpOpen(false)}>
+              {t("close")}
+            </button>
+          </section>
+        </div>
+      )}
+      </div>
+    </PatientContext.Provider>
+  );
+}
+
+function ProgressIndicator({ currentStep, progressIndex, t }: { currentStep: PatientStep; progressIndex: number; t: (key: TranslationKey) => string }) {
+  const steps: Array<{ key: PatientStep; label: TranslationKey }> = [
+    { key: "language", label: "languageStep" },
+    { key: "consent", label: "consentStep" },
+    { key: "start", label: "startStep" },
+  ];
+
+  return (
+    <nav className="progress" aria-label={t("progressLabel")}>
+      {steps.map((step, index) => (
+        <span key={step.key} className={`progress__step ${index <= progressIndex ? "progress__step--active" : ""} ${step.key === currentStep ? "progress__step--current" : ""}`}>
+          <span className="progress__dot" aria-hidden="true">{index < progressIndex ? "✓" : index + 1}</span>
+          <span>{t(step.label)}</span>
+        </span>
+      ))}
+    </nav>
+  );
+}
+
+function LoadingState() {
+  return (
+    <main className="patient-loading" aria-live="polite">
+      <div className="loading-spinner" aria-hidden="true" />
+      <p>Loading MediKiosk…</p>
+    </main>
+  );
+}
+
+export function PatientErrorState({ onRetry }: { onRetry?: () => void }) {
+  return (
+    <main className="patient-loading" role="alert">
+      <div className="help-dialog" style={{ textAlign: "center" }}>
+        <h1>Something went wrong.</h1>
+        <p>Please try again or ask a member of staff for help.</p>
+        {onRetry && <button type="button" className="primary-button primary-button--compact" onClick={onRetry}>Try again</button>}
+      </div>
+    </main>
+  );
+}
+
+export function usePatientWorkflow() {
+  const context = useContext(PatientContext);
+  if (!context) {
+    throw new Error("usePatientWorkflow must be used inside PatientShell");
+  }
+  return context;
+}
+
+export { languageStorageKey };

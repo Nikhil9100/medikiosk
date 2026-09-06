@@ -18,7 +18,7 @@ export const metadata: Metadata = {
     "MediKiosk is an AI-assisted pre-consultation clinical history-taking and medical-document digitization platform.",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html
       lang="en"

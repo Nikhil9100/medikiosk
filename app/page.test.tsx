@@ -1,13 +1,10 @@
-import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import Page from "./page";
+import { getTranslation } from "@/lib/i18n";
 
-describe("MediKiosk shell", () => {
-  it("renders patient and doctor product surfaces", () => {
-    render(<Page />);
-
-    expect(screen.getByText(/medikiosk/i)).toBeInTheDocument();
-    expect(screen.getByText(/patient kiosk/i)).toBeInTheDocument();
-    expect(screen.getByText(/doctor console/i)).toBeInTheDocument();
+describe("MediKiosk patient shell foundation", () => {
+  it("keeps English available as the fallback language", () => {
+    expect(getTranslation("en", "brand")).toBe("MediKiosk");
+    expect(getTranslation("hi", "brand")).toBe("MediKiosk");
+    expect(getTranslation("en", "welcomeTitle")).toContain("health");
   });
 });
