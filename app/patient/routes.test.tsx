@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PatientShell } from "./PatientShell";
 import LanguagePage from "./language/page";
 import ConsentPage from "./consent/page";
+import ComplaintPage from "./complaint/page";
+import AnatomyPage from "./anatomy/page";
 import { getMissingTranslationKeys, getTranslation } from "@/lib/i18n";
 
 const router = { push: vi.fn(), replace: vi.fn() };
@@ -120,5 +122,34 @@ describe("patient onboarding routes", () => {
         }
       }
     }
+  });
+
+  it("renders the complaint step and keeps the initial complaint state explicit", async () => {
+    pathname = "/patient/complaint";
+    render(
+      <PatientShell>
+        <ComplaintPage />
+      </PatientShell>,
+    );
+
+    expect(await screen.findByRole("textbox", { name: /what is bothering you today/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /What is bothering you today\?/i })).toBeInTheDocument();
+    const textarea = screen.getByRole("textbox", { name: /what is bothering you today/i });
+    expect(textarea).toHaveValue("");
+  });
+
+  it("requires no body region by default and allows a valid regional selection", async () => {
+    pathname = "/patient/anatomy";
+    render(
+      <PatientShell>
+        <AnatomyPage />
+      </PatientShell>,
+    );
+
+    expect(screen.getByText(/Select the area/i)).toBeInTheDocument();
+    const headButton = screen.getByRole("button", { name: /head/i });
+    expect(headButton).toHaveAttribute("aria-pressed", "false");
+    fireEvent.click(headButton);
+    expect(headButton).toHaveAttribute("aria-pressed", "true");
   });
 });

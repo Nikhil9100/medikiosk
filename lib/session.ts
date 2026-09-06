@@ -3,13 +3,39 @@ import { PatientLanguage } from "./patient-flow";
 
 export const SessionStatus = z.enum(["ACTIVE", "EXPIRED", "COMPLETED"]);
 export const SessionConsentStatus = z.enum(["NOT_REVIEWED", "ACCEPTED", "DECLINED"]);
-export const SessionWorkflowStep = z.enum(["welcome", "language", "consent", "start"]);
+export const SessionWorkflowStep = z.enum(["welcome", "language", "consent", "start", "complaint", "anatomy"]);
+export const SessionBodyRegion = z.enum([
+  "head",
+  "chest",
+  "abdomen",
+  "back",
+  "arm",
+  "hand",
+  "leg",
+  "foot",
+  "skin",
+  "other",
+]);
+export const SessionBodySubregion = z.enum([
+  "front",
+  "back",
+  "left",
+  "right",
+  "upper",
+  "lower",
+  "middle",
+  "face",
+  "body",
+]);
 export type SessionStatus = z.infer<typeof SessionStatus>;
 
 export const SessionUpdateSchema = z.object({
   language: PatientLanguage.optional(),
   consentStatus: SessionConsentStatus.optional(),
   workflowStep: SessionWorkflowStep.optional(),
+  complaintText: z.string().max(2000).optional(),
+  bodyRegion: SessionBodyRegion.optional(),
+  bodySubregion: SessionBodySubregion.optional(),
   status: z.literal("COMPLETED").optional(),
 }).strict();
 
@@ -21,6 +47,9 @@ export const PatientSessionRecordSchema = z.object({
   consentVersion: z.string().nullable(),
   consentTimestamp: z.string().datetime().nullable(),
   workflowStep: SessionWorkflowStep,
+  complaintText: z.string().nullable(),
+  bodyRegion: SessionBodyRegion.nullable(),
+  bodySubregion: SessionBodySubregion.nullable(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
   expiresAt: z.string().datetime(),
@@ -40,6 +69,9 @@ export function createSession(language: PatientSessionRecord["language"] = "en",
     consentVersion: null,
     consentTimestamp: null,
     workflowStep: "welcome",
+    complaintText: null,
+    bodyRegion: null,
+    bodySubregion: null,
     createdAt: now.toISOString(),
     updatedAt: now.toISOString(),
     expiresAt: new Date(now.getTime() + sessionDurationMs).toISOString(),

@@ -14,8 +14,8 @@ export default function PatientStartPage() {
       <h1 id="start-title">{t("startTitle")}</h1>
       <p className="lead-copy">{t("startDescription")}</p>
       <p className="supporting-note">{t("startNote")}</p>
-      <button type="button" className="primary-button" onClick={() => router.push("/patient")}>
-        {t("brand")} <span aria-hidden="true">↻</span>
+      <button type="button" className="primary-button" onClick={() => router.push("/patient/complaint")}>
+        {t("complaintNext")} <span aria-hidden="true">→</span>
       </button>
     </section>
   );

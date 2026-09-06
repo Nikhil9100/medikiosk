@@ -11,7 +11,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 const sessionCookie = "medikiosk_session";
 const consentVersion = "phase-2-v1";
-const sessionColumns = "id,status,language,consent_status,consent_version,consent_timestamp,workflow_step,created_at,updated_at,expires_at,completed_at";
+const sessionColumns = "id,status,language,consent_status,consent_version,consent_timestamp,workflow_step,complaint_text,body_region,body_subregion,created_at,updated_at,expires_at,completed_at";
 
 type SessionRow = {
   id: string;
@@ -21,6 +21,9 @@ type SessionRow = {
   consent_version: string | null;
   consent_timestamp: string | null;
   workflow_step: PatientSessionRecord["workflowStep"];
+  complaint_text: string | null;
+  body_region: PatientSessionRecord["bodyRegion"];
+  body_subregion: PatientSessionRecord["bodySubregion"];
   created_at: string;
   updated_at: string;
   expires_at: string;
@@ -36,6 +39,9 @@ function toResponse(row: SessionRow) {
     consentVersion: row.consent_version,
     consentTimestamp: row.consent_timestamp,
     workflowStep: row.workflow_step,
+    complaintText: row.complaint_text,
+    bodyRegion: row.body_region,
+    bodySubregion: row.body_subregion,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     expiresAt: row.expires_at,
@@ -155,6 +161,9 @@ export async function PATCH(request: Request) {
   const changes: Record<string, string | null> = {};
   if (parsed.data.language) changes.language = parsed.data.language;
   if (parsed.data.workflowStep) changes.workflow_step = parsed.data.workflowStep;
+  if (parsed.data.complaintText !== undefined) changes.complaint_text = parsed.data.complaintText;
+  if (parsed.data.bodyRegion !== undefined) changes.body_region = parsed.data.bodyRegion;
+  if (parsed.data.bodySubregion !== undefined) changes.body_subregion = parsed.data.bodySubregion;
   if (parsed.data.consentStatus) {
     changes.consent_status = parsed.data.consentStatus;
     changes.consent_version = parsed.data.consentStatus === "NOT_REVIEWED" ? null : consentVersion;

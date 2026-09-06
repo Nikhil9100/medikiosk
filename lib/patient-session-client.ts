@@ -34,7 +34,15 @@ export async function createOrReusePatientSession(language: PatientLanguage) {
   return response.json();
 }
 
-export async function updatePatientSession(update: { language?: PatientLanguage; consentStatus?: ConsentStatus; workflowStep?: PatientStep; status?: "COMPLETED" }) {
+export async function updatePatientSession(update: {
+  language?: PatientLanguage;
+  consentStatus?: ConsentStatus;
+  workflowStep?: PatientStep;
+  complaintText?: string;
+  bodyRegion?: string;
+  bodySubregion?: string;
+  status?: "COMPLETED";
+}) {
   const response = await fetch("/api/patient/session", {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },

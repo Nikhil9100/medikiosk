@@ -14,6 +14,8 @@ Values should use a constrained set:
 - DECLINED
 - DENIED
 
+Blank complaint text is valid as an explicit state of `NOT_ASKED`; it is never interpreted as a negative fact or as “no complaint.” The complaint question retains its textual prompt and provenance metadata in the patient workflow, and the patient source remains `PATIENT` unless a derived source is explicitly added.
+
 Provenance should use:
 - PATIENT
 - VOICE

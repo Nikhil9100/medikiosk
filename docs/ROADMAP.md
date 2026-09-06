@@ -46,7 +46,9 @@ Status: BLOCKED
 
 ## Phase 3 — Complaint collection + anatomy visualization
 Goal: Support chief complaint and region selection.
-Status: NOT STARTED
+Implemented: patient complaint capture, explicit empty-complaint handling, body-region selection, accessible button semantics, six-language copy coverage, and Phase 3 route integration without changing the established Phase 1/2 flow.
+Verification: route tests and clinical validation pass; lint succeeds; production build succeeds in the current repository. Live Supabase persistence verification remains environment-limited by the local Docker/runtime state.
+Status: DONE
 
 ## Phase 4 — Clinical interview engine + adaptive branching
 Goal: Add deterministic questionnaire logic and branching.

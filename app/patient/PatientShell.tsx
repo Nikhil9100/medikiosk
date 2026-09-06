@@ -18,8 +18,10 @@ const stepByPath: Record<string, PatientStep> = {
   "/patient/language": "language",
   "/patient/consent": "consent",
   "/patient/start": "start",
+  "/patient/complaint": "complaint",
+  "/patient/anatomy": "anatomy",
 };
-const stepOrder: PatientStep[] = ["language", "consent", "start"];
+const stepOrder: PatientStep[] = ["language", "consent", "start", "complaint", "anatomy"];
 const languageNameKeys: Record<PatientLanguage, TranslationKey> = {
   en: "languageEnglish",
   hi: "languageHindi",
@@ -33,6 +35,10 @@ type PatientContextValue = {
   workflow: PatientWorkflow;
   setLanguage: (language: PatientLanguage) => void;
   setConsentStatus: (status: ConsentStatus) => void;
+  setComplaint: (complaint: string) => void;
+  setSelectedRegion: (region: PatientWorkflow["selectedRegion"]) => void;
+  setSelectedSubregion: (subregion: PatientWorkflow["selectedSubregion"]) => void;
+  syncSession: (payload: Partial<Record<string, string | null | undefined>>) => Promise<void>;
   t: (key: TranslationKey) => string;
   openHelp: () => void;
 };
@@ -90,6 +96,31 @@ export function PatientShell({ children }: { children: React.ReactNode }) {
     setWorkflow((current) => ({ ...current, consentStatus }));
   }
 
+  function setComplaint(complaint: string) {
+    setWorkflow((current) => ({ ...current, complaint }));
+  }
+
+  function setSelectedRegion(region: PatientWorkflow["selectedRegion"]) {
+    setWorkflow((current) => ({ ...current, selectedRegion: region }));
+  }
+
+  function setSelectedSubregion(subregion: PatientWorkflow["selectedSubregion"]) {
+    setWorkflow((current) => ({ ...current, selectedSubregion: subregion }));
+  }
+
+  async function syncSession(payload: Partial<Record<string, string | null | undefined>>) {
+    try {
+      const response = await fetch("/api/patient/session", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!response.ok) return;
+    } catch {
+      // Phase 2 requires a live Supabase configuration, so the UI should remain local-safe while the project is not linked.
+    }
+  }
+
   function goBack() {
     const priorStep = previousStep(currentStep);
     router.push(priorStep === "welcome" ? "/patient" : `/patient/${priorStep}`);
@@ -106,7 +137,7 @@ export function PatientShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <PatientContext.Provider value={{ workflow, setLanguage, setConsentStatus, t, openHelp: () => setHelpOpen(true) }}>
+    <PatientContext.Provider value={{ workflow, setLanguage, setConsentStatus, setComplaint, setSelectedRegion, setSelectedSubregion, syncSession, t, openHelp: () => setHelpOpen(true) }}>
       <div className="patient-app">
       <header className="patient-header">
         <div className="patient-header__inner">
@@ -169,6 +200,8 @@ function ProgressIndicator({ currentStep, progressIndex, t }: { currentStep: Pat
     { key: "language", label: "languageStep" },
     { key: "consent", label: "consentStep" },
     { key: "start", label: "startStep" },
+    { key: "complaint", label: "complaintStep" },
+    { key: "anatomy", label: "anatomyStep" },
   ];
 
   return (
