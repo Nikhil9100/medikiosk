@@ -27,6 +27,9 @@ Provenance should use:
 - DOCTOR
 - SYSTEM
 
+## Voice provenance
+Voice input is an alternative input modality, not a separate diagnostic system. Voice-derived facts must carry `VOICE` provenance and must never be silently relabeled as `PATIENT` or `AI`. The patient reviews and edits every transcript before it becomes a clinical fact. If the transcript is unclear or confidence is insufficient, the engine preserves `UNKNOWN`, `NOT_ASKED`, or `DECLINED` semantics; it never infers or fabricates symptoms.
+
 ## Interview engine
 The Phase 4 interview engine provides a deterministic, typed question bank with branching logic.
 

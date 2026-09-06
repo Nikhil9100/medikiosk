@@ -19,6 +19,13 @@
 - `patient_sessions` uses forced RLS with owner-based select, insert, and update policies.
 - No policy uses unrestricted `USING (true)` access.
 
+## Phase 5 voice security
+- `SARVAM_API_KEY` is read from the server environment and never sent to the browser.
+- Voice API routes (`POST /api/voice/transcribe`, `POST /api/voice/speak`) validate all payloads before forwarding to Sarvam.
+- Raw patient audio is processed in memory and never written to disk or committed to the repository.
+- Voice transcripts are stored as clinical facts with `VOICE` provenance; they are not treated as `PATIENT` or `AI` facts.
+- Browser-native speech synthesis is not used as a fallback; all speech goes through the server-side Sarvam boundary.
+
 ## Phase 2 session security
 - Browser code can use only the publishable Supabase key.
 - `SUPABASE_SECRET_KEY` is isolated in `lib/supabase/admin.ts` behind `server-only` and is not imported by patient components.

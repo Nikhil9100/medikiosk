@@ -29,6 +29,11 @@ The interview page uses:
 - aria-live="polite" for answer recording status
 - Screen-reader-only labels for free-text and numeric inputs
 - Disabled states during submission
+- Optional microphone and speaker controls for voice interaction
+- Accessible status announcements for listening, transcript ready, and speaking states
+
+## Voice design decisions
+Voice controls are optional and additive. The patient can always use typed or touch input. Voice transcripts are shown for review before acceptance. The UI never mentions STT, TTS, API, provider, or backend. Controls use semantic buttons with accessible names, visible focus, and 44px+ touch targets.
 
 ## Design decisions
 The visual language is restrained and public-service inspired: navy text, warm white surfaces, neutral borders, and limited indigo, saffron, and green accents. MediKiosk is an original product identity and does not use government marks or implied certifications. The responsive QA script checks all six languages at 320px, 390px, 768px, 1024px, and 1440px for overflow, clipping, language synchronization, and touch target size.

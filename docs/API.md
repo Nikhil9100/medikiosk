@@ -27,6 +27,30 @@ Accepts only the explicit update schema:
 
 Consent acceptance/decline records a fixed consent version and timestamp. Arbitrary columns, owner changes, and status reactivation are rejected. Interview facts are validated against `InterviewFactSchema` before persistence.
 
+### `POST /api/voice/transcribe`
+
+Server-side speech-to-text endpoint. Accepts `multipart/form-data` with an audio file and a language code. The server maps the application language to the Sarvam BCP-47 code, forwards the audio to Sarvam Saaras v4, and returns the transcript. The API key is never exposed to the client.
+
+Request body (form-data):
+- `audio`: audio file (max 30 MB)
+- `language`: one of `en`, `hi`, `bn`, `te`, `ta`, `mr`
+
+Response:
+- `transcript`: transcribed text
+- `language`: mapped BCP-47 language code
+
+### `POST /api/voice/speak`
+
+Server-side text-to-speech endpoint. Accepts JSON with text and language code. The server forwards the request to Sarvam Bulbul v3 and returns base64-encoded audio.
+
+Request body:
+- `text`: string (1–2500 characters)
+- `language`: one of `en`, `hi`, `bn`, `te`, `ta`, `mr`
+
+Response:
+- `audioBase64`: base64-encoded audio
+- `contentType`: MIME type of the audio
+
 ### `POST /api/patient/session/reset`
 
 Completes the current owned active session, clears the HTTP-only cookie, and returns `{ reset: true, session: null }`. The client idempotency key is removed only after the server reset succeeds.
