@@ -13,7 +13,6 @@ export default function PatientConsentPage() {
   }
 
   function declineConsent() {
-    setConsentStatus("DECLINED");
     router.push("/patient/language");
   }
 
@@ -34,7 +33,7 @@ export default function PatientConsentPage() {
         </details>
       </div>
       {workflow.consentStatus === "DECLINED" && (
-        <p className="inline-status inline-status--warning" role="status">Please choose “{t("consentAgree")}” to continue.</p>
+        <p className="inline-status inline-status--warning" role="status">{t("consentDeclined")}</p>
       )}
       <div className="primary-action-stack">
         <button type="button" className="primary-button" onClick={acceptConsent}>

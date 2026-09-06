@@ -20,6 +20,14 @@ const stepByPath: Record<string, PatientStep> = {
   "/patient/start": "start",
 };
 const stepOrder: PatientStep[] = ["language", "consent", "start"];
+const languageNameKeys: Record<PatientLanguage, TranslationKey> = {
+  en: "languageEnglish",
+  hi: "languageHindi",
+  bn: "languageBengali",
+  te: "languageTelugu",
+  ta: "languageTamil",
+  mr: "languageMarathi",
+};
 
 type PatientContextValue = {
   workflow: PatientWorkflow;
@@ -90,7 +98,11 @@ export function PatientShell({ children }: { children: React.ReactNode }) {
   const progressIndex = stepOrder.indexOf(currentStep);
 
   if (!isReady) {
-    return <LoadingState />;
+    return <LoadingState language={workflow.language} />;
+  }
+
+  if (currentStep === "start" && workflow.consentStatus !== "ACCEPTED") {
+    return <LoadingState language={workflow.language} />;
   }
 
   return (
@@ -98,7 +110,7 @@ export function PatientShell({ children }: { children: React.ReactNode }) {
       <div className="patient-app">
       <header className="patient-header">
         <div className="patient-header__inner">
-          <a className="brand-lockup" href="/patient" aria-label={`${t("brand")} home`}>
+          <a className="brand-lockup" href="/patient" aria-label={t("homeLabel")}>
             <span className="brand-lockup__mark" aria-hidden="true">M</span>
             <span>
               <strong>{t("brand")}</strong>
@@ -106,11 +118,11 @@ export function PatientShell({ children }: { children: React.ReactNode }) {
             </span>
           </a>
           <div className="patient-header__actions">
-            <button className="header-action" type="button" onClick={() => router.push("/patient/language")}>
+            <button className="header-action" type="button" aria-label={t("chooseLanguage")} onClick={() => router.push("/patient/language")}>
               <span aria-hidden="true">Aa</span>
-              <span>{language === "hi" ? "हिंदी" : "English"}</span>
+              <span>{t(languageNameKeys[language])}</span>
             </button>
-            <button className="header-action" type="button" onClick={() => setHelpOpen(true)}>
+            <button className="header-action" type="button" aria-label={t("needHelp")} onClick={() => setHelpOpen(true)}>
               <span aria-hidden="true">?</span>
               <span>{t("needHelp")}</span>
             </button>
@@ -171,22 +183,23 @@ function ProgressIndicator({ currentStep, progressIndex, t }: { currentStep: Pat
   );
 }
 
-function LoadingState() {
+function LoadingState({ language }: { language: PatientLanguage }) {
   return (
     <main className="patient-loading" aria-live="polite">
       <div className="loading-spinner" aria-hidden="true" />
-      <p>Loading MediKiosk…</p>
+      <p>{getTranslation(language, "loading")}</p>
     </main>
   );
 }
 
-export function PatientErrorState({ onRetry }: { onRetry?: () => void }) {
+export function PatientErrorState({ language = "en", onRetry }: { language?: PatientLanguage; onRetry?: () => void }) {
+  const t = (key: TranslationKey) => getTranslation(language, key);
   return (
     <main className="patient-loading" role="alert">
       <div className="help-dialog" style={{ textAlign: "center" }}>
-        <h1>Something went wrong.</h1>
-        <p>Please try again or ask a member of staff for help.</p>
-        {onRetry && <button type="button" className="primary-button primary-button--compact" onClick={onRetry}>Try again</button>}
+        <h1>{t("errorTitle")}</h1>
+        <p>{t("errorDescription")}</p>
+        {onRetry && <button type="button" className="primary-button primary-button--compact" onClick={onRetry}>{t("tryAgain")}</button>}
       </div>
     </main>
   );

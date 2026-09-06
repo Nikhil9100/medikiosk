@@ -569,9 +569,12 @@ li {
   }
 
   .header-action span:last-child {
-    max-width: none;
-    white-space: nowrap;
-    font-size: 0.7rem;
+    display: none;
+  }
+
+  .header-action {
+    width: 2.75rem;
+    justify-content: center;
   }
 
   .patient-main {

@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "qa:responsive": "node scripts/check-patient-responsive.js"
   },
   "dependencies": {
     "next": "16.3.4",

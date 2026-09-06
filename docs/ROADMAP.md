@@ -26,10 +26,10 @@ Status: DONE
 Goal: Build mobile first patient workflow shell.
 Scope: patient header, language selection, consent, welcome/start screens, progress, help, loading/error states, and accessible navigation.
 Out of scope: clinical questions, patient persistence, dynamic branching engine, anatomy, voice, OCR, RAG, chatbot, doctor console, FHIR, and ABDM.
-Tests: translation fallback, workflow state, language persistence, consent gate, back navigation, responsive browser checks.
-Definition of Done: patient routes work with explicit consent, English/Hindi strings are centralized, responsive and accessibility checks pass, docs reflect the implementation.
+Tests: complete six-language dictionaries, workflow state, language persistence for all six languages, consent gate, back navigation, responsive browser checks.
+Definition of Done: patient routes work with explicit consent, six initial language dictionaries are complete, responsive and accessibility checks pass, docs reflect the implementation.
 Known limitations: workflow state is client-side only; language uses local storage; no clinical collection is present yet.
-Phase completion: Implemented routes, shared patient shell, English/Hindi translations, consent gate, progress, help, loading/error state, focus styles, and responsive browser checks.
+Phase completion: Implemented routes, shared patient shell, English/Hindi/Bengali/Telugu/Tamil/Marathi translations, consent gate, progress, help, loading/error state, focus styles, and responsive browser checks.
 Status: DONE
 
 ## Phase 2 — Patient session + persistence + state integrity
