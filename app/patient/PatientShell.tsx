@@ -22,8 +22,9 @@ const stepByPath: Record<string, PatientStep> = {
   "/patient/complaint": "complaint",
   "/patient/anatomy": "anatomy",
   "/patient/interview": "interview",
+  "/patient/documents": "documents",
 };
-const stepOrder: PatientStep[] = ["language", "consent", "start", "complaint", "anatomy", "interview"];
+const stepOrder: PatientStep[] = ["language", "consent", "start", "complaint", "anatomy", "interview", "documents"];
 const languageNameKeys: Record<PatientLanguage, TranslationKey> = {
   en: "languageEnglish",
   hi: "languageHindi",
@@ -41,6 +42,7 @@ type PatientContextValue = {
   setSelectedRegion: (region: PatientWorkflow["selectedRegion"]) => void;
   setSelectedSubregion: (subregion: PatientWorkflow["selectedSubregion"]) => void;
   setInterviewFact: (questionId: string, value: string | undefined, provenance?: ClinicalProvenance) => void;
+  setDocuments: (documents: PatientWorkflow["documents"]) => void;
   syncSession: (payload: Partial<Record<string, unknown>>) => Promise<void>;
   t: (key: TranslationKey) => string;
   openHelp: () => void;
@@ -86,7 +88,7 @@ export function PatientShell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!isReady || pathname === "/patient") return;
-    if ((currentStep === "start" || currentStep === "complaint" || currentStep === "anatomy" || currentStep === "interview") && workflow.consentStatus !== "ACCEPTED") {
+    if ((currentStep === "start" || currentStep === "complaint" || currentStep === "anatomy" || currentStep === "interview" || currentStep === "documents") && workflow.consentStatus !== "ACCEPTED") {
       router.replace("/patient/consent");
     }
   }, [currentStep, isReady, pathname, router, workflow.consentStatus]);
@@ -121,6 +123,10 @@ export function PatientShell({ children }: { children: React.ReactNode }) {
     }));
   }
 
+  function setDocuments(documents: PatientWorkflow["documents"]) {
+    setWorkflow((current) => ({ ...current, documents }));
+  }
+
   async function syncSession(payload: Partial<Record<string, unknown>>) {
     try {
       const response = await fetch("/api/patient/session", {
@@ -145,12 +151,12 @@ export function PatientShell({ children }: { children: React.ReactNode }) {
     return <LoadingState language={workflow.language} />;
   }
 
-  if ((currentStep === "start" || currentStep === "complaint" || currentStep === "anatomy" || currentStep === "interview") && workflow.consentStatus !== "ACCEPTED") {
+  if ((currentStep === "start" || currentStep === "complaint" || currentStep === "anatomy" || currentStep === "interview" || currentStep === "documents") && workflow.consentStatus !== "ACCEPTED") {
     return <LoadingState language={workflow.language} />;
   }
 
   return (
-    <PatientContext.Provider value={{ workflow, setLanguage, setConsentStatus, setComplaint, setSelectedRegion, setSelectedSubregion, setInterviewFact, syncSession, t, openHelp: () => setHelpOpen(true) }}>
+    <PatientContext.Provider value={{ workflow, setLanguage, setConsentStatus, setComplaint, setSelectedRegion, setSelectedSubregion, setInterviewFact, setDocuments, syncSession, t, openHelp: () => setHelpOpen(true) }}>
       <div className="patient-app">
       <header className="patient-header">
         <div className="patient-header__inner">
@@ -216,6 +222,7 @@ function ProgressIndicator({ currentStep, progressIndex, t }: { currentStep: Pat
     { key: "complaint", label: "complaintStep" },
     { key: "anatomy", label: "anatomyStep" },
     { key: "interview", label: "interviewStep" },
+    { key: "documents", label: "documentsStep" },
   ];
 
   return (

@@ -62,9 +62,11 @@ Implemented: server-side Sarvam Saaras v4 STT and Bulbul v3 TTS endpoints, deter
 Verification: provider tests (3), API tests (10), route tests (11), lint, build, and responsive QA pass.
 Status: DONE
 
-## Phase 6 — Documents + OCR + extraction
-Goal: Add upload, OCR, and validation pipeline.
-Status: NOT STARTED
+## Phase 6A — Documents intake foundation
+Goal: Add document upload, validation, and processing state machine.
+Implemented: patient-facing document upload entry point, secure server-side API with MIME/size validation, document-domain schema with processing states, typed state machine transitions, six-language UI, accessible controls, and clean OCR provider boundary.
+Verification: document tests (6), API tests (6), route tests (12), lint, build, and responsive QA pass.
+Status: DONE
 
 ## Phase 7 — Clinical summary + deterministic red flags + provenance
 Goal: Summarize and flag safety-critical findings.

@@ -27,6 +27,36 @@ Accepts only the explicit update schema:
 
 Consent acceptance/decline records a fixed consent version and timestamp. Arbitrary columns, owner changes, and status reactivation are rejected. Interview facts are validated against `InterviewFactSchema` before persistence.
 
+### `POST /api/patient/documents`
+
+Uploads a medical document. Accepts `multipart/form-data` with a file and optional document type. The server validates the file via magic bytes and enforces a 20MB size limit. Supported formats: PDF, PNG, JPEG, WebP, BMP, TIFF.
+
+Request body (form-data):
+- `file`: file to upload
+- `documentType` (optional): one of `PRESCRIPTION`, `LAB_REPORT`, `IMAGING`, `DISCHARGE_SUMMARY`, `VACCINATION`, `INSURANCE`, `OTHER`
+
+Response:
+- `id`: document UUID
+- `sessionId`: associated session ID
+- `documentType`: document type
+- `status`: processing status
+- `originalFilename`: original file name
+- `mimeType`: validated MIME type
+- `processingStatus`: current processing state
+- `provenance`: `PATIENT`
+- `ocrStatus`: OCR status
+- `verificationStatus`: verification status
+- `errors`: array of error messages
+- `extractedFacts`: array of extracted facts (empty initially)
+- `sourceReference`: optional page/section reference
+
+### `GET /api/patient/documents`
+
+Returns the list of documents for the current session.
+
+Response:
+- `documents`: array of document records
+
 ### `POST /api/voice/transcribe`
 
 Server-side speech-to-text endpoint. Accepts `multipart/form-data` with an audio file and a language code. The server maps the application language to the Sarvam BCP-47 code, forwards the audio to Sarvam Saaras v4, and returns the transcript. The API key is never exposed to the client.

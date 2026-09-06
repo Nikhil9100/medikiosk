@@ -27,6 +27,11 @@ Provenance should use:
 - DOCTOR
 - SYSTEM
 
+## Document and OCR provenance
+Medical documents are input artifacts, not confirmed clinical facts. Any candidate fact extracted from OCR or AI normalization must carry `OCR` or `AI` provenance respectively and must remain unverified until the patient or doctor explicitly verifies it. The processing state machine tracks documents through: RECEIVED → VALIDATING → READY_FOR_OCR → OCR_PROCESSING → OCR_COMPLETE → EXTRACTION_PROCESSING → EXTRACTION_COMPLETE → NEEDS_REVIEW → VERIFIED → FAILED.
+
+Candidate facts from OCR/AI must never silently become `KNOWN` clinical facts without verification. Missing document information must remain missing; never convert missing to "No" or any negative finding.
+
 ## Voice provenance
 Voice input is an alternative input modality, not a separate diagnostic system. Voice-derived facts must carry `VOICE` provenance and must never be silently relabeled as `PATIENT` or `AI`. The patient reviews and edits every transcript before it becomes a clinical fact. If the transcript is unclear or confidence is insufficient, the engine preserves `UNKNOWN`, `NOT_ASKED`, or `DECLINED` semantics; it never infers or fabricates symptoms.
 

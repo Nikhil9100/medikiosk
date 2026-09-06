@@ -34,6 +34,11 @@ The server derives identity from `supabase.auth.getUser()`. The browser never se
 
 The repository is linked to a live Supabase project, but the local Docker API is not available in this environment, so live migration execution and database runtime verification remain environment-limited rather than code-blocked. The code path itself is structured and validated locally; production/live session verification depends on the target environment configuration.
 
+## Phase 6A document intake
+Medical documents are handled through a dedicated patient-facing upload flow integrated into the existing patient workflow. The document domain model (`lib/documents.ts`) defines typed schemas for documents, processing states, OCR status, verification status, and extracted facts with provenance.
+
+The server-side API (`POST /api/patient/documents`) validates MIME types via magic bytes and enforces a 20MB size limit. Documents are tracked client-side with a processing state machine; no permanent object storage is introduced in Phase 6A. The OCR provider boundary is clean and deterministic, with test doubles only in tests.
+
 ## Phase 5 Sarvam voice
 Voice is implemented as an optional input/output modality behind a server-side provider boundary. The browser never calls Sarvam directly. All voice requests go through MediKiosk server API routes (`POST /api/voice/transcribe` and `POST /api/voice/speak`), which validate payloads, enforce language mapping, and forward requests to Sarvam using the server-side `SARVAM_API_KEY`.
 

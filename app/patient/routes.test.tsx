@@ -6,6 +6,7 @@ import LanguagePage from "./language/page";
 import ConsentPage from "./consent/page";
 import ComplaintPage from "./complaint/page";
 import AnatomyPage from "./anatomy/page";
+import DocumentsPage from "./documents/page";
 import { getMissingTranslationKeys, getTranslation } from "@/lib/i18n";
 import type { PatientWorkflow, ConsentStatus, PatientLanguage } from "@/lib/patient-flow";
 import type { TranslationKey } from "@/lib/i18n";
@@ -53,6 +54,12 @@ const translatedOnboardingKeys = [
   "errorTitle",
   "errorDescription",
   "tryAgain",
+  "documentsStep",
+  "documentsTitle",
+  "documentsHelper",
+  "documentSelect",
+  "documentUpload",
+  "documentsListTitle",
 ] as const;
 
 vi.mock("next/navigation", () => ({
@@ -70,6 +77,7 @@ function createMockWorkflow(overrides: Partial<PatientWorkflow> = {}): PatientWo
     selectedRegion: null,
     selectedSubregion: null,
     interviewFacts: {},
+    documents: [],
     ...overrides,
   };
 }
@@ -88,6 +96,7 @@ function renderWithMockShell(ui: React.ReactNode, workflowOverrides: Partial<Pat
       setSelectedRegion: (region: PatientWorkflow["selectedRegion"]) => setWorkflow(prev => ({ ...prev, selectedRegion: region })),
       setSelectedSubregion: (subregion: PatientWorkflow["selectedSubregion"]) => setWorkflow(prev => ({ ...prev, selectedSubregion: subregion })),
       setInterviewFact: vi.fn(),
+      setDocuments: vi.fn(),
       syncSession: vi.fn(),
       t: (key: TranslationKey) => key,
       openHelp: vi.fn(),
@@ -99,6 +108,7 @@ function renderWithMockShell(ui: React.ReactNode, workflowOverrides: Partial<Pat
       setSelectedRegion: (region: PatientWorkflow["selectedRegion"]) => void;
       setSelectedSubregion: (subregion: PatientWorkflow["selectedSubregion"]) => void;
       setInterviewFact: (questionId: string, value: string | undefined, provenance?: string) => void;
+      setDocuments: (documents: PatientWorkflow["documents"]) => void;
       syncSession: (payload: Partial<Record<string, unknown>>) => Promise<void>;
       t: (key: TranslationKey) => string;
       openHelp: () => void;
@@ -209,5 +219,24 @@ describe("patient onboarding routes", () => {
     expect(headButton).toHaveAttribute("aria-pressed", "false");
     fireEvent.click(headButton);
     expect(screen.getByRole("button", { name: /head/i })).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("renders the documents step with upload control", async () => {
+    pathname = "/patient/documents";
+    renderWithMockShell(<DocumentsPage />, {
+      language: "en",
+      currentStep: "documents",
+      consentStatus: "ACCEPTED",
+      sessionId: "test-session",
+      complaint: "",
+      selectedRegion: null,
+      selectedSubregion: null,
+      interviewFacts: {},
+      documents: [],
+    });
+
+    expect(screen.getByText(/documentsTitle/i)).toBeInTheDocument();
+    expect(screen.getByText(/documentsHelper/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/documentSelect/i)).toBeInTheDocument();
   });
 });

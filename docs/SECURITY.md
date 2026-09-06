@@ -19,6 +19,15 @@
 - `patient_sessions` uses forced RLS with owner-based select, insert, and update policies.
 - No policy uses unrestricted `USING (true)` access.
 
+## Phase 6A document security
+- Document uploads are validated server-side via magic bytes, not just client-provided MIME type.
+- Maximum file size is 20MB.
+- Supported formats are restricted to PDF and common image types.
+- No permanent object storage is introduced in Phase 6A.
+- Raw document bytes are processed in memory and not written to disk.
+- Document records contain only metadata; no document content is logged.
+- Session ownership/access control follows the existing Phase 2 boundary.
+
 ## Phase 5 voice security
 - `SARVAM_API_KEY` is read from the server environment and never sent to the browser.
 - Voice API routes (`POST /api/voice/transcribe`, `POST /api/voice/speak`) validate all payloads before forwarding to Sarvam.

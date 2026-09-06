@@ -32,6 +32,13 @@ The interview page uses:
 - Optional microphone and speaker controls for voice interaction
 - Accessible status announcements for listening, transcript ready, and speaking states
 
+The documents page uses:
+- Semantic file input with accessible label
+- File preview showing name, type, and size
+- Remove/retry controls before submission
+- Accessible error announcements
+- Responsive layout for kiosk/tablet/mobile/desktop
+
 ## Voice design decisions
 Voice controls are optional and additive. The patient can always use typed or touch input. Voice transcripts are shown for review before acceptance. The UI never mentions STT, TTS, API, provider, or backend. Controls use semantic buttons with accessible names, visible focus, and 44px+ touch targets.
 

@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export const PatientLanguage = z.enum(["en", "hi", "bn", "te", "ta", "mr"]);
 export const ConsentStatus = z.enum(["NOT_REVIEWED", "ACCEPTED", "DECLINED"]);
-export const PatientStep = z.enum(["welcome", "language", "consent", "start", "complaint", "anatomy", "interview"]);
+export const PatientStep = z.enum(["welcome", "language", "consent", "start", "complaint", "anatomy", "interview", "documents"]);
 export const PatientBodyRegion = z.enum(["head", "chest", "abdomen", "back", "arm", "hand", "leg", "foot", "skin", "other"]);
 export const PatientBodySubregion = z.enum(["front", "back", "left", "right", "upper", "lower", "middle", "face", "body"]);
 
@@ -20,6 +20,37 @@ export const PatientWorkflowSchema = z.object({
     state: z.enum(["NOT_ASKED", "KNOWN", "UNKNOWN", "DECLINED", "DENIED"]),
     provenance: z.enum(["PATIENT", "VOICE", "TOUCH", "OCR", "AI", "DOCTOR", "SYSTEM"]),
   })).default({}),
+  documents: z.array(z.object({
+    id: z.string().uuid(),
+    documentType: z.enum(["PRESCRIPTION", "LAB_REPORT", "IMAGING", "DISCHARGE_SUMMARY", "VACCINATION", "INSURANCE", "OTHER"]),
+    status: z.enum(["RECEIVED", "VALIDATING", "READY_FOR_OCR", "OCR_PROCESSING", "OCR_COMPLETE", "EXTRACTION_PROCESSING", "EXTRACTION_COMPLETE", "NEEDS_REVIEW", "VERIFIED", "FAILED"]),
+    originalFilename: z.string(),
+    mimeType: z.string(),
+    pageCount: z.number().int().positive().optional(),
+    createdAt: z.string().datetime(),
+    receivedAt: z.string().datetime(),
+    updatedAt: z.string().datetime(),
+    processingStatus: z.enum(["RECEIVED", "VALIDATING", "READY_FOR_OCR", "OCR_PROCESSING", "OCR_COMPLETE", "EXTRACTION_PROCESSING", "EXTRACTION_COMPLETE", "NEEDS_REVIEW", "VERIFIED", "FAILED"]),
+    provenance: z.enum(["PATIENT", "SYSTEM", "DOCTOR"]),
+    ocrStatus: z.enum(["NOT_STARTED", "PENDING", "PROCESSING", "COMPLETED", "FAILED"]),
+    verificationStatus: z.enum(["UNVERIFIED", "PENDING_REVIEW", "VERIFIED", "REJECTED"]),
+    errors: z.array(z.string()).default([]),
+    extractedFacts: z.array(z.object({
+      questionId: z.string().min(1),
+      value: z.string().optional(),
+      state: z.enum(["NOT_ASKED", "KNOWN", "UNKNOWN", "DECLINED", "DENIED"]),
+      provenance: z.enum(["PATIENT", "VOICE", "TOUCH", "OCR", "AI", "DOCTOR", "SYSTEM"]),
+      sourceReference: z.object({
+        page: z.number().optional(),
+        section: z.string().optional(),
+      }).optional(),
+      confidence: z.number().min(0).max(1).optional(),
+    })).default([]),
+    sourceReference: z.object({
+      page: z.number().optional(),
+      section: z.string().optional(),
+    }).optional(),
+  })).default([]),
 });
 
 export type PatientLanguage = z.infer<typeof PatientLanguage>;
@@ -38,6 +69,7 @@ export const defaultPatientWorkflow: PatientWorkflow = {
   selectedRegion: null,
   selectedSubregion: null,
   interviewFacts: {},
+  documents: [],
 };
 
 export function nextStep(step: PatientStep, consentStatus: ConsentStatus): PatientStep {
@@ -47,6 +79,7 @@ export function nextStep(step: PatientStep, consentStatus: ConsentStatus): Patie
   if (step === "start") return "complaint";
   if (step === "complaint") return "anatomy";
   if (step === "anatomy") return "interview";
+  if (step === "interview") return "documents";
   return step;
 }
 
@@ -57,5 +90,6 @@ export function previousStep(step: PatientStep): PatientStep {
   if (step === "complaint") return "start";
   if (step === "anatomy") return "complaint";
   if (step === "interview") return "anatomy";
+  if (step === "documents") return "interview";
   return "welcome";
 }
