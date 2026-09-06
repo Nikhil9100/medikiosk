@@ -1,11 +1,14 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { PatientShell } from "./PatientShell";
+import { PatientShell, PatientContext } from "./PatientShell";
 import LanguagePage from "./language/page";
 import ConsentPage from "./consent/page";
 import ComplaintPage from "./complaint/page";
 import AnatomyPage from "./anatomy/page";
 import { getMissingTranslationKeys, getTranslation } from "@/lib/i18n";
+import type { PatientWorkflow, ConsentStatus, PatientLanguage } from "@/lib/patient-flow";
+import type { TranslationKey } from "@/lib/i18n";
 
 const router = { push: vi.fn(), replace: vi.fn() };
 let pathname = "/patient/language";
@@ -56,6 +59,60 @@ vi.mock("next/navigation", () => ({
   usePathname: () => pathname,
   useRouter: () => router,
 }));
+
+function createMockWorkflow(overrides: Partial<PatientWorkflow> = {}): PatientWorkflow {
+  return {
+    language: "en",
+    currentStep: "complaint",
+    consentStatus: "ACCEPTED",
+    sessionId: "test-session",
+    complaint: "",
+    selectedRegion: null,
+    selectedSubregion: null,
+    interviewFacts: {},
+    ...overrides,
+  };
+}
+
+function renderWithMockShell(ui: React.ReactNode, workflowOverrides: Partial<PatientWorkflow> = {}) {
+  const initialWorkflow = createMockWorkflow(workflowOverrides);
+
+  function MockShell({ children }: { children: React.ReactNode }) {
+    const [workflow, setWorkflow] = useState(initialWorkflow);
+
+    const value = {
+      workflow,
+      setLanguage: (language: PatientLanguage) => setWorkflow(prev => ({ ...prev, language })),
+      setConsentStatus: (status: ConsentStatus) => setWorkflow(prev => ({ ...prev, consentStatus: status })),
+      setComplaint: (complaint: string) => setWorkflow(prev => ({ ...prev, complaint })),
+      setSelectedRegion: (region: PatientWorkflow["selectedRegion"]) => setWorkflow(prev => ({ ...prev, selectedRegion: region })),
+      setSelectedSubregion: (subregion: PatientWorkflow["selectedSubregion"]) => setWorkflow(prev => ({ ...prev, selectedSubregion: subregion })),
+      setInterviewFact: vi.fn(),
+      syncSession: vi.fn(),
+      t: (key: TranslationKey) => key,
+      openHelp: vi.fn(),
+    } as {
+      workflow: PatientWorkflow;
+      setLanguage: (language: PatientLanguage) => void;
+      setConsentStatus: (status: ConsentStatus) => void;
+      setComplaint: (complaint: string) => void;
+      setSelectedRegion: (region: PatientWorkflow["selectedRegion"]) => void;
+      setSelectedSubregion: (subregion: PatientWorkflow["selectedSubregion"]) => void;
+      setInterviewFact: (questionId: string, value: string | undefined, provenance?: string) => void;
+      syncSession: (payload: Partial<Record<string, unknown>>) => Promise<void>;
+      t: (key: TranslationKey) => string;
+      openHelp: () => void;
+    };
+
+    return (
+      <PatientContext.Provider value={value}>
+        {children}
+      </PatientContext.Provider>
+    );
+  }
+
+  return render(<MockShell>{ui}</MockShell>);
+}
 
 describe("patient onboarding routes", () => {
   beforeEach(() => {
@@ -126,30 +183,31 @@ describe("patient onboarding routes", () => {
 
   it("renders the complaint step and keeps the initial complaint state explicit", async () => {
     pathname = "/patient/complaint";
-    render(
-      <PatientShell>
-        <ComplaintPage />
-      </PatientShell>,
-    );
+    renderWithMockShell(<ComplaintPage />);
 
-    expect(await screen.findByRole("textbox", { name: /what is bothering you today/i })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /What is bothering you today\?/i })).toBeInTheDocument();
-    const textarea = screen.getByRole("textbox", { name: /what is bothering you today/i });
+    expect(await screen.findByRole("textbox", { name: /complaintPrompt/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /complaintTitle/i })).toBeInTheDocument();
+    const textarea = screen.getByRole("textbox", { name: /complaintPrompt/i });
     expect(textarea).toHaveValue("");
   });
 
   it("requires no body region by default and allows a valid regional selection", async () => {
     pathname = "/patient/anatomy";
-    render(
-      <PatientShell>
-        <AnatomyPage />
-      </PatientShell>,
-    );
+    renderWithMockShell(<AnatomyPage />, {
+      language: "en",
+      currentStep: "anatomy",
+      consentStatus: "ACCEPTED",
+      sessionId: "test-session",
+      complaint: "",
+      selectedRegion: null,
+      selectedSubregion: null,
+      interviewFacts: {},
+    });
 
-    expect(screen.getByText(/Select the area/i)).toBeInTheDocument();
+    expect(screen.getByText(/anatomyPrompt/i)).toBeInTheDocument();
     const headButton = screen.getByRole("button", { name: /head/i });
     expect(headButton).toHaveAttribute("aria-pressed", "false");
     fireEvent.click(headButton);
-    expect(headButton).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: /head/i })).toHaveAttribute("aria-pressed", "true");
   });
 });
