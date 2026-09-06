@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const PatientLanguage = z.enum(["en", "hi"]);
+export const PatientLanguage = z.enum(["en", "hi", "bn", "te", "ta", "mr"]);
 export const ConsentStatus = z.enum(["NOT_REVIEWED", "ACCEPTED", "DECLINED"]);
 export const PatientStep = z.enum(["welcome", "language", "consent", "start"]);
 

@@ -69,6 +69,47 @@ export const translations = {
 
 export type TranslationKey = keyof typeof translations.en;
 
+const localizedTranslations: Record<PatientLanguage, Partial<Record<TranslationKey, string>>> = {
+  en: translations.en,
+  hi: translations.hi,
+  bn: {
+    chooseLanguage: "আপনার ভাষা বেছে নিন",
+    consentTitle: "শুরু করার আগে",
+    consentAgree: "আমি সম্মত, এগিয়ে যান",
+    consentBack: "ফিরে যান",
+    start: "শুরু করুন",
+    needHelp: "সাহায্য দরকার?",
+    startTitle: "আপনি শুরু করার জন্য প্রস্তুত।",
+  },
+  te: {
+    chooseLanguage: "మీ భాషను ఎంచుకోండి",
+    consentTitle: "ప్రారంభించే ముందు",
+    consentAgree: "నేను అంగీకరిస్తున్నాను, కొనసాగించండి",
+    consentBack: "వెనక్కి వెళ్ళండి",
+    start: "ప్రారంభించండి",
+    needHelp: "సహాయం కావాలా?",
+    startTitle: "మీరు ప్రారంభించడానికి సిద్ధంగా ఉన్నారు.",
+  },
+  ta: {
+    chooseLanguage: "உங்கள் மொழியைத் தேர்ந்தெடுக்கவும்",
+    consentTitle: "தொடங்குவதற்கு முன்",
+    consentAgree: "நான் ஒப்புக்கொள்கிறேன், தொடரவும்",
+    consentBack: "பின்செல்லவும்",
+    start: "தொடங்குங்கள்",
+    needHelp: "உதவி வேண்டுமா?",
+    startTitle: "நீங்கள் தொடங்கத் தயாராக உள்ளீர்கள்.",
+  },
+  mr: {
+    chooseLanguage: "तुमची भाषा निवडा",
+    consentTitle: "सुरुवात करण्यापूर्वी",
+    consentAgree: "मी सहमत आहे आणि पुढे जा",
+    consentBack: "मागे जा",
+    start: "सुरू करा",
+    needHelp: "मदत हवी आहे?",
+    startTitle: "तुम्ही सुरुवात करण्यास तयार आहात.",
+  },
+};
+
 export function getTranslation(language: PatientLanguage, key: TranslationKey): string {
-  return translations[language][key] ?? translations.en[key];
+  return localizedTranslations[language][key] ?? translations.en[key];
 }

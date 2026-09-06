@@ -47,7 +47,9 @@ export function PatientShell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const storedLanguage = window.localStorage.getItem(languageStorageKey);
-    const parsedLanguage = storedLanguage === "hi" ? "hi" : "en";
+    const parsedLanguage = storedLanguage === "hi" || storedLanguage === "bn" || storedLanguage === "te" || storedLanguage === "ta" || storedLanguage === "mr"
+      ? storedLanguage
+      : "en";
     // Persisted browser preferences hydrate after the server-rendered shell mounts.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setWorkflow((current) => ({
@@ -62,7 +64,7 @@ export function PatientShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!isReady) return;
     window.localStorage.setItem(languageStorageKey, workflow.language);
-    document.documentElement.lang = workflow.language === "hi" ? "hi" : "en";
+    document.documentElement.lang = workflow.language;
   }, [isReady, workflow.language]);
 
   useEffect(() => {
