@@ -74,7 +74,7 @@ export default function PatientAnatomyPage() {
       </div>
 
       <div className="primary-action-stack">
-        <button type="button" className="primary-button" onClick={() => router.push("/patient") }>
+        <button type="button" className="primary-button" onClick={() => router.push("/patient/interview")}>
           {t("complaintNext")} <span aria-hidden="true">→</span>
         </button>
       </div>

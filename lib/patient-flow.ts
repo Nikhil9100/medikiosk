@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export const PatientLanguage = z.enum(["en", "hi", "bn", "te", "ta", "mr"]);
 export const ConsentStatus = z.enum(["NOT_REVIEWED", "ACCEPTED", "DECLINED"]);
-export const PatientStep = z.enum(["welcome", "language", "consent", "start", "complaint", "anatomy"]);
+export const PatientStep = z.enum(["welcome", "language", "consent", "start", "complaint", "anatomy", "interview"]);
 export const PatientBodyRegion = z.enum(["head", "chest", "abdomen", "back", "arm", "hand", "leg", "foot", "skin", "other"]);
 export const PatientBodySubregion = z.enum(["front", "back", "left", "right", "upper", "lower", "middle", "face", "body"]);
 
@@ -14,6 +14,12 @@ export const PatientWorkflowSchema = z.object({
   complaint: z.string().default(""),
   selectedRegion: PatientBodyRegion.nullable().default(null),
   selectedSubregion: PatientBodySubregion.nullable().default(null),
+  interviewFacts: z.record(z.string(), z.object({
+    questionId: z.string().min(1),
+    value: z.string().optional(),
+    state: z.enum(["NOT_ASKED", "KNOWN", "UNKNOWN", "DECLINED", "DENIED"]),
+    provenance: z.enum(["PATIENT", "VOICE", "TOUCH", "OCR", "AI", "DOCTOR", "SYSTEM"]),
+  })).default({}),
 });
 
 export type PatientLanguage = z.infer<typeof PatientLanguage>;
@@ -31,6 +37,7 @@ export const defaultPatientWorkflow: PatientWorkflow = {
   complaint: "",
   selectedRegion: null,
   selectedSubregion: null,
+  interviewFacts: {},
 };
 
 export function nextStep(step: PatientStep, consentStatus: ConsentStatus): PatientStep {
@@ -39,6 +46,7 @@ export function nextStep(step: PatientStep, consentStatus: ConsentStatus): Patie
   if (step === "consent" && consentStatus === "ACCEPTED") return "start";
   if (step === "start") return "complaint";
   if (step === "complaint") return "anatomy";
+  if (step === "anatomy") return "interview";
   return step;
 }
 
@@ -48,5 +56,6 @@ export function previousStep(step: PatientStep): PatientStep {
   if (step === "start") return "consent";
   if (step === "complaint") return "start";
   if (step === "anatomy") return "complaint";
+  if (step === "interview") return "anatomy";
   return "welcome";
 }

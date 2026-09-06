@@ -11,6 +11,7 @@ import {
   type PatientStep,
   type PatientWorkflow,
 } from "@/lib/patient-flow";
+import { createClinicalFact, type ClinicalProvenance } from "@/lib/interview-engine";
 
 const languageStorageKey = "medikiosk.patient.language";
 const stepByPath: Record<string, PatientStep> = {
@@ -20,8 +21,9 @@ const stepByPath: Record<string, PatientStep> = {
   "/patient/start": "start",
   "/patient/complaint": "complaint",
   "/patient/anatomy": "anatomy",
+  "/patient/interview": "interview",
 };
-const stepOrder: PatientStep[] = ["language", "consent", "start", "complaint", "anatomy"];
+const stepOrder: PatientStep[] = ["language", "consent", "start", "complaint", "anatomy", "interview"];
 const languageNameKeys: Record<PatientLanguage, TranslationKey> = {
   en: "languageEnglish",
   hi: "languageHindi",
@@ -38,12 +40,13 @@ type PatientContextValue = {
   setComplaint: (complaint: string) => void;
   setSelectedRegion: (region: PatientWorkflow["selectedRegion"]) => void;
   setSelectedSubregion: (subregion: PatientWorkflow["selectedSubregion"]) => void;
-  syncSession: (payload: Partial<Record<string, string | null | undefined>>) => Promise<void>;
+  setInterviewFact: (questionId: string, value: string | undefined, provenance?: ClinicalProvenance) => void;
+  syncSession: (payload: Partial<Record<string, unknown>>) => Promise<void>;
   t: (key: TranslationKey) => string;
   openHelp: () => void;
 };
 
-const PatientContext = createContext<PatientContextValue | null>(null);
+export const PatientContext = createContext<PatientContextValue | null>(null);
 
 function createSessionId() {
   return typeof crypto.randomUUID === "function" ? crypto.randomUUID() : `session-${Date.now()}`;
@@ -83,7 +86,7 @@ export function PatientShell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!isReady || pathname === "/patient") return;
-    if (currentStep === "start" && workflow.consentStatus !== "ACCEPTED") {
+    if ((currentStep === "start" || currentStep === "complaint" || currentStep === "anatomy" || currentStep === "interview") && workflow.consentStatus !== "ACCEPTED") {
       router.replace("/patient/consent");
     }
   }, [currentStep, isReady, pathname, router, workflow.consentStatus]);
@@ -108,7 +111,17 @@ export function PatientShell({ children }: { children: React.ReactNode }) {
     setWorkflow((current) => ({ ...current, selectedSubregion: subregion }));
   }
 
-  async function syncSession(payload: Partial<Record<string, string | null | undefined>>) {
+  function setInterviewFact(questionId: string, value: string | undefined, provenance: ClinicalProvenance = "PATIENT") {
+    setWorkflow((current) => ({
+      ...current,
+      interviewFacts: {
+        ...current.interviewFacts,
+        [questionId]: createClinicalFact(questionId, value, provenance),
+      },
+    }));
+  }
+
+  async function syncSession(payload: Partial<Record<string, unknown>>) {
     try {
       const response = await fetch("/api/patient/session", {
         method: "PATCH",
@@ -132,12 +145,12 @@ export function PatientShell({ children }: { children: React.ReactNode }) {
     return <LoadingState language={workflow.language} />;
   }
 
-  if (currentStep === "start" && workflow.consentStatus !== "ACCEPTED") {
+  if ((currentStep === "start" || currentStep === "complaint" || currentStep === "anatomy" || currentStep === "interview") && workflow.consentStatus !== "ACCEPTED") {
     return <LoadingState language={workflow.language} />;
   }
 
   return (
-    <PatientContext.Provider value={{ workflow, setLanguage, setConsentStatus, setComplaint, setSelectedRegion, setSelectedSubregion, syncSession, t, openHelp: () => setHelpOpen(true) }}>
+    <PatientContext.Provider value={{ workflow, setLanguage, setConsentStatus, setComplaint, setSelectedRegion, setSelectedSubregion, setInterviewFact, syncSession, t, openHelp: () => setHelpOpen(true) }}>
       <div className="patient-app">
       <header className="patient-header">
         <div className="patient-header__inner">
@@ -202,6 +215,7 @@ function ProgressIndicator({ currentStep, progressIndex, t }: { currentStep: Pat
     { key: "start", label: "startStep" },
     { key: "complaint", label: "complaintStep" },
     { key: "anatomy", label: "anatomyStep" },
+    { key: "interview", label: "interviewStep" },
   ];
 
   return (
