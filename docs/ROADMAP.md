@@ -58,7 +58,9 @@ Status: DONE
 
 ## Phase 5 — Sarvam voice
 Goal: Connect patient voice workflow with provider abstraction.
-Status: NOT STARTED
+Implemented: server-side Sarvam Saaras v4 STT and Bulbul v3 TTS endpoints, deterministic interview engine integration, patient-friendly voice UI with transcript review, six-language coverage, accessible controls, typed API boundaries, and provider error handling.
+Verification: provider tests (3), API tests (10), route tests (11), lint, build, and responsive QA pass.
+Status: DONE
 
 ## Phase 6 — Documents + OCR + extraction
 Goal: Add upload, OCR, and validation pipeline.
