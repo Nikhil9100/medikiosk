@@ -1,0 +1,34 @@
+# MediKiosk API Contracts
+
+## Phase 2 session endpoints
+
+### `POST /api/patient/session`
+
+Creates or replays an owned patient session. Requires a Supabase-authenticated request and an `Idempotency-Key` header. The request body accepts only the validated `language` field. The response contains the safe session projection and sets an HTTP-only `medikiosk_session` cookie.
+
+Repeated requests with the same idempotency key and owner return the existing session rather than creating a duplicate. The database unique index is the final retry/double-submit guard.
+
+### `GET /api/patient/session`
+
+Reads the session referenced by the HTTP-only cookie through the authenticated Supabase server client. The database RLS policy and owner identity both constrain access. Expired active sessions are marked `EXPIRED` and return HTTP 410.
+
+### `PATCH /api/patient/session`
+
+Accepts only the explicit update schema:
+
+- `language`: one of `en`, `hi`, `bn`, `te`, `ta`, `mr`
+- `consentStatus`: `NOT_REVIEWED`, `ACCEPTED`, or `DECLINED`
+- `workflowStep`: `welcome`, `language`, `consent`, or `start`
+- `status`: only `COMPLETED` is accepted as a terminal transition
+
+Consent acceptance/decline records a fixed consent version and timestamp. Arbitrary columns, owner changes, and status reactivation are rejected.
+
+### `POST /api/patient/session/reset`
+
+Completes the current owned active session, clears the HTTP-only cookie, and returns `{ reset: true, session: null }`. The client idempotency key is removed only after the server reset succeeds.
+
+## Authentication and persistence status
+
+The API uses the Supabase SSR client and derives identity from `supabase.auth.getUser()`. The migration is in `supabase/migrations/20260906090000_create_patient_sessions.sql`.
+
+The configured Supabase project currently reports anonymous sign-ins disabled, and no Supabase CLI/database migration channel is installed in this workspace. The API therefore returns an honest authentication/configuration failure until the project is configured for the chosen patient identity flow and the migration is applied.

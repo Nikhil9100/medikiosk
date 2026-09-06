@@ -40,6 +40,8 @@ Implementation tasks:
 - add validated session API boundary
 - connect durable Supabase persistence and ownership checks
 Known limitations: durable persistence and cross-request session recovery are blocked until Supabase is configured; current endpoint is a boundary only and does not store clinical data.
+Implemented: Supabase client boundaries, session migration, owner-based RLS policies, expiry-aware API, constrained updates, idempotency index, HTTP-only cookie, reset endpoint, and session lifecycle tests.
+Verification: Typecheck, lint, tests, and production build pass. Migration policy checks pass statically. Live persistence/RLS testing and onboarding integration are blocked because the configured project has anonymous sign-ins disabled and no migration execution channel is installed.
 Status: BLOCKED
 
 ## Phase 3 — Complaint collection + anatomy visualization

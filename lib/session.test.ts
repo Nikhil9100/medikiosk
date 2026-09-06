@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createSession, isSessionActive } from "./session";
+import { canTransitionStatus, createSession, isSessionActive, SessionUpdateSchema } from "./session";
 
 describe("patient session boundary", () => {
   it("creates an active expiring session without clinical data", () => {
@@ -17,5 +17,17 @@ describe("patient session boundary", () => {
     const now = new Date("2026-09-06T08:00:00.000Z");
     const session = createSession("en", now);
     expect(isSessionActive({ ...session, status: "EXPIRED" }, now)).toBe(false);
+  });
+
+  it("allows only forward terminal status transitions", () => {
+    expect(canTransitionStatus("ACTIVE", "COMPLETED")).toBe(true);
+    expect(canTransitionStatus("ACTIVE", "EXPIRED")).toBe(true);
+    expect(canTransitionStatus("EXPIRED", "ACTIVE")).toBe(false);
+    expect(canTransitionStatus("COMPLETED", "ACTIVE")).toBe(false);
+  });
+
+  it("rejects arbitrary client update fields", () => {
+    expect(SessionUpdateSchema.safeParse({ ownerId: "another-user" }).success).toBe(false);
+    expect(SessionUpdateSchema.safeParse({ consentStatus: "ACCEPTED" }).success).toBe(true);
   });
 });
