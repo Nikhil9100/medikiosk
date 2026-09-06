@@ -9,23 +9,24 @@
 ## Phase 0 — Architecture, repository, design system, infrastructure foundation
 Goal: Create a stable product foundation and validation environment.
 Scope: repo setup, stack choices, typed clinical model, responsive shell, docs.
-Out of scope: live FHIR, production OCR, real AI calls, production auth.
+Out of scope: live FHIR, production OCR, real AI calls, production auth, patient workflow, interview engine.
 Implementation tasks:
 - scaffold Next.js app
-- establish TypeScript and lint/test foundations
+- establish TypeScript, lint, and test foundations
 - define clinical provenance model
-- create product shell and design tokens
+- create responsive product shell and design tokens
 - document PRD and architecture
-Tests: component and clinical-state tests
-Definition of Done: foundation compiles, tests pass, docs reflect reality
-Known limitations: no live Supabase, no production AI, no full clinical interview engine yet
+- validate environmental secret handling and provider boundaries
+Tests: component tests, clinical-state tests, typecheck, lint, production build
+Definition of Done: foundation compiles, tests pass, docs reflect reality, no secret exposure, responsive checks pass
+Known limitations: no live Supabase, no production AI, no patient workflow, no full interview engine yet
 Status: DONE
 
 ## Phase 1 — Responsive UI foundation + Patient Kiosk shell
 Goal: Build mobile first patient workflow shell.
 Scope: patient layout, progress, and accessibility shell.
 Out of scope: dynamic branching engine and OCR.
-Status: IN PROGRESS
+Status: NOT STARTED
 
 ## Phase 2 — Patient session + persistence + state integrity
 Goal: Add server-side patient session handling and state isolation.

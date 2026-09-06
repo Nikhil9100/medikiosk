@@ -10,6 +10,7 @@
   --saffron: #f59e0b;
   --green: #15803d;
   --border: #dfe7f3;
+  color-scheme: light;
 }
 
 @theme inline {
@@ -24,6 +25,10 @@ html {
 }
 
 body {
+  margin: 0;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
@@ -42,6 +47,7 @@ svg,
 video {
   display: block;
   max-width: 100%;
+  height: auto;
 }
 
 button,
@@ -51,6 +57,15 @@ textarea {
   font: inherit;
 }
 
+p,
+h1,
+h2,
+h3,
+ul,
+li {
+  margin-top: 0;
+}
+
 ::selection {
-  background: rgba(79, 70, 229, 0.15);
+  background: rgba(79, 70, 229, 0.12);
 }
