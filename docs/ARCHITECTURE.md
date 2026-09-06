@@ -34,5 +34,10 @@ The server derives identity from `supabase.auth.getUser()`. The browser never se
 
 The repository is linked to a live Supabase project, but the local Docker API is not available in this environment, so live migration execution and database runtime verification remain environment-limited rather than code-blocked. The code path itself is structured and validated locally; production/live session verification depends on the target environment configuration.
 
+## Phase 4 clinical interview engine
+The deterministic interview engine (`lib/interview-engine.ts`) provides a typed question bank with branching logic and explicit clinical states. The engine is persisted through the existing session API via the `interviewData` field. The live schema was synchronized with a forward-only migration (`supabase/migrations/20260906121327_add_patient_intake_fields.sql`) that added nullable columns for `complaint_text`, `body_region`, `body_subregion`, and `interview_data` (JSONB), and expanded the `workflow_step` constraint to include `complaint`, `anatomy`, and `interview`.
+
+The interview UI (`app/patient/interview/page.tsx`) renders questions based on the current interview state, supports free text, yes/no, single choice, numeric, and date/duration inputs, and persists facts with `PATIENT` provenance by default. The engine never infers negative answers from UNKNOWN or DECLINED states.
+
 ## Reasoning
 The first phase must establish a real, testable foundation for healthcare intake. We avoid fake providers or fake patient data. The initial implementation keeps the architecture modular and deliberately separates clinical state, UI shell, and future provider integrations.

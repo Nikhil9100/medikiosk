@@ -52,7 +52,9 @@ Status: DONE
 
 ## Phase 4 — Clinical interview engine + adaptive branching
 Goal: Add deterministic questionnaire logic and branching.
-Status: NOT STARTED
+Implemented: typed interview engine with 30+ questions across 8 domains, deterministic branching, explicit clinical states (NOT_ASKED, KNOWN, UNKNOWN, DECLINED, DENIED), provenance model, patient-friendly interview UI, six-language coverage, accessible controls, responsive behavior, and durable persistence through the session API.
+Verification: interview engine tests (11), route tests (11), lint, build, and responsive QA pass.
+Status: DONE
 
 ## Phase 5 — Sarvam voice
 Goal: Connect patient voice workflow with provider abstraction.

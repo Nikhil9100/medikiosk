@@ -5,12 +5,14 @@
 - Deterministic safety review is preferred for red flags and escalation logic.
 - Clinical facts keep explicit state and provenance metadata.
 - Missing information is never treated as a negative fact.
+- UNKNOWN or DECLINED responses do not trigger negative branch assumptions.
+- AI-generated clinical facts must carry explicit `AI` provenance.
 
 ## Fact model
 Values should use a constrained set:
+- NOT_ASKED
 - KNOWN
 - UNKNOWN
-- NOT_ASKED
 - DECLINED
 - DENIED
 
@@ -24,6 +26,42 @@ Provenance should use:
 - AI
 - DOCTOR
 - SYSTEM
+
+## Interview engine
+The Phase 4 interview engine provides a deterministic, typed question bank with branching logic.
+
+### Question domains
+- presenting_complaint
+- past_history
+- surgery_history
+- medication_history
+- allergy_history
+- family_history
+- personal_social_history
+- review_of_systems
+
+### Branching rules
+- Surgery yes → surgery follow-up (surgery_details)
+- Medication yes → medication details
+- Allergy yes → allergen/reaction details
+- Tobacco yes → usage follow-up
+- Explicit symptom present → relevant follow-up
+- UNKNOWN or DECLINED must not trigger a negative branch; the same question is re-presented.
+
+### Answer states
+- KNOWN: patient provided a substantive answer
+- DENIED: patient explicitly answered "no" or equivalent
+- UNKNOWN: patient indicated they do not know
+- DECLINED: patient preferred not to answer
+
+### Persistence
+Interview facts are stored in `patient_sessions.interview_data` as JSONB. Each fact includes:
+- questionId
+- value (optional string)
+- state (ClinicalAnswerState)
+- provenance (ClinicalProvenance)
+
+Facts are persisted through the existing session PATCH API using the `interviewData` field.
 
 ## Core workflow
 1. patient provides or confirms symptoms

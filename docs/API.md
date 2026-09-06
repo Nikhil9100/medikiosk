@@ -18,10 +18,14 @@ Accepts only the explicit update schema:
 
 - `language`: one of `en`, `hi`, `bn`, `te`, `ta`, `mr`
 - `consentStatus`: `NOT_REVIEWED`, `ACCEPTED`, or `DECLINED`
-- `workflowStep`: `welcome`, `language`, `consent`, or `start`
+- `workflowStep`: `welcome`, `language`, `consent`, `start`, `complaint`, `anatomy`, or `interview`
+- `complaintText`: optional patient complaint text (max 2000 chars)
+- `bodyRegion`: optional body region enum value
+- `bodySubregion`: optional body subregion enum value
+- `interviewData`: optional record of interview facts keyed by question ID
 - `status`: only `COMPLETED` is accepted as a terminal transition
 
-Consent acceptance/decline records a fixed consent version and timestamp. Arbitrary columns, owner changes, and status reactivation are rejected.
+Consent acceptance/decline records a fixed consent version and timestamp. Arbitrary columns, owner changes, and status reactivation are rejected. Interview facts are validated against `InterviewFactSchema` before persistence.
 
 ### `POST /api/patient/session/reset`
 
@@ -29,6 +33,6 @@ Completes the current owned active session, clears the HTTP-only cookie, and ret
 
 ## Authentication and persistence status
 
-The API uses the Supabase SSR client and derives identity from `supabase.auth.getUser()`. The migration is in `supabase/migrations/20260906090000_create_patient_sessions.sql`.
+The API uses the Supabase SSR client and derives identity from `supabase.auth.getUser()`. The Phase 2 migration is in `supabase/migrations/20260906090000_create_patient_sessions.sql`. The Phase 4 schema migration is in `supabase/migrations/20260906121327_add_patient_intake_fields.sql`.
 
 The configured Supabase project currently reports anonymous sign-ins disabled, and no Supabase CLI/database migration channel is installed in this workspace. The API therefore returns an honest authentication/configuration failure until the project is configured for the chosen patient identity flow and the migration is applied.
