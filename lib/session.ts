@@ -3,7 +3,7 @@ import { PatientLanguage } from "./patient-flow";
 
 export const SessionStatus = z.enum(["ACTIVE", "EXPIRED", "COMPLETED"]);
 export const SessionConsentStatus = z.enum(["NOT_REVIEWED", "ACCEPTED", "DECLINED"]);
-export const SessionWorkflowStep = z.enum(["welcome", "language", "consent", "start", "complaint", "anatomy"]);
+export const SessionWorkflowStep = z.enum(["welcome", "language", "consent", "start", "complaint", "anatomy", "interview"]);
 export const SessionBodyRegion = z.enum([
   "head",
   "chest",
@@ -29,6 +29,13 @@ export const SessionBodySubregion = z.enum([
 ]);
 export type SessionStatus = z.infer<typeof SessionStatus>;
 
+export const InterviewFactSchema = z.object({
+  questionId: z.string().min(1),
+  value: z.string().optional(),
+  state: z.enum(["NOT_ASKED", "KNOWN", "UNKNOWN", "DECLINED", "DENIED"]),
+  provenance: z.enum(["PATIENT", "VOICE", "TOUCH", "OCR", "AI", "DOCTOR", "SYSTEM"]),
+}).strict();
+
 export const SessionUpdateSchema = z.object({
   language: PatientLanguage.optional(),
   consentStatus: SessionConsentStatus.optional(),
@@ -36,6 +43,7 @@ export const SessionUpdateSchema = z.object({
   complaintText: z.string().max(2000).optional(),
   bodyRegion: SessionBodyRegion.optional(),
   bodySubregion: SessionBodySubregion.optional(),
+  interviewData: z.record(z.string(), InterviewFactSchema).nullable().optional(),
   status: z.literal("COMPLETED").optional(),
 }).strict();
 
@@ -50,6 +58,7 @@ export const PatientSessionRecordSchema = z.object({
   complaintText: z.string().nullable(),
   bodyRegion: SessionBodyRegion.nullable(),
   bodySubregion: SessionBodySubregion.nullable(),
+  interviewData: z.record(z.string(), InterviewFactSchema).nullable(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
   expiresAt: z.string().datetime(),
@@ -72,6 +81,7 @@ export function createSession(language: PatientSessionRecord["language"] = "en",
     complaintText: null,
     bodyRegion: null,
     bodySubregion: null,
+    interviewData: null,
     createdAt: now.toISOString(),
     updatedAt: now.toISOString(),
     expiresAt: new Date(now.getTime() + sessionDurationMs).toISOString(),

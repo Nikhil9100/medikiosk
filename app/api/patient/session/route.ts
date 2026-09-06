@@ -11,7 +11,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 const sessionCookie = "medikiosk_session";
 const consentVersion = "phase-2-v1";
-const sessionColumns = "id,status,language,consent_status,consent_version,consent_timestamp,workflow_step,complaint_text,body_region,body_subregion,created_at,updated_at,expires_at,completed_at";
+const sessionColumns = "id,status,language,consent_status,consent_version,consent_timestamp,workflow_step,complaint_text,body_region,body_subregion,interview_data,created_at,updated_at,expires_at,completed_at";
 
 type SessionRow = {
   id: string;
@@ -24,6 +24,7 @@ type SessionRow = {
   complaint_text: string | null;
   body_region: PatientSessionRecord["bodyRegion"];
   body_subregion: PatientSessionRecord["bodySubregion"];
+  interview_data: PatientSessionRecord["interviewData"];
   created_at: string;
   updated_at: string;
   expires_at: string;
@@ -42,6 +43,7 @@ function toResponse(row: SessionRow) {
     complaintText: row.complaint_text,
     bodyRegion: row.body_region,
     bodySubregion: row.body_subregion,
+    interviewData: row.interview_data,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     expiresAt: row.expires_at,
@@ -158,12 +160,13 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "Session is not active" }, { status: 410 });
   }
 
-  const changes: Record<string, string | null> = {};
+  const changes: Record<string, string | null | Record<string, unknown>> = {};
   if (parsed.data.language) changes.language = parsed.data.language;
   if (parsed.data.workflowStep) changes.workflow_step = parsed.data.workflowStep;
   if (parsed.data.complaintText !== undefined) changes.complaint_text = parsed.data.complaintText;
   if (parsed.data.bodyRegion !== undefined) changes.body_region = parsed.data.bodyRegion;
   if (parsed.data.bodySubregion !== undefined) changes.body_subregion = parsed.data.bodySubregion;
+  if (parsed.data.interviewData !== undefined) changes.interview_data = parsed.data.interviewData;
   if (parsed.data.consentStatus) {
     changes.consent_status = parsed.data.consentStatus;
     changes.consent_version = parsed.data.consentStatus === "NOT_REVIEWED" ? null : consentVersion;
