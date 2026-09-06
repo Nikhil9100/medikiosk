@@ -34,7 +34,13 @@ Status: DONE
 
 ## Phase 2 — Patient session + persistence + state integrity
 Goal: Add server-side patient session handling and state isolation.
-Status: NOT STARTED
+Implementation tasks:
+- define typed session lifecycle and expiry
+- issue secure HTTP-only session cookie
+- add validated session API boundary
+- connect durable Supabase persistence and ownership checks
+Known limitations: durable persistence and cross-request session recovery are blocked until Supabase is configured; current endpoint is a boundary only and does not store clinical data.
+Status: BLOCKED
 
 ## Phase 3 — Complaint collection + anatomy visualization
 Goal: Support chief complaint and region selection.

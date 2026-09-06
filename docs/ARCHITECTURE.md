@@ -27,5 +27,10 @@
 8. RAG Layer
 9. Security/Audit Layer
 
+## Phase 2 session boundary
+The patient session contract is defined in `lib/session.ts` and exposed through `app/api/patient/session/route.ts`. It creates a random session identifier, records language, sets a 30-minute expiry, and issues an HTTP-only cookie. The route validates language with the shared patient language enum and returns an honest 400 response for invalid input.
+
+Durable Supabase persistence, ownership authorization, recovery, and idempotent database writes remain blocked until the required Supabase URL and keys are configured. The current route does not pretend that an in-memory server process is durable clinical storage.
+
 ## Reasoning
 The first phase must establish a real, testable foundation for healthcare intake. We avoid fake providers or fake patient data. The initial implementation keeps the architecture modular and deliberately separates clinical state, UI shell, and future provider integrations.
