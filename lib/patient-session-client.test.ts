@@ -4,7 +4,7 @@ vi.mock("@/lib/supabase/client", () => ({
   createSupabaseBrowserClient: vi.fn(),
 }));
 
-import { bootstrapPatientSession, updatePatientSession } from "./patient-session-client";
+import { bootstrapPatientSession, resetPatientSession, updatePatientSession } from "./patient-session-client";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 const idempotencyStorageKey = "medikiosk.patient.session.idempotency";
@@ -162,5 +162,37 @@ describe("updatePatientSession", () => {
     await expect(updatePatientSession({ complaintText: "headache" })).rejects.toThrow(
       "Patient session could not be updated",
     );
+  });
+});
+
+describe("resetPatientSession", () => {
+  it("posts to the reset endpoint and discards the idempotency key", async () => {
+    window.localStorage.setItem(idempotencyStorageKey, "session-a-key");
+    mockFetch.mockImplementation((url: string, init?: RequestInit) => {
+      if (url === "/api/patient/session/reset" && init?.method === "POST") {
+        return Promise.resolve(jsonResponse({ reset: true, session: null, deletedDocuments: 2 }));
+      }
+      return Promise.resolve(jsonResponse({ error: "unexpected" }, 500));
+    });
+
+    const result = await resetPatientSession();
+
+    expect(result).toEqual({ reset: true, session: null, deletedDocuments: 2 });
+    expect(window.localStorage.getItem(idempotencyStorageKey)).toBeNull();
+  });
+
+  it("still discards the idempotency key when there is no server session to reset", async () => {
+    window.localStorage.setItem(idempotencyStorageKey, "orphan-key");
+    mockFetch.mockImplementation(() => Promise.resolve(jsonResponse({ reset: true, session: null, deletedDocuments: 0 })));
+
+    await resetPatientSession();
+
+    expect(window.localStorage.getItem(idempotencyStorageKey)).toBeNull();
+  });
+
+  it("throws when the reset is rejected", async () => {
+    mockFetch.mockImplementation(() => Promise.resolve(jsonResponse({ error: "Unable to reset session" }, 503)));
+
+    await expect(resetPatientSession()).rejects.toThrow("Patient session could not be reset");
   });
 });

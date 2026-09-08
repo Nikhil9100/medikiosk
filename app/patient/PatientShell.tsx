@@ -12,7 +12,7 @@ import {
   type PatientWorkflow,
 } from "@/lib/patient-flow";
 import { createClinicalFact, type ClinicalProvenance } from "@/lib/interview-engine";
-import { bootstrapPatientSession, updatePatientSession } from "@/lib/patient-session-client";
+import { bootstrapPatientSession, resetPatientSession, updatePatientSession } from "@/lib/patient-session-client";
 
 const languageStorageKey = "medikiosk.patient.language";
 type SessionUpdatePayload = Parameters<typeof updatePatientSession>[0];
@@ -46,6 +46,7 @@ type PatientContextValue = {
   setInterviewFact: (questionId: string, value: string | undefined, provenance?: ClinicalProvenance) => void;
   setDocuments: (documents: PatientWorkflow["documents"]) => void;
   syncSession: (payload: SessionUpdatePayload) => Promise<void>;
+  resetPatientFlow: () => Promise<void>;
   t: (key: TranslationKey) => string;
   openHelp: () => void;
 };
@@ -61,6 +62,7 @@ export function PatientShell({ children }: { children: React.ReactNode }) {
   const [sessionStatus, setSessionStatus] = useState<"BOOTSTRAPPING" | "READY" | "ERROR">("BOOTSTRAPPING");
   const [sessionRetryNonce, setSessionRetryNonce] = useState(0);
   const bootstrapLanguageRef = useRef<PatientLanguage>("en");
+  const resetInFlightRef = useRef(false);
   const currentStep = stepByPath[pathname] ?? "welcome";
   const language = workflow.language;
   const t = (key: TranslationKey) => getTranslation(language, key);
@@ -163,6 +165,32 @@ export function PatientShell({ children }: { children: React.ReactNode }) {
     setSessionRetryNonce((nonce) => nonce + 1);
   }
 
+  async function resetPatientFlow() {
+    // Guard against concurrent/rapid repeated resets so the new-patient flow is
+    // idempotent and never re-enters mid-transition.
+    if (resetInFlightRef.current) return;
+    resetInFlightRef.current = true;
+    try {
+      // Clear Patient-specific clinical state immediately (preserving the
+      // kiosk-level language preference) so no previous patient's data can
+      // render during the transition.
+      setWorkflow((current) => ({ ...defaultPatientWorkflow, language: current.language }));
+      setSessionStatus("BOOTSTRAPPING");
+      try {
+        // Complete the old session server-side and purge its transient
+        // document/OCR/extraction state.
+        await resetPatientSession();
+      } catch {
+        // A server reset failure must not strand the kiosk: proceed with fresh
+        // client state and let the bootstrap effect establish a new session.
+      }
+      setSessionRetryNonce((nonce) => nonce + 1);
+      router.push("/patient");
+    } finally {
+      resetInFlightRef.current = false;
+    }
+  }
+
   function goBack() {
     const priorStep = previousStep(currentStep);
     router.push(priorStep === "welcome" ? "/patient" : `/patient/${priorStep}`);
@@ -179,7 +207,7 @@ export function PatientShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <PatientContext.Provider value={{ workflow, setLanguage, setConsentStatus, setComplaint, setSelectedRegion, setSelectedSubregion, setInterviewFact, setDocuments, syncSession, t, openHelp: () => setHelpOpen(true) }}>
+    <PatientContext.Provider value={{ workflow, setLanguage, setConsentStatus, setComplaint, setSelectedRegion, setSelectedSubregion, setInterviewFact, setDocuments, syncSession, resetPatientFlow, t, openHelp: () => setHelpOpen(true) }}>
       <div className="patient-app">
       {sessionStatus === "ERROR" && (
         <div className="session-banner" role="alert">

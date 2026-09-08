@@ -114,6 +114,7 @@ const english = {
   documentFileTooLarge: "This file is too large. Maximum size is 20MB.",
   documentsListTitle: "Uploaded documents",
   documentsComplete: "Continue to home",
+  newPatient: "New patient",
   documentStartOcr: "Process with OCR",
   documentRetryOcr: "Retry OCR",
   documentRefreshStatus: "Refresh status",

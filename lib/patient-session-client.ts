@@ -72,7 +72,7 @@ export async function updatePatientSession(update: {
   return response.json();
 }
 
-export async function resetPatientSession() {
+export async function resetPatientSession(): Promise<{ reset: boolean; session: null; deletedDocuments: number }> {
   const response = await fetch("/api/patient/session/reset", { method: "POST" });
   if (!response.ok) throw new Error("Patient session could not be reset");
   window.localStorage.removeItem(idempotencyStorageKey);

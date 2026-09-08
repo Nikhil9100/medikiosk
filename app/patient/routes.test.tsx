@@ -2,7 +2,8 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import { useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PatientShell, PatientContext, usePatientWorkflow } from "./PatientShell";
-import { bootstrapPatientSession } from "@/lib/patient-session-client";
+import { bootstrapPatientSession, resetPatientSession } from "@/lib/patient-session-client";
+import { createDocumentRecord } from "@/lib/documents";
 import LanguagePage from "./language/page";
 import ConsentPage from "./consent/page";
 import ComplaintPage from "./complaint/page";
@@ -71,6 +72,7 @@ vi.mock("next/navigation", () => ({
 vi.mock("@/lib/patient-session-client", () => ({
   bootstrapPatientSession: vi.fn(() => Promise.resolve({ id: "bootstrapped-session" })),
   updatePatientSession: vi.fn(() => Promise.resolve({})),
+  resetPatientSession: vi.fn(() => Promise.resolve({ reset: true, session: null, deletedDocuments: 0 })),
 }));
 
 function createMockWorkflow(overrides: Partial<PatientWorkflow> = {}): PatientWorkflow {
@@ -104,6 +106,7 @@ function renderWithMockShell(ui: React.ReactNode, workflowOverrides: Partial<Pat
       setInterviewFact: vi.fn(),
       setDocuments: vi.fn(),
       syncSession: vi.fn(),
+      resetPatientFlow: vi.fn(),
       t: (key: TranslationKey) => key,
       openHelp: vi.fn(),
     } as {
@@ -116,6 +119,7 @@ function renderWithMockShell(ui: React.ReactNode, workflowOverrides: Partial<Pat
       setInterviewFact: (questionId: string, value: string | undefined, provenance?: string) => void;
       setDocuments: (documents: PatientWorkflow["documents"]) => void;
       syncSession: (payload: Partial<Record<string, unknown>>) => Promise<void>;
+      resetPatientFlow: () => Promise<void>;
       t: (key: TranslationKey) => string;
       openHelp: () => void;
     };
@@ -135,12 +139,50 @@ function SessionProbe() {
   return <span data-testid="sessionId">{workflow.sessionId}</span>;
 }
 
+function makeDocumentRecord(sessionId: string) {
+  return createDocumentRecord(sessionId, new File(["%PDF-1.4"], "patient-a.pdf", { type: "application/pdf" }));
+}
+
+function IsolationProbe() {
+  const {
+    workflow,
+    setLanguage,
+    setComplaint,
+    setSelectedRegion,
+    setSelectedSubregion,
+    setInterviewFact,
+    setDocuments,
+    resetPatientFlow,
+  } = usePatientWorkflow();
+
+  return (
+    <div>
+      <span data-testid="iso-sessionId">{workflow.sessionId}</span>
+      <span data-testid="iso-language">{workflow.language}</span>
+      <span data-testid="iso-complaint">{workflow.complaint}</span>
+      <span data-testid="iso-region">{workflow.selectedRegion ?? ""}</span>
+      <span data-testid="iso-subregion">{workflow.selectedSubregion ?? ""}</span>
+      <span data-testid="iso-facts">{Object.keys(workflow.interviewFacts).join(",")}</span>
+      <span data-testid="iso-docs">{workflow.documents.length}</span>
+      <button type="button" onClick={() => setLanguage("ta")}>seed-language</button>
+      <button type="button" onClick={() => setComplaint("Patient A severe headache")}>seed-complaint</button>
+      <button type="button" onClick={() => setSelectedRegion("head")}>seed-region</button>
+      <button type="button" onClick={() => setSelectedSubregion("face")}>seed-subregion</button>
+      <button type="button" onClick={() => setInterviewFact("q1", "yes")}>seed-fact</button>
+      <button type="button" onClick={() => setDocuments([makeDocumentRecord(workflow.sessionId)])}>seed-doc</button>
+      <button type="button" onClick={() => void resetPatientFlow()}>reset-flow</button>
+    </div>
+  );
+}
+
 describe("patient onboarding routes", () => {
   beforeEach(() => {
     pathname = "/patient/language";
     router.push.mockReset();
     router.replace.mockReset();
     window.localStorage.clear();
+    vi.mocked(bootstrapPatientSession).mockClear();
+    vi.mocked(resetPatientSession).mockClear();
   });
 
   it.each(["en", "hi", "bn", "te", "ta", "mr"] as const)("persists %s across language and consent routes", async (language) => {
@@ -293,5 +335,91 @@ describe("patient onboarding routes", () => {
 
     expect(await screen.findByRole("alert")).toBeInTheDocument();
     expect(screen.getByText("flow-content")).toBeInTheDocument();
+  });
+
+  it("starts Patient B with no trace of Patient A clinical state after the new-patient reset", async () => {
+    pathname = "/patient";
+    vi.mocked(bootstrapPatientSession)
+      .mockReset()
+      .mockResolvedValueOnce({ id: "session-patient-a" })
+      .mockResolvedValueOnce({ id: "session-patient-b" });
+
+    render(
+      <PatientShell>
+        <IsolationProbe />
+      </PatientShell>,
+    );
+
+    // Patient A's session is established on startup.
+    await waitFor(() => expect(screen.getByTestId("iso-sessionId")).toHaveTextContent("session-patient-a"));
+
+    // Patient A records complaint, anatomy, interview fact and a document.
+    fireEvent.click(screen.getByRole("button", { name: "seed-complaint" }));
+    fireEvent.click(screen.getByRole("button", { name: "seed-region" }));
+    fireEvent.click(screen.getByRole("button", { name: "seed-subregion" }));
+    fireEvent.click(screen.getByRole("button", { name: "seed-fact" }));
+    fireEvent.click(screen.getByRole("button", { name: "seed-doc" }));
+
+    expect(screen.getByTestId("iso-complaint")).toHaveTextContent("Patient A severe headache");
+    expect(screen.getByTestId("iso-region")).toHaveTextContent("head");
+    expect(screen.getByTestId("iso-subregion")).toHaveTextContent("face");
+    expect(screen.getByTestId("iso-facts")).toHaveTextContent("q1");
+    expect(screen.getByTestId("iso-docs")).toHaveTextContent("1");
+
+    // Invoke the new-patient reset lifecycle.
+    fireEvent.click(screen.getByRole("button", { name: "reset-flow" }));
+
+    await waitFor(() => expect(screen.getByTestId("iso-sessionId")).toHaveTextContent("session-patient-b"));
+
+    // Patient B inherits none of Patient A's clinical state.
+    expect(screen.getByTestId("iso-sessionId")).not.toHaveTextContent("session-patient-a");
+    expect(screen.getByTestId("iso-complaint")).toHaveTextContent("");
+    expect(screen.getByTestId("iso-region")).toHaveTextContent("");
+    expect(screen.getByTestId("iso-subregion")).toHaveTextContent("");
+    expect(screen.getByTestId("iso-facts")).toHaveTextContent("");
+    expect(screen.getByTestId("iso-docs")).toHaveTextContent("0");
+    expect(screen.getByTestId("iso-language")).toHaveTextContent("en");
+
+    // The server reset lifecycle ran and the shell navigated to the welcome screen.
+    expect(resetPatientSession).toHaveBeenCalledTimes(1);
+    expect(router.push).toHaveBeenCalledWith("/patient");
+  });
+
+  it("preserves the kiosk language preference and remains clean across repeated resets", async () => {
+    pathname = "/patient";
+    vi.mocked(bootstrapPatientSession)
+      .mockReset()
+      .mockResolvedValueOnce({ id: "session-patient-a" })
+      .mockResolvedValueOnce({ id: "session-patient-b" })
+      .mockResolvedValueOnce({ id: "session-patient-c" });
+
+    render(
+      <PatientShell>
+        <IsolationProbe />
+      </PatientShell>,
+    );
+
+    await waitFor(() => expect(screen.getByTestId("iso-sessionId")).toHaveTextContent("session-patient-a"));
+
+    fireEvent.click(screen.getByRole("button", { name: "seed-language" }));
+    fireEvent.click(screen.getByRole("button", { name: "seed-complaint" }));
+    expect(screen.getByTestId("iso-language")).toHaveTextContent("ta");
+
+    // A repeated reset (double-click / staff pressing New patient twice) must be
+    // idempotent: each pass clears Patient A's state and establishes a fresh,
+    // clean session without any leakage into the next session.
+    fireEvent.click(screen.getByRole("button", { name: "reset-flow" }));
+    await waitFor(() => expect(screen.getByTestId("iso-sessionId")).toHaveTextContent("session-patient-b"));
+    expect(screen.getByTestId("iso-complaint")).toHaveTextContent("");
+
+    fireEvent.click(screen.getByRole("button", { name: "reset-flow" }));
+    await waitFor(() => expect(screen.getByTestId("iso-sessionId")).toHaveTextContent("session-patient-c"));
+
+    // Language is preserved (kiosk-level setting) and no Patient A state leaks.
+    expect(screen.getByTestId("iso-language")).toHaveTextContent("ta");
+    expect(screen.getByTestId("iso-complaint")).toHaveTextContent("");
+    expect(screen.getByTestId("iso-docs")).toHaveTextContent("0");
+    expect(screen.getByTestId("iso-sessionId")).not.toHaveTextContent("session-patient-a");
+    expect(resetPatientSession).toHaveBeenCalledTimes(2);
   });
 });

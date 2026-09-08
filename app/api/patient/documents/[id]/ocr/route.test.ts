@@ -142,6 +142,32 @@ describe("POST /api/patient/documents/[id]/ocr", () => {
     expect(data.error).toBe("OCR already completed");
   });
 
+  it("denies a session access to another session's document (no cross-patient access)", async () => {
+    const { createSupabaseServerClient } = await import("@/lib/supabase/server");
+    vi.mocked(createSupabaseServerClient).mockReturnValueOnce({
+      auth: {
+        getUser: vi.fn(() => ({ data: { user: { id: "user-123" } }, error: null })),
+      },
+    } as unknown as ReturnType<typeof createSupabaseServerClient>);
+
+    // Patient B's session cookie tries to touch Patient A's document.
+    vi.mocked(cookies).mockReturnValue(createMockCookies("session-patient-b"));
+    vi.mocked(documentRepository.findById).mockResolvedValueOnce({
+      id: "patient-a-doc",
+      sessionId: "session-patient-a",
+      processingStatus: "READY_FOR_OCR",
+      ocrStatus: "PENDING",
+      mimeType: "application/pdf",
+      errors: [],
+    } as any);
+
+    const response = await POST(new Request("http://localhost/api/patient/documents/patient-a-doc/ocr"), { params: Promise.resolve({ id: "patient-a-doc" }) });
+    const data = await response.json();
+
+    expect(response.status).toBe(403);
+    expect(data.error).toBe("Access denied");
+  });
+
   it("rejects OCR on document without stored buffer", async () => {
     const { createSupabaseServerClient } = await import("@/lib/supabase/server");
     vi.mocked(createSupabaseServerClient).mockReturnValueOnce({

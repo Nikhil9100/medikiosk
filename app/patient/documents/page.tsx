@@ -63,7 +63,7 @@ function formatFileSize(bytes: number): string {
 
 export default function PatientDocumentsPage() {
   const router = useRouter();
-  const { workflow, setDocuments, t } = usePatientWorkflow();
+  const { workflow, setDocuments, resetPatientFlow, t } = usePatientWorkflow();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string>("");
@@ -666,6 +666,9 @@ export default function PatientDocumentsPage() {
       <div className="primary-action-stack">
         <button type="button" className="primary-button" onClick={() => router.push("/patient")}>
           {t("documentsComplete")} <span aria-hidden="true">→</span>
+        </button>
+        <button type="button" className="secondary-button" onClick={() => void resetPatientFlow()}>
+          {t("newPatient")}
         </button>
       </div>
     </section>

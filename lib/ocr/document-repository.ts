@@ -25,6 +25,7 @@ export interface DocumentRepository {
     itemId: string,
     verificationState: EvidenceVerificationState,
   ): Promise<ExtractedEvidenceItem | null>;
+  deleteBySessionId(sessionId: string): Promise<number>;
 }
 
 export class InMemoryDocumentRepository implements DocumentRepository {
@@ -142,6 +143,20 @@ export class InMemoryDocumentRepository implements DocumentRepository {
     updatedItems[itemIndex] = updatedItem;
     this.extractionRuns.set(documentId, { ...run, items: updatedItems });
     return updatedItem;
+  }
+
+  async deleteBySessionId(sessionId: string): Promise<number> {
+    const toDelete: string[] = [];
+    for (const [id, doc] of this.documents) {
+      if (doc.sessionId === sessionId) toDelete.push(id);
+    }
+    for (const id of toDelete) {
+      this.documents.delete(id);
+      this.buffers.delete(id);
+      this.ocrResults.delete(id);
+      this.extractionRuns.delete(id);
+    }
+    return toDelete.length;
   }
 }
 
