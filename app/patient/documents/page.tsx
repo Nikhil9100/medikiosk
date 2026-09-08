@@ -63,7 +63,7 @@ function formatFileSize(bytes: number): string {
 
 export default function PatientDocumentsPage() {
   const router = useRouter();
-  const { workflow, setDocuments, syncSession, t } = usePatientWorkflow();
+  const { workflow, setDocuments, t } = usePatientWorkflow();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string>("");
@@ -251,7 +251,6 @@ export default function PatientDocumentsPage() {
       };
       const updatedDocuments = [...workflow.documents, document];
       setDocuments(updatedDocuments);
-      void syncSession({ documents: updatedDocuments as unknown as Array<Record<string, unknown>> });
       removeSelectedFile();
     } catch (error) {
       setUploadError(error instanceof Error ? error.message : "Upload failed");
@@ -263,7 +262,6 @@ export default function PatientDocumentsPage() {
   function handleRemoveDocument(documentId: string) {
     const updatedDocuments = workflow.documents.filter((doc) => doc.id !== documentId);
     setDocuments(updatedDocuments);
-    void syncSession({ documents: updatedDocuments as unknown as Array<Record<string, unknown>> });
   }
 
   async function handleStartOcr(documentId: string) {

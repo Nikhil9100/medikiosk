@@ -1,7 +1,8 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { PatientShell, PatientContext } from "./PatientShell";
+import { PatientShell, PatientContext, usePatientWorkflow } from "./PatientShell";
+import { bootstrapPatientSession } from "@/lib/patient-session-client";
 import LanguagePage from "./language/page";
 import ConsentPage from "./consent/page";
 import ComplaintPage from "./complaint/page";
@@ -67,6 +68,11 @@ vi.mock("next/navigation", () => ({
   useRouter: () => router,
 }));
 
+vi.mock("@/lib/patient-session-client", () => ({
+  bootstrapPatientSession: vi.fn(() => Promise.resolve({ id: "bootstrapped-session" })),
+  updatePatientSession: vi.fn(() => Promise.resolve({})),
+}));
+
 function createMockWorkflow(overrides: Partial<PatientWorkflow> = {}): PatientWorkflow {
   return {
     language: "en",
@@ -122,6 +128,11 @@ function renderWithMockShell(ui: React.ReactNode, workflowOverrides: Partial<Pat
   }
 
   return render(<MockShell>{ui}</MockShell>);
+}
+
+function SessionProbe() {
+  const { workflow } = usePatientWorkflow();
+  return <span data-testid="sessionId">{workflow.sessionId}</span>;
 }
 
 describe("patient onboarding routes", () => {
@@ -238,5 +249,49 @@ describe("patient onboarding routes", () => {
     expect(screen.getByText(/documentsTitle/i)).toBeInTheDocument();
     expect(screen.getByText(/documentsHelper/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/documentSelect/i)).toBeInTheDocument();
+  });
+
+  it("establishes the server session on startup and reconciles the local workflow session id", async () => {
+    pathname = "/patient";
+    render(
+      <PatientShell>
+        <SessionProbe />
+      </PatientShell>,
+    );
+
+    await waitFor(() => expect(screen.getByTestId("sessionId")).toHaveTextContent("bootstrapped-session"));
+  });
+
+  it("surfaces a recoverable session error when bootstrap fails and recovers on retry", async () => {
+    pathname = "/patient";
+    vi.mocked(bootstrapPatientSession).mockRejectedValueOnce(new Error("offline"));
+
+    render(
+      <PatientShell>
+        <SessionProbe />
+      </PatientShell>,
+    );
+
+    const banner = await screen.findByRole("alert");
+    expect(banner).toHaveTextContent(/Please try again or ask a member of staff for help/i);
+
+    fireEvent.click(within(banner).getByRole("button", { name: /Try again/i }));
+
+    await waitFor(() => expect(screen.getByTestId("sessionId")).toHaveTextContent("bootstrapped-session"));
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("keeps the patient flow interactive during session bootstrap failures", async () => {
+    pathname = "/patient";
+    vi.mocked(bootstrapPatientSession).mockRejectedValue(new Error("offline"));
+
+    render(
+      <PatientShell>
+        <span>flow-content</span>
+      </PatientShell>,
+    );
+
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+    expect(screen.getByText("flow-content")).toBeInTheDocument();
   });
 });

@@ -30,4 +30,16 @@ describe("patient session boundary", () => {
     expect(SessionUpdateSchema.safeParse({ ownerId: "another-user" }).success).toBe(false);
     expect(SessionUpdateSchema.safeParse({ consentStatus: "ACCEPTED" }).success).toBe(true);
   });
+
+  it("accepts the documents workflow step used by the patient flow", () => {
+    expect(SessionUpdateSchema.safeParse({ workflowStep: "documents" }).success).toBe(true);
+    for (const step of ["welcome", "language", "consent", "start", "complaint", "anatomy", "interview", "documents"]) {
+      expect(SessionUpdateSchema.safeParse({ workflowStep: step }).success).toBe(true);
+    }
+  });
+
+  it("accepts clearing a previously selected body region", () => {
+    expect(SessionUpdateSchema.safeParse({ bodyRegion: null, bodySubregion: null }).success).toBe(true);
+    expect(SessionUpdateSchema.safeParse({ bodyRegion: "head", bodySubregion: "front" }).success).toBe(true);
+  });
 });

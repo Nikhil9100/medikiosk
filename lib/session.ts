@@ -3,7 +3,7 @@ import { PatientLanguage } from "./patient-flow";
 
 export const SessionStatus = z.enum(["ACTIVE", "EXPIRED", "COMPLETED"]);
 export const SessionConsentStatus = z.enum(["NOT_REVIEWED", "ACCEPTED", "DECLINED"]);
-export const SessionWorkflowStep = z.enum(["welcome", "language", "consent", "start", "complaint", "anatomy", "interview"]);
+export const SessionWorkflowStep = z.enum(["welcome", "language", "consent", "start", "complaint", "anatomy", "interview", "documents"]);
 export const SessionBodyRegion = z.enum([
   "head",
   "chest",
@@ -41,8 +41,8 @@ export const SessionUpdateSchema = z.object({
   consentStatus: SessionConsentStatus.optional(),
   workflowStep: SessionWorkflowStep.optional(),
   complaintText: z.string().max(2000).optional(),
-  bodyRegion: SessionBodyRegion.optional(),
-  bodySubregion: SessionBodySubregion.optional(),
+  bodyRegion: SessionBodyRegion.nullable().optional(),
+  bodySubregion: SessionBodySubregion.nullable().optional(),
   interviewData: z.record(z.string(), InterviewFactSchema).nullable().optional(),
   status: z.literal("COMPLETED").optional(),
 }).strict();

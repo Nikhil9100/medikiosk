@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { getTranslation, type TranslationKey } from "@/lib/i18n";
 import {
@@ -12,8 +12,10 @@ import {
   type PatientWorkflow,
 } from "@/lib/patient-flow";
 import { createClinicalFact, type ClinicalProvenance } from "@/lib/interview-engine";
+import { bootstrapPatientSession, updatePatientSession } from "@/lib/patient-session-client";
 
 const languageStorageKey = "medikiosk.patient.language";
+type SessionUpdatePayload = Parameters<typeof updatePatientSession>[0];
 const stepByPath: Record<string, PatientStep> = {
   "/patient": "welcome",
   "/patient/language": "language",
@@ -43,16 +45,12 @@ type PatientContextValue = {
   setSelectedSubregion: (subregion: PatientWorkflow["selectedSubregion"]) => void;
   setInterviewFact: (questionId: string, value: string | undefined, provenance?: ClinicalProvenance) => void;
   setDocuments: (documents: PatientWorkflow["documents"]) => void;
-  syncSession: (payload: Partial<Record<string, unknown>>) => Promise<void>;
+  syncSession: (payload: SessionUpdatePayload) => Promise<void>;
   t: (key: TranslationKey) => string;
   openHelp: () => void;
 };
 
 export const PatientContext = createContext<PatientContextValue | null>(null);
-
-function createSessionId() {
-  return typeof crypto.randomUUID === "function" ? crypto.randomUUID() : `session-${Date.now()}`;
-}
 
 export function PatientShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -60,6 +58,9 @@ export function PatientShell({ children }: { children: React.ReactNode }) {
   const [workflow, setWorkflow] = useState(defaultPatientWorkflow);
   const [isReady, setIsReady] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [sessionStatus, setSessionStatus] = useState<"BOOTSTRAPPING" | "READY" | "ERROR">("BOOTSTRAPPING");
+  const [sessionRetryNonce, setSessionRetryNonce] = useState(0);
+  const bootstrapLanguageRef = useRef<PatientLanguage>("en");
   const currentStep = stepByPath[pathname] ?? "welcome";
   const language = workflow.language;
   const t = (key: TranslationKey) => getTranslation(language, key);
@@ -69,13 +70,13 @@ export function PatientShell({ children }: { children: React.ReactNode }) {
     const parsedLanguage = storedLanguage === "hi" || storedLanguage === "bn" || storedLanguage === "te" || storedLanguage === "ta" || storedLanguage === "mr"
       ? storedLanguage
       : "en";
+    bootstrapLanguageRef.current = parsedLanguage;
     // Persisted browser preferences hydrate after the server-rendered shell mounts.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setWorkflow((current) => ({
       ...current,
       language: parsedLanguage,
       currentStep,
-      sessionId: current.sessionId || createSessionId(),
     }));
     setIsReady(true);
   }, [currentStep]);
@@ -85,6 +86,29 @@ export function PatientShell({ children }: { children: React.ReactNode }) {
     window.localStorage.setItem(languageStorageKey, workflow.language);
     document.documentElement.lang = workflow.language;
   }, [isReady, workflow.language]);
+
+  // Establish the server-side patient session on startup and reconcile the local
+  // workflow session id to it (single source of truth). Failures are surfaced as
+  // a recoverable, non-blocking banner rather than silently swallowed.
+  useEffect(() => {
+    if (!isReady) return;
+    let cancelled = false;
+    (async () => {
+      setSessionStatus("BOOTSTRAPPING");
+      try {
+        const session = await bootstrapPatientSession(bootstrapLanguageRef.current);
+        if (cancelled) return;
+        setWorkflow((current) => (current.sessionId === session.id ? current : { ...current, sessionId: session.id }));
+        setSessionStatus("READY");
+      } catch {
+        if (cancelled) return;
+        setSessionStatus("ERROR");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isReady, sessionRetryNonce]);
 
   useEffect(() => {
     if (!isReady || pathname === "/patient") return;
@@ -127,17 +151,16 @@ export function PatientShell({ children }: { children: React.ReactNode }) {
     setWorkflow((current) => ({ ...current, documents }));
   }
 
-  async function syncSession(payload: Partial<Record<string, unknown>>) {
+  async function syncSession(payload: SessionUpdatePayload) {
     try {
-      const response = await fetch("/api/patient/session", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      if (!response.ok) return;
+      await updatePatientSession(payload);
     } catch {
-      // Phase 2 requires a live Supabase configuration, so the UI should remain local-safe while the project is not linked.
+      setSessionStatus("ERROR");
     }
+  }
+
+  function retrySession() {
+    setSessionRetryNonce((nonce) => nonce + 1);
   }
 
   function goBack() {
@@ -158,6 +181,12 @@ export function PatientShell({ children }: { children: React.ReactNode }) {
   return (
     <PatientContext.Provider value={{ workflow, setLanguage, setConsentStatus, setComplaint, setSelectedRegion, setSelectedSubregion, setInterviewFact, setDocuments, syncSession, t, openHelp: () => setHelpOpen(true) }}>
       <div className="patient-app">
+      {sessionStatus === "ERROR" && (
+        <div className="session-banner" role="alert">
+          <p>{t("errorDescription")}</p>
+          <button type="button" className="session-banner__retry" onClick={retrySession}>{t("tryAgain")}</button>
+        </div>
+      )}
       <header className="patient-header">
         <div className="patient-header__inner">
           <a className="brand-lockup" href="/patient" aria-label={t("homeLabel")}>
