@@ -46,6 +46,20 @@ Handwriting recognition is not claimed. The Tesseract provider returns `supports
 
 OCR failures are represented with explicit error states (`PROVIDER_UNAVAILABLE`, `PROVIDER_TIMEOUT`, `OCR_FAILED`, `OCR_NOT_CONFIGURED`). Failed jobs can be retried safely without duplicating or corrupting existing results.
 
+## Phase 6C evidence extraction boundary
+Structured evidence extraction (`lib/extraction/`) turns OCR page text into candidate evidence items across seven categories: DIAGNOSIS, MEDICATION, INVESTIGATION, PROCEDURE, ALLERGY, MEDICAL_HISTORY, and CHRONOLOGY.
+
+Safety properties (enforced by the engine and routes):
+- Every extracted item starts `UNVERIFIED`; only an explicit review action (`ACCEPTED` / `REJECTED` / back to `UNVERIFIED`) changes that state. The system never auto-verifies.
+- The deterministic engine extracts only from explicit markers. Diagnosis and medical history are never inferred from symptoms, lab values, or absent text.
+- No treatment-recommendation category or rule exists. The AI prompt forbids it and the output schema cannot express it.
+- Contradictions (e.g., two doses for the same drug, differing values for the same investigation) are detected and preserved via a shared `contradictionGroupId` plus uncertainty notes. They are surfaced for review, never resolved.
+- AI-assisted extraction is optional and fail-closed: absent `GEMINI_API_KEY` → `NOT_CONFIGURED`; malformed output → `MALFORMED_RESPONSE` with no accepted evidence.
+- Full provenance is retained per item: verbatim `originalOcrWording`, page number, OCR span, method (`DETERMINISTIC`/`AI`), provider metadata, and uncertainty notes.
+- Extraction retry is separated from OCR retry. Retrying extraction never re-runs OCR and never re-verifies existing decisions. The `failureStage` field disambiguates `OCR` from `EXTRACTION` failures: a document whose extraction failed cannot be re-OCRed (409), and vice versa.
+
+Review decisions (Accept/Reject/Reset) are applied through `PATCH /api/patient/documents/[id]/extraction` and persisted in the in-memory repository for the current server process; `document_extractions` on `patient_sessions` is the durable boundary.
+
 ## Voice provenance
 Voice input is an alternative input modality, not a separate diagnostic system. Voice-derived facts must carry `VOICE` provenance and must never be silently relabeled as `PATIENT` or `AI`. The patient reviews and edits every transcript before it becomes a clinical fact. If the transcript is unclear or confidence is insufficient, the engine preserves `UNKNOWN`, `NOT_ASKED`, or `DECLINED` semantics; it never infers or fabricates symptoms.
 

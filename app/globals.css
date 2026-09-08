@@ -200,8 +200,9 @@ li {
 
 .progress {
   display: flex;
+  flex-wrap: wrap;
   width: min(100%, 34rem);
-  justify-content: space-between;
+  justify-content: center;
   gap: 0.5rem;
   margin-bottom: 2.25rem;
 }
@@ -912,6 +913,168 @@ li {
   min-height: 2.5rem;
   padding: 0.5rem 1rem;
   font-size: 0.9rem;
+}
+
+/* ---- Phase 6C evidence extraction UI ---- */
+.document-item__extraction-results {
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  background: #f8fafc;
+}
+
+.extraction-results__title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #0f172a;
+  margin-bottom: 0.5rem;
+}
+
+.extraction-results__helper {
+  font-size: 0.85rem;
+  color: #475569;
+  margin-bottom: 0.75rem;
+}
+
+.evidence-category {
+  margin-top: 0.75rem;
+}
+
+.evidence-category__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.evidence-category__heading {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  margin-bottom: 0.35rem;
+}
+
+.evidence-item {
+  padding: 0.6rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  background: #fff;
+  margin-bottom: 0.5rem;
+}
+
+.evidence-item--contradiction {
+  border-left: 3px solid #b45309;
+}
+
+.evidence-item__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.evidence-item__value {
+  font-weight: 600;
+  color: #0f172a;
+  font-size: 0.9rem;
+}
+
+.evidence-item__method {
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.evidence-item__wording {
+  font-size: 0.85rem;
+  color: #475569;
+  margin-top: 0.25rem;
+  font-style: italic;
+}
+
+.evidence-item__source {
+  font-size: 0.75rem;
+  color: #64748b;
+  margin-top: 0.25rem;
+}
+
+.evidence-item__note {
+  font-size: 0.8rem;
+  color: #b45309;
+  margin-top: 0.25rem;
+}
+
+.evidence-item__status {
+  font-size: 0.8rem;
+  font-weight: 600;
+  margin-top: 0.25rem;
+}
+
+.evidence-item__status--accepted {
+  color: #15803d;
+}
+
+.evidence-item__status--rejected {
+  color: #b91c1c;
+}
+
+.evidence-item__status--pending {
+  color: #b45309;
+}
+
+.evidence-item__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.evidence-button {
+  min-height: 2.25rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid #dbe3ed;
+  background: #fff;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.evidence-button--accept {
+  color: #15803d;
+}
+
+.evidence-button--accept:hover,
+.evidence-button--accept:focus-visible {
+  border-color: #15803d;
+  background: #f0fdf4;
+}
+
+.evidence-button--reject {
+  color: #b91c1c;
+}
+
+.evidence-button--reject:hover,
+.evidence-button--reject:focus-visible {
+  border-color: #b91c1c;
+  background: #fef2f2;
+}
+
+.evidence-button--reset {
+  color: #475569;
+}
+
+.evidence-button--reset:hover,
+.evidence-button--reset:focus-visible {
+  border-color: #475569;
+  background: #f1f5f9;
+}
+
+.evidence-empty {
+  font-size: 0.9rem;
+  color: #475569;
 }
 
 @media (max-width: 480px) {

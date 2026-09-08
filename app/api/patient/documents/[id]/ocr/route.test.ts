@@ -53,7 +53,8 @@ vi.mock("@/lib/ocr/pipeline", () => ({
 }));
 
 import { cookies } from "next/headers";
-import { POST, GET, POST_RETRY } from "./route";
+import { POST, GET } from "./route";
+import { POST as retryPOST } from "./retry/route";
 import { documentRepository } from "@/lib/ocr/document-repository";
 import { processDocumentForOcr } from "@/lib/ocr/pipeline";
 
@@ -252,6 +253,32 @@ describe("POST /api/patient/documents/[id]/ocr", () => {
     expect(response.status).toBe(500);
     expect(data.error).toBe("OCR failed");
   });
+
+  it("rejects OCR on a document that failed at extraction", async () => {
+    const { createSupabaseServerClient } = await import("@/lib/supabase/server");
+    vi.mocked(createSupabaseServerClient).mockReturnValueOnce({
+      auth: {
+        getUser: vi.fn(() => ({ data: { user: { id: "user-123" } }, error: null })),
+      },
+    } as unknown as ReturnType<typeof createSupabaseServerClient>);
+
+    vi.mocked(cookies).mockReturnValue(createMockCookies("session-123"));
+
+    vi.mocked(documentRepository.findById).mockResolvedValueOnce({
+      id: "doc-123",
+      sessionId: "session-123",
+      processingStatus: "FAILED",
+      ocrStatus: "COMPLETED",
+      failureStage: "EXTRACTION",
+      errors: [],
+    } as any);
+
+    const response = await POST(new Request("http://localhost/api/patient/documents/doc-123/ocr"), { params: Promise.resolve({ id: "doc-123" }) });
+    const data = await response.json();
+
+    expect(response.status).toBe(409);
+    expect(data.error).toBe("OCR cannot restart after an extraction failure");
+  });
 });
 
 describe("GET /api/patient/documents/[id]/ocr", () => {
@@ -352,7 +379,7 @@ describe("POST /api/patient/documents/[id]/ocr/retry", () => {
       },
     } as unknown as ReturnType<typeof createSupabaseServerClient>);
 
-    const response = await POST_RETRY(new Request("http://localhost/api/patient/documents/doc-123/ocr/retry"), { params: Promise.resolve({ id: "doc-123" }) });
+    const response = await retryPOST(new Request("http://localhost/api/patient/documents/doc-123/ocr/retry"), { params: Promise.resolve({ id: "doc-123" }) });
     const data = await response.json();
 
     expect(response.status).toBe(401);
@@ -377,7 +404,7 @@ describe("POST /api/patient/documents/[id]/ocr/retry", () => {
       errors: [],
     } as any);
 
-    const response = await POST_RETRY(new Request("http://localhost/api/patient/documents/doc-123/ocr/retry"), { params: Promise.resolve({ id: "doc-123" }) });
+    const response = await retryPOST(new Request("http://localhost/api/patient/documents/doc-123/ocr/retry"), { params: Promise.resolve({ id: "doc-123" }) });
     const data = await response.json();
 
     expect(response.status).toBe(409);
@@ -414,11 +441,37 @@ describe("POST /api/patient/documents/[id]/ocr/retry", () => {
     } as any);
     vi.mocked(documentRepository.addOcrResult).mockResolvedValueOnce(null);
 
-    const response = await POST_RETRY(new Request("http://localhost/api/patient/documents/doc-123/ocr/retry"), { params: Promise.resolve({ id: "doc-123" }) });
+    const response = await retryPOST(new Request("http://localhost/api/patient/documents/doc-123/ocr/retry"), { params: Promise.resolve({ id: "doc-123" }) });
     const data = await response.json();
 
     expect(response.status).toBe(200);
     expect(data.status).toBe("OCR_COMPLETE");
     expect(data.ocrStatus).toBe("COMPLETED");
+  });
+
+  it("rejects OCR retry on a document that failed at extraction", async () => {
+    const { createSupabaseServerClient } = await import("@/lib/supabase/server");
+    vi.mocked(createSupabaseServerClient).mockReturnValueOnce({
+      auth: {
+        getUser: vi.fn(() => ({ data: { user: { id: "user-123" } }, error: null })),
+      },
+    } as unknown as ReturnType<typeof createSupabaseServerClient>);
+
+    vi.mocked(cookies).mockReturnValue(createMockCookies("session-123"));
+
+    vi.mocked(documentRepository.findById).mockResolvedValueOnce({
+      id: "doc-123",
+      sessionId: "session-123",
+      processingStatus: "FAILED" as const,
+      ocrStatus: "COMPLETED" as const,
+      failureStage: "EXTRACTION" as const,
+      errors: [],
+    } as any);
+
+    const response = await retryPOST(new Request("http://localhost/api/patient/documents/doc-123/ocr/retry"), { params: Promise.resolve({ id: "doc-123" }) });
+    const data = await response.json();
+
+    expect(response.status).toBe(409);
+    expect(data.error).toBe("OCR cannot retry after an extraction failure");
   });
 });

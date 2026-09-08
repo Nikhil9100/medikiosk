@@ -33,6 +33,10 @@ async function verifyDocumentOwnership(documentId: string, sessionId: string) {
   return document;
 }
 
+/**
+ * POST /api/patient/documents/[id]/ocr/retry
+ * Re-run OCR on a document whose OCR previously failed.
+ */
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   try {
@@ -48,33 +52,31 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
     const document = await verifyDocumentOwnership(id, sessionId);
 
-    if (document.processingStatus === "OCR_COMPLETE") {
-      return NextResponse.json({ error: "OCR already completed" }, { status: 409 });
+    if (document.processingStatus !== "FAILED") {
+      return NextResponse.json({ error: "Only failed OCR jobs can be retried" }, { status: 409 });
     }
 
-    if (document.processingStatus === "OCR_PROCESSING") {
-      return NextResponse.json({ error: "OCR already in progress" }, { status: 409 });
+    // OCR retry is only for OCR-stage failures. A document that failed at
+    // extraction (failureStage EXTRACTION) already completed OCR; re-running OCR
+    // here would duplicate its OCR results. Those documents retry via the
+    // extraction retry route instead.
+    if (document.failureStage === "EXTRACTION") {
+      return NextResponse.json({ error: "OCR cannot retry after an extraction failure" }, { status: 409 });
     }
 
-    // A document that failed at extraction already completed OCR. Re-running OCR
-    // here would append duplicate OCR results; it retries via the extraction
-    // retry route instead.
-    if (document.processingStatus === "FAILED" && document.failureStage === "EXTRACTION") {
-      return NextResponse.json({ error: "OCR cannot restart after an extraction failure" }, { status: 409 });
+    const updated = await documentRepository.update(document.id, {
+      processingStatus: "READY_FOR_OCR",
+      ocrStatus: "PENDING",
+      errors: [],
+    });
+
+    if (!updated) {
+      return NextResponse.json({ error: "Document not found" }, { status: 404 });
     }
 
     const buffer = await documentRepository.getBuffer(document.id);
     if (!buffer) {
       return NextResponse.json({ error: "Document buffer not available" }, { status: 410 });
-    }
-
-    const updated = await documentRepository.update(document.id, {
-      processingStatus: "OCR_PROCESSING",
-      ocrStatus: "PROCESSING",
-    });
-
-    if (!updated) {
-      return NextResponse.json({ error: "Document not found" }, { status: 404 });
     }
 
     try {
@@ -96,59 +98,19 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         processingStatus: "FAILED",
         ocrStatus: "FAILED",
         failureStage: "OCR",
-        errors: [...(document.errors ?? []), error instanceof Error ? error.message : "OCR failed"],
+        errors: [...(updated.errors ?? []), error instanceof Error ? error.message : "OCR failed"],
       });
 
       if (error instanceof OcrError) {
         return NextResponse.json({ error: error.message, code: error.code }, { status: error.statusCode });
       }
-      return NextResponse.json({ error: "OCR failed" }, { status: 500 });
+      return NextResponse.json({ error: "OCR retry failed" }, { status: 500 });
     }
   } catch (error) {
-    console.error("OCR processing failed:", error);
+    console.error("OCR retry failed:", error);
     if (error instanceof OcrError) {
       return NextResponse.json({ error: error.message, code: error.code }, { status: error.statusCode });
     }
-    return NextResponse.json({ error: "OCR processing failed" }, { status: 500 });
-  }
-}
-
-export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  try {
-    const { user } = await getAuthenticatedSession();
-    if (!user) {
-      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
-    }
-
-    const sessionId = await getSessionId();
-    if (!sessionId) {
-      return NextResponse.json({ error: "No active session" }, { status: 404 });
-    }
-
-    const document = await verifyDocumentOwnership(id, sessionId);
-    const documentWithOcr = await documentRepository.getDocumentWithOcr(document.id);
-
-    if (!documentWithOcr) {
-      return NextResponse.json({
-        id: document.id,
-        ocrStatus: document.ocrStatus,
-        processingStatus: document.processingStatus,
-        ocrResults: [],
-      });
-    }
-
-    return NextResponse.json({
-      id: documentWithOcr.id,
-      ocrStatus: documentWithOcr.ocrStatus,
-      processingStatus: documentWithOcr.processingStatus,
-      ocrResults: documentWithOcr.ocrResults,
-    });
-  } catch (error) {
-    console.error("OCR status fetch failed:", error);
-    if (error instanceof OcrError) {
-      return NextResponse.json({ error: error.message, code: error.code }, { status: error.statusCode });
-    }
-    return NextResponse.json({ error: "Unable to fetch OCR status" }, { status: 500 });
+    return NextResponse.json({ error: "OCR retry failed" }, { status: 500 });
   }
 }

@@ -123,6 +123,81 @@ Errors:
 - `409`: Document is not in failed state
 - `500`: OCR retry failed
 
+## Phase 6C extraction endpoints
+
+### `POST /api/patient/documents/[id]/extraction`
+
+Runs structured evidence extraction on a document whose OCR is complete. Validates session ownership and document ownership. Requires `processingStatus: "OCR_COMPLETE"` first. Runs the deterministic engine always; augments with the AI provider only when `GEMINI_API_KEY` is present.
+
+Request: empty body
+
+Response:
+- `extractionStatus`: `COMPLETED` (or `FAILED`)
+- `aiProviderState`: `NOT_CONFIGURED`, `SUCCESS`, `MALFORMED_RESPONSE`, `UNAVAILABLE`, or `FAILED`
+- `itemCount`: number of evidence items
+- `items`: array of extracted evidence items
+
+Evidence item object:
+- `id`: item UUID
+- `documentId`: document UUID
+- `sessionId`: session ID
+- `category`: one of `DIAGNOSIS`, `MEDICATION`, `INVESTIGATION`, `PROCEDURE`, `ALLERGY`, `MEDICAL_HISTORY`, `CHRONOLOGY`
+- `normalizedValue`: object with `name`/`value`/`unit`/`dose`/`frequency`/`date`/`details`
+- `originalOcrWording`: verbatim OCR source text
+- `pageNumber`: 1-based page index
+- `ocrSpan`: optional `{ start, end }` offsets in the page text
+- `extractionMethod`: `DETERMINISTIC` or `AI`
+- `provider`: `{ name, model?, createdAt }`
+- `confidence`: optional (0–1)
+- `verificationState`: always `UNVERIFIED` on creation
+- `uncertaintyNotes`: optional notes ("Doctor review required", contradiction notes)
+- `contradictionGroupId`: optional; shared between items that contradict each other
+
+Errors:
+- `401`: Authentication required
+- `404`: No active session or document not found
+- `403`: Access denied
+- `409`: OCR not ready (`OCR_NOT_READY`), extraction already complete (`EXTRACTION_ALREADY_COMPLETE`), or extraction in progress (`EXTRACTION_IN_PROGRESS`)
+- `500`: Extraction failed
+
+### `GET /api/patient/documents/[id]/extraction`
+
+Returns the extraction run (if any) for a document.
+
+Response:
+- `extractionStatus`: `NOT_STARTED` when no run exists, otherwise the run status
+- `aiProviderState`: provider state
+- `itemCount`: number of items
+- `items`: array of evidence items
+- `provider`: provider metadata or undefined
+
+### `PATCH /api/patient/documents/[id]/extraction`
+
+Applies a single review action to one evidence item. The persisted review decision survives for the current server process (in-memory repository).
+
+Request body:
+- `itemId`: evidence item UUID
+- `verificationState`: `UNVERIFIED`, `ACCEPTED`, or `REJECTED` (`UNVERIFIED` resets a prior decision)
+
+Response:
+- `item`: the updated evidence item with the new `verificationState`
+
+Errors:
+- `400`: Invalid review patch (`INVALID_REVIEW_PATCH`)
+- `404`: Evidence item not found (`ITEM_NOT_FOUND`)
+- `409`: No completed extraction to review (`EXTRACTION_FAILED`)
+
+### `POST /api/patient/documents/[id]/extraction/retry`
+
+Re-runs extraction after a failed or malformed attempt. Intentionally separate from the OCR retry route: retrying extraction never re-runs OCR. Retryable states: `FAILED`, `MALFORMED_RESPONSE`, `UNAVAILABLE`.
+
+Request: empty body
+
+Response: same shape as `POST .../extraction`.
+
+Errors:
+- `409`: Extraction already complete, in progress, or not retryable (`RETRY_NOT_ALLOWED`)
+
 ### `POST /api/voice/transcribe`
 
 Server-side speech-to-text endpoint. Accepts `multipart/form-data` with an audio file and a language code. The server maps the application language to the Sarvam BCP-47 code, forwards the audio to Sarvam Saaras v4, and returns the transcript. The API key is never exposed to the client.
@@ -153,6 +228,6 @@ Completes the current owned active session, clears the HTTP-only cookie, and ret
 
 ## Authentication and persistence status
 
-The API uses the Supabase SSR client and derives identity from `supabase.auth.getUser()`. The Phase 2 migration is in `supabase/migrations/20260906090000_create_patient_sessions.sql`. The Phase 4 schema migration is in `supabase/migrations/20260906121327_add_patient_intake_fields.sql`.
+The API uses the Supabase SSR client and derives identity from `supabase.auth.getUser()`. The Phase 2 migration is in `supabase/migrations/20260906090000_create_patient_sessions.sql`. The Phase 4 schema migration is in `supabase/migrations/20260906121327_add_patient_intake_fields.sql`. The Phase 6C migration is in `supabase/migrations/20260908120000_add_extraction_fields.sql`.
 
 The configured Supabase project currently reports anonymous sign-ins disabled, and no Supabase CLI/database migration channel is installed in this workspace. The API therefore returns an honest authentication/configuration failure until the project is configured for the chosen patient identity flow and the migration is applied.

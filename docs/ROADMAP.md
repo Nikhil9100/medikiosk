@@ -74,6 +74,20 @@ Implemented: server-side Tesseract.js OCR provider abstraction, PDF page rasteri
 Verification: OCR tests (22), document tests (6), API tests (6), route tests (12), lint, build, and responsive QA pass.
 Status: DONE
 
+## Phase 6C — Structured medical evidence extraction
+Goal: Convert OCR text into structured, reviewable medical evidence across seven categories with full provenance, contradiction preservation, and no inferred diagnosis or treatment.
+Implemented:
+- Deterministic extraction engine (`lib/extraction/deterministic.ts`) with regex rules for DIAGNOSIS, MEDICATION, INVESTIGATION, PROCEDURE, ALLERGY, MEDICAL_HISTORY, and CHRONOLOGY. Items are always UNVERIFIED, carry original OCR wording, page numbers, OCR spans, method ("DETERMINISTIC"), provider metadata, and uncertainty notes. Contradictions (e.g., different doses for the same drug) are grouped and preserved, never resolved.
+- Optional server-side AI provider (`lib/extraction/ai.ts`) behind `GEMINI_API_KEY`. Fail-closed: strict schema validation; any malformed/out-of-contract response reports `MALFORMED_RESPONSE` and no fabricated evidence is accepted. AI items carry AI provenance and remain UNVERIFIED. When the key is absent the provider reports `NOT_CONFIGURED` and only the deterministic engine runs.
+- Orchestrator (`lib/extraction/engine.ts`) that always runs the deterministic baseline, optionally augments with AI, merges items, and detects contradictions.
+- Extraction API routes: `POST`/`GET`/`PATCH /api/patient/documents/[id]/extraction` and `POST /api/patient/documents/[id]/extraction/retry`. Every request validates session and document ownership. Extraction requires `OCR_COMPLETE` first. PATCH applies a single Review (Accept/Reject/Reset) to one evidence item via `EvidenceReviewPatchSchema`. Extraction retry is separate from OCR retry.
+- Review UI on the documents page: run extraction, view items grouped by category (value, verbatim wording, source page, optional confidence, extraction method, verification status), per-item Accept/Reject/Reset, contradiction indicators, and honest AI-availability messaging. Six-language copy coverage (English-inherited keys, matching the Phase 6B OCR pattern; completeness verified by `lib/i18n-completeness.test.ts`).
+- Fix: `POST /api/patient/documents/[id]/ocr/retry` now exists as a real route (previously a dead `POST_RETRY` named export), so OCR retry and extraction retry are truly separate.
+- Migration `20260908120000_add_extraction_fields.sql`: admits the `documents` step into the `workflow_step` constraint and adds a `document_extractions` jsonb durable boundary for future persistence.
+Verification: extraction engine tests (23), AI provider tests (12), orchestrator tests (7), extraction route tests (18), UI helper tests (8), i18n completeness tests (2), plus typecheck, lint, and production build. The pre-existing `React.act is not a function` failures in `app/patient/routes.test.tsx` remain and are unrelated to this phase.
+Known limitation: extraction runs and review decisions persist in the in-memory DocumentRepository for the current server process; the Supabase `document_extractions` column is the durable boundary for wiring persistence in a later phase. AI-assisted extraction only activates when `GEMINI_API_KEY` is present.
+Status: DONE
+
 ## Phase 7 — Clinical summary + deterministic red flags + provenance
 Goal: Summarize and flag safety-critical findings.
 Status: NOT STARTED

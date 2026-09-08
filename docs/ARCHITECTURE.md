@@ -52,6 +52,27 @@ The OCR API routes (`POST /api/patient/documents/[id]/ocr`, `GET /api/patient/do
 
 Six-language OCR selection is explicit. The application language is mapped to Tesseract language codes (`en` → `eng`, `hi` → `hin`, `bn` → `ben`, `te` → `tel`, `ta` → `tam`, `mr` → `mar`). Unsupported languages throw explicit errors.
 
+## Phase 6C structured medical evidence extraction
+Structured evidence extraction converts OCR page text into seven typed categories (`DIAGNOSIS`, `MEDICATION`, `INVESTIGATION`, `PROCEDURE`, `ALLERGY`, `MEDICAL_HISTORY`, `CHRONOLOGY`). The typed foundation lives in `lib/extraction/types.ts` (`ExtractedEvidenceItemSchema`, `ExtractionRunSchema`, `EvidenceReviewPatchSchema`, `ExtractionError`).
+
+### Deterministic engine (always-on baseline)
+`lib/extraction/deterministic.ts` applies regex rules per category. Each extracted item is created via `createUnverifiedEvidenceItem`, so it always starts `UNVERIFIED`. Items carry the verbatim `originalOcrWording`, page number, OCR span, `extractionMethod: DETERMINISTIC`, provider metadata, a heuristic confidence, and uncertainty notes ("Doctor review required").
+
+Safety properties:
+- DIAGNOSIS and MEDICAL_HISTORY are extracted only from explicit markers ("Diagnosis:", "H/O", "Known case of", ...); nothing is inferred from symptoms or lab values.
+- No treatment-recommendation rule exists in the category set.
+- No item is ever auto-verified.
+- `detectContradictions` groups items that share a primary key (drug name, investigation name) with differing secondary values (dose, value) and assigns a shared `contradictionGroupId` plus an uncertainty note. Conflicts are preserved, never resolved.
+
+### Optional AI provider (fail-closed)
+`lib/extraction/ai.ts` calls the Gemini REST API only when `GEMINI_API_KEY` is present; otherwise the engine reports `aiProviderState: NOT_CONFIGURED`. The response is validated against a strict Zod schema. Any malformed or out-of-contract output causes `MALFORMED_RESPONSE` and no partial/fabricated evidence is accepted. AI items carry `extractionMethod: AI`, AI provider metadata, and start `UNVERIFIED`. The prompt forbids inferred diagnosis and treatment.
+
+### Orchestrator
+`lib/extraction/engine.ts`: always runs the deterministic engine, optionally augments with AI, merges items, and runs contradiction detection over the combined set. It returns an `ExtractionRun` (status `COMPLETED`) that the caller persists.
+
+### Persistence boundary
+Runtime source of truth is `InMemoryDocumentRepository` (`lib/ocr/document-repository.ts`), which stores extraction runs and persisted review decisions. `updateEvidenceVerification(documentId, itemId, verificationState)` applies Accept/Reject/Reset. The migration `20260908120000_add_extraction_fields.sql` adds a `document_extractions` jsonb column (and admits the `documents` workflow step) as the durable boundary for a later persistence phase; no second live database is introduced.
+
 ## Phase 5 Sarvam voice
 Voice is implemented as an optional input/output modality behind a server-side provider boundary. The browser never calls Sarvam directly. All voice requests go through MediKiosk server API routes (`POST /api/voice/transcribe` and `POST /api/voice/speak`), which validate payloads, enforce language mapping, and forward requests to Sarvam using the server-side `SARVAM_API_KEY`.
 

@@ -50,6 +50,17 @@ The documents page now includes OCR status and results display:
 - OCR output is presented as candidate information only. The UI never treats OCR text as confirmed clinical facts.
 - The six-language architecture is preserved. OCR language selection is explicit and mapped from the selected application language.
 
+## Phase 6C evidence review UI patterns
+The documents page now includes structured evidence extraction and review:
+- After OCR completes, a "Extract medical information" button runs extraction (POST extraction).
+- Extracted items are grouped by category with accessible headings.
+- Each item shows its normalized value, the verbatim original OCR wording, source page and optional confidence score, extraction method ("Automated review" / "AI-assisted review"), and verification status.
+- Per-item Accept / Reject buttons move an item to `ACCEPTED` / `REJECTED`; a Reset button returns it to `UNVERIFIED`. All actions persist via PATCH.
+- Items in a contradiction group are visually marked, and the uncertainty note preserves the conflict rather than resolving it.
+- Failed or malformed extraction shows an honest failure message and a "Retry extraction" button (a separate route from OCR retry).
+- AI status is shown honestly: when AI-assisted extraction is unavailable, the UI says so rather than claiming AI output exists.
+- The UI frames extracted evidence as a doctor-review draft ("Nothing is confirmed automatically"). It never presents OCR/AI output as confirmed clinical facts.
+
 ## Voice design decisions
 Voice controls are optional and additive. The patient can always use typed or touch input. Voice transcripts are shown for review before acceptance. The UI never mentions STT, TTS, API, provider, or backend. Controls use semantic buttons with accessible names, visible focus, and 44px+ touch targets.
 
