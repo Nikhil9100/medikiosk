@@ -45,8 +45,11 @@ export type RetrievedChunk = {
 /** Split content into bounded chunks at paragraph boundaries. */
 export function chunkContent(content: string, maxChars = 900): string[] {
   if (!content.trim()) return [];
+  // Split at blank lines or at whitespace following a period. The period is
+  // kept with the preceding sentence (lookbehind, non-consuming) so chunks
+  // don't lose their punctuation.
   const paragraphs = content
-    .split(/\n{2,}|\.(?=\s)/)
+    .split(/\n{2,}|(?<=\.)\s+/)
     .map((p) => p.trim())
     .filter((p) => p.length > 0);
   const chunks: string[] = [];
@@ -149,6 +152,10 @@ export async function retrieveChunks(
   );
   if (cleanTerms.length === 0) return [];
   const query = toTsQuery(cleanTerms);
+  // Match clause uses the SAME OR-joined tsquery as the ranking, not
+  // plainto_tsquery (which ANDs every term): a symptom message like
+  // "chest pain spreading to my left arm" must recall chunks containing any
+  // of its terms, not only chunks containing all of them.
   const result = await client.query(
     `SELECT c.id AS chunk_id, c.heading, c.content, c.chunk_index,
             ts_rank(c.search_vector, to_tsquery('english', $1)) AS score,
@@ -156,10 +163,10 @@ export async function retrieveChunks(
        FROM knowledge_chunks c
        JOIN knowledge_documents d ON d.id = c.document_id
       WHERE d.corpus = $2
-        AND c.search_vector @@ plainto_tsquery('english', $3)
+        AND c.search_vector @@ to_tsquery('english', $1)
       ORDER BY score DESC, d.title, c.chunk_index
-      LIMIT $4`,
-    [query, params.corpus, cleanTerms.join(" "), params.limit ?? 5],
+      LIMIT $3`,
+    [query, params.corpus, params.limit ?? 5],
   );
   const minScore = params.minScore ?? 0.01;
   return result.rows

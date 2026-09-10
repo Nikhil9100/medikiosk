@@ -47,3 +47,6 @@ supabase/.temp/
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Local QA artifacts (screenshots from browser QA runs)
+screenshots/

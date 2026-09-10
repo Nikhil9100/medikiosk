@@ -540,14 +540,18 @@ CREATE POLICY kiosk_heartbeats_update ON kiosk_heartbeats
                     OR (nullif(current_setting('app.kiosk_id', true), '') IS NOT NULL
                         AND kiosk_id = nullif(current_setting('app.kiosk_id', true), '')));
 
--- Knowledge base: staff can read (and the ingestion job, running as staff scope, can write).
+-- Knowledge base: readable by staff and by any active kiosk session (the
+-- assistant retrieves from inside the patient's session scope). The content
+-- is shared educational reference, not patient data, so reads are broad;
+-- there is deliberately NO write policy — ingestion runs as the owner role
+-- (scripts/seed-knowledge.mjs) and cannot be triggered by the app role.
 DROP POLICY IF EXISTS knowledge_documents_read ON knowledge_documents;
 CREATE POLICY knowledge_documents_read ON knowledge_documents
-  USING (app_access_role() = 'staff');
+  USING (app_access_role() = 'staff' OR app_session_id() IS NOT NULL);
 
 DROP POLICY IF EXISTS knowledge_chunks_read ON knowledge_chunks;
 CREATE POLICY knowledge_chunks_read ON knowledge_chunks
-  USING (app_access_role() = 'staff');
+  USING (app_access_role() = 'staff' OR app_session_id() IS NOT NULL);
 
 -- Audit: staff reads; any authenticated scope may append (rows carry actor identity).
 DROP POLICY IF EXISTS audit_log_read ON audit_log;

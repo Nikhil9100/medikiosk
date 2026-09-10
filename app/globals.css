@@ -1152,3 +1152,265 @@ li {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ── Health assistant chat (one identity: soft-voice helper + text) ─────── */
+.assistant-page {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: min(100%, 34rem);
+  height: min(72dvh, 46rem);
+  min-height: 26rem;
+}
+
+.assistant-state {
+  padding: 2rem 0;
+  color: var(--muted);
+  text-align: center;
+}
+
+.assistant-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.assistant-back {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 40px;
+  padding: 0.35rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 0.6rem;
+  background: var(--panel);
+  color: var(--foreground);
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.assistant-header__identity {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.assistant-avatar {
+  flex: 0 0 auto;
+  width: 3rem;
+  height: 3rem;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--indigo), #7c3aed);
+  color: #ffffff;
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.assistant-header__identity h1 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.assistant-header__identity p {
+  margin: 0.15rem 0 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.assistant-thread {
+  list-style: none;
+  margin: 0;
+  padding: 0.75rem;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  background: var(--panel);
+}
+
+.assistant-empty {
+  color: var(--muted);
+  font-size: 0.9rem;
+  text-align: center;
+  padding: 2rem 0.5rem;
+}
+
+.assistant-message {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+
+.assistant-message--patient {
+  justify-content: flex-end;
+}
+
+.assistant-bubble {
+  max-width: 85%;
+  padding: 0.6rem 0.85rem;
+  border-radius: 1rem;
+  font-size: 0.92rem;
+}
+
+.assistant-message--patient .assistant-bubble {
+  background: var(--indigo);
+  color: #ffffff;
+  border-bottom-right-radius: 0.3rem;
+}
+
+.assistant-message--assistant .assistant-bubble {
+  background: #eef2ff;
+  color: var(--foreground);
+  border-bottom-left-radius: 0.3rem;
+}
+
+.assistant-bubble p {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+
+.assistant-safety {
+  margin: 0.5rem 0 0;
+  padding: 0.5rem 0.65rem;
+  border-left: 3px solid #b91c1c;
+  background: #fef2f2;
+  color: #7f1d1d;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.assistant-citations {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.assistant-citations li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: #ffffff;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.assistant-citations__corpus {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 0.05rem 0.35rem;
+  border-radius: 999px;
+}
+
+.assistant-citations__corpus--modern {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.assistant-citations__corpus--ayurveda {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.assistant-speak {
+  flex: 0 0 auto;
+  min-height: 36px;
+  padding: 0.3rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.assistant-speak[aria-pressed="true"] {
+  border-color: var(--indigo);
+  color: var(--indigo);
+  font-weight: 600;
+}
+
+.assistant-error {
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.6rem;
+  background: #fef2f2;
+  color: #7f1d1d;
+  font-size: 0.85rem;
+}
+
+.assistant-composer {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.assistant-mic {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--panel);
+  cursor: pointer;
+  font-size: 1.1rem;
+}
+
+.assistant-mic--active {
+  border-color: #b91c1c;
+  background: #fef2f2;
+  animation: assistant-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes assistant-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(185, 28, 28, 0.25); }
+  50% { box-shadow: 0 0 0 8px rgba(185, 28, 28, 0); }
+}
+
+.assistant-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0.55rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--panel);
+  font-size: 0.95rem;
+  color: var(--foreground);
+}
+
+.assistant-input:focus-visible {
+  outline: 2px solid var(--indigo);
+  outline-offset: 1px;
+}
+
+.assistant-voice-note {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+  text-align: center;
+}
+
+@media (max-width: 360px) {
+  .assistant-page {
+    height: 68dvh;
+  }
+
+  .assistant-header__identity p {
+    display: none;
+  }
+}

@@ -233,6 +233,10 @@ export function PatientShell({ children }: { children: React.ReactNode }) {
               <span aria-hidden="true">?</span>
               <span>{t("needHelp")}</span>
             </button>
+            <button className="header-action" type="button" aria-label={t("assistantLabel")} onClick={() => router.push("/patient/assistant")}>
+              <span aria-hidden="true">✦</span>
+              <span>{t("assistantLabel")}</span>
+            </button>
           </div>
         </div>
       </header>
