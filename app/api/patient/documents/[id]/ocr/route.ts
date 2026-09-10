@@ -1,29 +1,30 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { documentRepository } from "@/lib/ocr/document-repository";
+import { databaseConfigured } from "@/lib/db/pool";
+import { getActiveKioskSession } from "@/lib/db/session-scope";
+import { scopedDocumentRepository } from "@/lib/db/scoped-document-repository";
 import { processDocumentForOcr } from "@/lib/ocr/pipeline";
-import { OcrError } from "@/lib/ocr/types";
+import { OcrError, mapApplicationLanguageToOcr, type OcrLanguageCode } from "@/lib/ocr/types";
 import type { OcrResult } from "@/lib/ocr/types";
 
 export const runtime = "nodejs";
 
-const sessionCookie = "medikiosk_session";
+const SUPPORTED_APP_LANGUAGES = new Set(["en", "hi", "bn", "te", "ta", "mr"]);
 
-async function getSessionId(): Promise<string | null> {
-  const cookieStore = await cookies();
-  return cookieStore.get(sessionCookie)?.value ?? null;
-}
-
-async function getAuthenticatedSession() {
-  const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase.auth.getUser();
-  if (error || !data.user) return { user: null };
-  return { user: data.user };
+async function resolveOcrLanguage(form: FormData, sessionLanguage: string): Promise<OcrLanguageCode> {
+  const requested = form.get("ocrLanguage");
+  if (requested != null && requested !== "") {
+    const lang = String(requested);
+    if (!SUPPORTED_APP_LANGUAGES.has(lang)) {
+      throw new OcrError("UNSUPPORTED_LANGUAGE", `Unsupported OCR language: ${lang}`, 400);
+    }
+    return mapApplicationLanguageToOcr(lang);
+  }
+  return mapApplicationLanguageToOcr(SUPPORTED_APP_LANGUAGES.has(sessionLanguage) ? sessionLanguage : "en");
 }
 
 async function verifyDocumentOwnership(documentId: string, sessionId: string) {
-  const document = await documentRepository.findById(documentId);
+  const repository = scopedDocumentRepository(sessionId);
+  const document = await repository.findById(documentId);
   if (!document) {
     throw new OcrError("DOCUMENT_NOT_FOUND", "Document not found", 404);
   }
@@ -36,39 +37,44 @@ async function verifyDocumentOwnership(documentId: string, sessionId: string) {
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   try {
-    const { user } = await getAuthenticatedSession();
-    if (!user) {
-      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    if (!databaseConfigured()) {
+      return NextResponse.json({ error: "Session storage is not configured", code: "DB_NOT_CONFIGURED" }, { status: 503 });
     }
-
-    const sessionId = await getSessionId();
-    if (!sessionId) {
+    const session = await getActiveKioskSession();
+    if (!session) {
       return NextResponse.json({ error: "No active session" }, { status: 404 });
     }
+    const sessionId = session.id;
 
     const document = await verifyDocumentOwnership(id, sessionId);
 
     if (document.processingStatus === "OCR_COMPLETE") {
       return NextResponse.json({ error: "OCR already completed" }, { status: 409 });
     }
-
     if (document.processingStatus === "OCR_PROCESSING") {
       return NextResponse.json({ error: "OCR already in progress" }, { status: 409 });
     }
-
-    // A document that failed at extraction already completed OCR. Re-running OCR
-    // here would append duplicate OCR results; it retries via the extraction
-    // retry route instead.
     if (document.processingStatus === "FAILED" && document.failureStage === "EXTRACTION") {
       return NextResponse.json({ error: "OCR cannot restart after an extraction failure" }, { status: 409 });
     }
 
-    const buffer = await documentRepository.getBuffer(document.id);
+    let ocrLanguage: OcrLanguageCode;
+    try {
+      ocrLanguage = await resolveOcrLanguage(await request.formData(), session.language);
+    } catch (error) {
+      if (error instanceof OcrError) {
+        return NextResponse.json({ error: error.message, code: error.code }, { status: error.statusCode });
+      }
+      ocrLanguage = "eng";
+    }
+
+    const repository = scopedDocumentRepository(sessionId);
+    const buffer = await repository.getBuffer(document.id);
     if (!buffer) {
       return NextResponse.json({ error: "Document buffer not available" }, { status: 410 });
     }
 
-    const updated = await documentRepository.update(document.id, {
+    const updated = await repository.update(document.id, {
       processingStatus: "OCR_PROCESSING",
       ocrStatus: "PROCESSING",
     });
@@ -81,18 +87,18 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       const result = await processDocumentForOcr({
         document: updated,
         buffer,
-        language: "en",
+        language: ocrLanguage,
       });
 
-      await documentRepository.addOcrResult(document.id, result.ocrResults[0] as OcrResult);
-      await documentRepository.update(document.id, {
+      await repository.addOcrResult(document.id, result.ocrResults[0] as OcrResult);
+      await repository.update(document.id, {
         processingStatus: result.processingStatus,
         ocrStatus: result.ocrStatus,
       });
 
       return NextResponse.json({ status: result.processingStatus, ocrStatus: result.ocrStatus });
     } catch (error) {
-      await documentRepository.update(document.id, {
+      await repository.update(document.id, {
         processingStatus: "FAILED",
         ocrStatus: "FAILED",
         failureStage: "OCR",
@@ -116,18 +122,18 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   try {
-    const { user } = await getAuthenticatedSession();
-    if (!user) {
-      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    if (!databaseConfigured()) {
+      return NextResponse.json({ error: "Session storage is not configured", code: "DB_NOT_CONFIGURED" }, { status: 503 });
     }
-
-    const sessionId = await getSessionId();
-    if (!sessionId) {
+    const session = await getActiveKioskSession();
+    if (!session) {
       return NextResponse.json({ error: "No active session" }, { status: 404 });
     }
+    const sessionId = session.id;
 
     const document = await verifyDocumentOwnership(id, sessionId);
-    const documentWithOcr = await documentRepository.getDocumentWithOcr(document.id);
+    const repository = scopedDocumentRepository(sessionId);
+    const documentWithOcr = await repository.getDocumentWithOcr(document.id);
 
     if (!documentWithOcr) {
       return NextResponse.json({

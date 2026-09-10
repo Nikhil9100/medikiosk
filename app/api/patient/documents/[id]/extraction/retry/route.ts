@@ -1,65 +1,42 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { documentRepository } from "@/lib/ocr/document-repository";
+import { databaseConfigured } from "@/lib/db/pool";
+import { getActiveKioskSession } from "@/lib/db/session-scope";
+import { scopedDocumentRepository } from "@/lib/db/scoped-document-repository";
 import { ExtractionError } from "@/lib/extraction/types";
 import { runExtraction } from "@/lib/extraction/engine";
 import type { OcrPageInput } from "@/lib/extraction/engine";
+import type { ExtractionStatus } from "@/lib/extraction/types";
 
 export const runtime = "nodejs";
 
-const sessionCookie = "medikiosk_session";
-
-async function getSessionId(): Promise<string | null> {
-  const cookieStore = await cookies();
-  return cookieStore.get(sessionCookie)?.value ?? null;
-}
-
-async function getAuthenticatedSession() {
-  const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase.auth.getUser();
-  if (error || !data.user) return { user: null };
-  return { user: data.user };
-}
-
-async function verifyDocumentOwnership(documentId: string, sessionId: string) {
-  const document = await documentRepository.findById(documentId);
-  if (!document) {
-    throw new ExtractionError("DOCUMENT_NOT_FOUND", "Document not found", 404);
-  }
-  if (document.sessionId !== sessionId) {
-    throw new ExtractionError("ACCESS_DENIED", "Access denied", 403);
-  }
-  return document;
-}
-
-const RETRYABLE_STATES = new Set(["FAILED", "MALFORMED_RESPONSE", "UNAVAILABLE"]);
+const RETRYABLE_STATES = new Set<ExtractionStatus>(["FAILED", "NOT_CONFIGURED", "UNAVAILABLE", "MALFORMED_RESPONSE"]);
 
 /**
  * POST /api/patient/documents/[id]/extraction/retry
- * Re-run extraction after a failed or malformed attempt.
- *
- * This is intentionally separate from the OCR retry route: retrying
- * extraction never re-runs OCR.
+ * Re-run structured extraction for a document whose extraction previously
+ * failed or never ran (OCR must already be complete).
  */
 export async function POST(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   try {
-    const { user } = await getAuthenticatedSession();
-    if (!user) {
-      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    if (!databaseConfigured()) {
+      return NextResponse.json({ error: "Session storage is not configured", code: "DB_NOT_CONFIGURED" }, { status: 503 });
     }
-
-    const sessionId = await getSessionId();
-    if (!sessionId) {
+    const session = await getActiveKioskSession();
+    if (!session) {
       return NextResponse.json({ error: "No active session" }, { status: 404 });
     }
+    const sessionId = session.id;
+    const repository = scopedDocumentRepository(sessionId);
 
-    const document = await verifyDocumentOwnership(id, sessionId);
+    const document = await repository.findById(id);
+    if (!document) {
+      throw new ExtractionError("DOCUMENT_NOT_FOUND", "Document not found", 404);
+    }
+    if (document.sessionId !== sessionId) {
+      throw new ExtractionError("ACCESS_DENIED", "Access denied", 403);
+    }
 
-    // Extraction retry requires completed OCR and a retryable extraction state.
-    // A document whose extraction failed is left at FAILED with failureStage EXTRACTION
-    // (OCR already completed), so it is retryable here and not via the OCR retry route.
     const extractionFailed =
       document.processingStatus === "FAILED" && document.failureStage === "EXTRACTION";
     if (
@@ -70,7 +47,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
       throw new ExtractionError("OCR_NOT_READY", "OCR must complete before extraction", 409);
     }
 
-    const existingRun = await documentRepository.getExtractionRun(document.id);
+    const existingRun = await repository.getExtractionRun(document.id);
     if (existingRun && existingRun.extractionStatus === "COMPLETED") {
       throw new ExtractionError("EXTRACTION_ALREADY_COMPLETE", "Extraction already complete", 409);
     }
@@ -81,7 +58,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
       throw new ExtractionError("RETRY_NOT_ALLOWED", "Extraction retry not allowed in current state", 409);
     }
 
-    const documentWithOcr = await documentRepository.getDocumentWithOcr(document.id);
+    const documentWithOcr = await repository.getDocumentWithOcr(document.id);
     if (!documentWithOcr || documentWithOcr.ocrResults.length === 0) {
       throw new ExtractionError("OCR_RESULTS_MISSING", "No OCR results available", 409);
     }
@@ -96,7 +73,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
       throw new ExtractionError("OCR_RESULTS_MISSING", "No OCR text available", 409);
     }
 
-    await documentRepository.update(document.id, {
+    await repository.update(document.id, {
       processingStatus: "EXTRACTION_PROCESSING",
       extractionStatus: "PROCESSING",
       errors: [],
@@ -104,12 +81,12 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
 
     try {
       const { run } = await runExtraction(document.id, document.sessionId, pages);
-      await documentRepository.saveExtractionRun(document.id, run);
-      await documentRepository.update(document.id, {
+      await repository.saveExtractionRun(document.id, run);
+      await repository.update(document.id, {
         processingStatus: "EXTRACTION_COMPLETE",
         extractionStatus: "COMPLETED",
         aiProviderState: run.aiProviderState,
-        failureStage: undefined,
+        failureStage: null,
       });
 
       return NextResponse.json({
@@ -119,11 +96,11 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
         items: run.items,
       });
     } catch (error) {
-      await documentRepository.update(document.id, {
+      await repository.update(document.id, {
         processingStatus: "FAILED",
         extractionStatus: "FAILED",
         failureStage: "EXTRACTION",
-        errors: [...(document.errors ?? []), error instanceof Error ? error.message : "Extraction retry failed"],
+        errors: [...(document.errors ?? []), error instanceof Error ? error.message : "Extraction failed"],
       });
       throw error;
     }

@@ -1,80 +1,105 @@
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { PatientLanguage } from "@/lib/patient-flow";
+import { PatientLanguage, type PatientStep } from "@/lib/patient-flow";
+import { PatientSessionRecordSchema, type PatientSessionRecord } from "@/lib/session";
 import {
-  canTransitionStatus,
-  PatientSessionRecordSchema,
-  SessionUpdateSchema,
-  type PatientSessionRecord,
-} from "@/lib/session";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+  databaseConfigured,
+  withKioskTx,
+  withNewSessionTx,
+} from "@/lib/db/pool";
+import { createCase, getCase, updateCase } from "@/lib/db/cases";
+import { SESSION_COOKIE } from "@/lib/db/session-scope";
 
-const sessionCookie = "medikiosk_session";
-const consentVersion = "phase-2-v1";
-const sessionColumns = "id,status,language,consent_status,consent_version,consent_timestamp,workflow_step,complaint_text,body_region,body_subregion,interview_data,created_at,updated_at,expires_at,completed_at";
+/**
+ * Patient session API — durable, database-backed.
+ *
+ * Identity model: the browser is anonymous (kiosk). The server mints an
+ * HTTP-only cookie carrying the session id; every request is scoped to that
+ * session by row-level security. The Supabase path (see docs/ARCHITECTURE.md)
+ * remains the production target; this PostgreSQL implementation is the live
+ * backend for the integrated product.
+ */
 
-type SessionRow = {
+const SESSION_TTL_SECONDS = 30 * 60;
+
+function toResponse(record: {
   id: string;
-  status: PatientSessionRecord["status"];
+  status: "ACTIVE" | "EXPIRED" | "COMPLETED";
   language: PatientSessionRecord["language"];
-  consent_status: PatientSessionRecord["consentStatus"];
-  consent_version: string | null;
-  consent_timestamp: string | null;
-  workflow_step: PatientSessionRecord["workflowStep"];
-  complaint_text: string | null;
-  body_region: PatientSessionRecord["bodyRegion"];
-  body_subregion: PatientSessionRecord["bodySubregion"];
-  interview_data: PatientSessionRecord["interviewData"];
-  created_at: string;
-  updated_at: string;
-  expires_at: string;
-  completed_at: string | null;
-};
-
-function toResponse(row: SessionRow) {
+  consentStatus: PatientSessionRecord["consentStatus"];
+  consentVersion: string | null;
+  consentTimestamp: Date | null;
+  workflowStep: PatientSessionRecord["workflowStep"];
+  complaintText: string | null;
+  bodyRegion: string | null;
+  bodySubregion: string | null;
+  interviewData: Record<string, unknown> | null;
+  demoFlag: boolean;
+  caseId: string;
+  caseStatus: string;
+  createdAt: Date;
+  updatedAt: Date;
+  expiresAt: Date;
+  completedAt: Date | null;
+}): PatientSessionRecord & { caseId: string; caseStatus: string; demoFlag: boolean } {
   const session = {
-    id: row.id,
-    status: row.status,
-    language: row.language,
-    consentStatus: row.consent_status,
-    consentVersion: row.consent_version,
-    consentTimestamp: row.consent_timestamp,
-    workflowStep: row.workflow_step,
-    complaintText: row.complaint_text,
-    bodyRegion: row.body_region,
-    bodySubregion: row.body_subregion,
-    interviewData: row.interview_data,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-    expiresAt: row.expires_at,
-    completedAt: row.completed_at,
-  } satisfies PatientSessionRecord;
-  return PatientSessionRecordSchema.parse(session);
+    id: record.id,
+    status: record.status,
+    language: record.language,
+    consentStatus: record.consentStatus,
+    consentVersion: record.consentVersion,
+    consentTimestamp: record.consentTimestamp ? record.consentTimestamp.toISOString() : null,
+    workflowStep: record.workflowStep,
+    complaintText: record.complaintText,
+    bodyRegion: record.bodyRegion,
+    bodySubregion: record.bodySubregion,
+    interviewData: record.interviewData,
+    createdAt: record.createdAt.toISOString(),
+    updatedAt: record.updatedAt.toISOString(),
+    expiresAt: record.expiresAt.toISOString(),
+    completedAt: record.completedAt ? record.completedAt.toISOString() : null,
+    caseId: record.caseId,
+    caseStatus: record.caseStatus,
+    demoFlag: record.demoFlag,
+  };
+  const core = PatientSessionRecordSchema.parse({
+    id: session.id,
+    status: session.status,
+    language: session.language,
+    consentStatus: session.consentStatus,
+    consentVersion: session.consentVersion,
+    consentTimestamp: session.consentTimestamp,
+    workflowStep: session.workflowStep,
+    complaintText: session.complaintText,
+    bodyRegion: session.bodyRegion,
+    bodySubregion: session.bodySubregion,
+    interviewData: session.interviewData,
+    createdAt: session.createdAt,
+    updatedAt: session.updatedAt,
+    expiresAt: session.expiresAt,
+    completedAt: session.completedAt,
+  });
+  return { ...core, caseId: session.caseId, caseStatus: session.caseStatus, demoFlag: session.demoFlag };
 }
 
 function setSessionCookie(response: NextResponse, sessionId: string) {
-  response.cookies.set(sessionCookie, sessionId, {
+  response.cookies.set(SESSION_COOKIE, sessionId, {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
     path: "/",
-    maxAge: 30 * 60,
+    maxAge: SESSION_TTL_SECONDS,
   });
 }
 
-async function getAuthenticatedClient() {
-  const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase.auth.getUser();
-  if (error || !data.user) return { supabase, user: null };
-  return { supabase, user: data.user };
-}
-
-async function getSessionId() {
-  const cookieStore = await cookies();
-  return cookieStore.get(sessionCookie)?.value;
+function notConfigured() {
+  return NextResponse.json(
+    { error: "Session storage is not configured", code: "DB_NOT_CONFIGURED" },
+    { status: 503 },
+  );
 }
 
 export async function POST(request: Request) {
+  if (!databaseConfigured()) return notConfigured();
   const idempotencyKey = request.headers.get("Idempotency-Key");
   if (!idempotencyKey || idempotencyKey.length > 128) {
     return NextResponse.json({ error: "An Idempotency-Key header is required" }, { status: 400 });
@@ -91,93 +116,127 @@ export async function POST(request: Request) {
   if (!languageResult.success) {
     return NextResponse.json({ error: "Unsupported language" }, { status: 400 });
   }
+  const demoFlag = Boolean((body as { demo?: unknown })?.demo);
 
-  const { supabase, user } = await getAuthenticatedClient();
-  if (!user) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
-
-  const existing = await supabase.from("patient_sessions").select(sessionColumns).eq("idempotency_key", idempotencyKey).maybeSingle<SessionRow>();
-  if (existing.error) return NextResponse.json({ error: "Unable to read session" }, { status: 503 });
-  if (existing.data) {
-    const response = NextResponse.json({ session: toResponse(existing.data) }, { status: 200 });
-    setSessionCookie(response, existing.data.id);
-    return response;
-  }
-
-  const inserted = await supabase.from("patient_sessions").insert({
-    owner_id: user.id,
-    language: languageResult.data,
-    idempotency_key: idempotencyKey,
-    consent_status: "NOT_REVIEWED",
-    workflow_step: "welcome",
-  }).select(sessionColumns).single<SessionRow>();
-
-  if (inserted.error) {
-    if (inserted.error.code === "23505") {
-      const retry = await supabase.from("patient_sessions").select(sessionColumns).eq("idempotency_key", idempotencyKey).single<SessionRow>();
-      if (retry.data) {
-        const response = NextResponse.json({ session: toResponse(retry.data) }, { status: 200 });
-        setSessionCookie(response, retry.data.id);
-        return response;
-      }
-    }
+  // Server-generated pseudo-owner: the kiosk device session is anonymous, so
+  // each case gets a fresh random owner id (never client-supplied).
+  const ownerUuid = crypto.randomUUID();
+  let record;
+  try {
+    record = await withNewSessionTx(ownerUuid, (client) =>
+      createCase(client, { ownerUuid, idempotencyKey, language: languageResult.data, demoFlag }),
+    );
+  } catch (error) {
+    console.error("Session create failed:", error);
     return NextResponse.json({ error: "Unable to create session" }, { status: 503 });
   }
-
-  const response = NextResponse.json({ session: toResponse(inserted.data) }, { status: 201 });
-  setSessionCookie(response, inserted.data.id);
+  const response = NextResponse.json({ session: toResponse(record) }, { status: 201 });
+  setSessionCookie(response, record.id);
   return response;
 }
 
 export async function GET() {
-  const { supabase, user } = await getAuthenticatedClient();
-  if (!user) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
-  const id = await getSessionId();
-  if (!id) return NextResponse.json({ error: "No active session" }, { status: 404 });
+  if (!databaseConfigured()) return notConfigured();
+  const { cookies } = await import("next/headers");
+  const cookieStore = await cookies();
+  const sessionId = cookieStore.get(SESSION_COOKIE)?.value;
+  if (!sessionId) return NextResponse.json({ error: "No active session" }, { status: 404 });
 
-  const result = await supabase.from("patient_sessions").select(sessionColumns).eq("id", id).maybeSingle<SessionRow>();
-  if (result.error) return NextResponse.json({ error: "Unable to read session" }, { status: 503 });
-  if (!result.data) return NextResponse.json({ error: "Session not found" }, { status: 404 });
-  if (result.data.status === "ACTIVE" && new Date(result.data.expires_at).getTime() <= Date.now()) {
-    await supabase.from("patient_sessions").update({ status: "EXPIRED" }).eq("id", id).eq("status", "ACTIVE");
+  const session = await withKioskTx(sessionId, (client) => getCase(client, sessionId)).catch(() => null);
+  if (!session) return NextResponse.json({ error: "Session not found" }, { status: 404 });
+  if (session.status === "EXPIRED" || session.expiresAt.getTime() <= Date.now()) {
+    if (session.status === "ACTIVE") {
+      await withKioskTx(sessionId, (client) =>
+        client.query(`UPDATE patient_sessions SET status = 'EXPIRED' WHERE id = $1 AND status = 'ACTIVE'`, [sessionId]),
+      ).catch(() => {});
+    }
     return NextResponse.json({ error: "Session expired" }, { status: 410 });
   }
-  if (result.data.status === "EXPIRED") return NextResponse.json({ error: "Session expired" }, { status: 410 });
-  return NextResponse.json({ session: toResponse(result.data) });
+  return NextResponse.json({ session: toResponse(session) });
 }
 
 export async function PATCH(request: Request) {
-  const parsed = SessionUpdateSchema.safeParse(await request.json().catch(() => null));
-  if (!parsed.success) return NextResponse.json({ error: "Invalid session update" }, { status: 400 });
-  const { supabase, user } = await getAuthenticatedClient();
-  if (!user) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
-  const id = await getSessionId();
-  if (!id) return NextResponse.json({ error: "No active session" }, { status: 404 });
+  if (!databaseConfigured()) return notConfigured();
+  const { cookies } = await import("next/headers");
+  const cookieStore = await cookies();
+  const sessionId = cookieStore.get(SESSION_COOKIE)?.value;
+  if (!sessionId) return NextResponse.json({ error: "No active session" }, { status: 404 });
 
-  const current = await supabase.from("patient_sessions").select(sessionColumns).eq("id", id).maybeSingle<SessionRow>();
-  if (current.error) return NextResponse.json({ error: "Unable to read session" }, { status: 503 });
-  if (!current.data) return NextResponse.json({ error: "Session not found" }, { status: 404 });
-  if (current.data.status !== "ACTIVE" || new Date(current.data.expires_at).getTime() <= Date.now()) {
-    return NextResponse.json({ error: "Session is not active" }, { status: 410 });
-  }
+  const body = await request.json().catch(() => null);
+  const parsed = body !== null ? parseSessionUpdate(body) : null;
+  if (!parsed) return NextResponse.json({ error: "Invalid session update" }, { status: 400 });
 
-  const changes: Record<string, string | null | Record<string, unknown>> = {};
-  if (parsed.data.language) changes.language = parsed.data.language;
-  if (parsed.data.workflowStep) changes.workflow_step = parsed.data.workflowStep;
-  if (parsed.data.complaintText !== undefined) changes.complaint_text = parsed.data.complaintText;
-  if (parsed.data.bodyRegion !== undefined) changes.body_region = parsed.data.bodyRegion;
-  if (parsed.data.bodySubregion !== undefined) changes.body_subregion = parsed.data.bodySubregion;
-  if (parsed.data.interviewData !== undefined) changes.interview_data = parsed.data.interviewData;
-  if (parsed.data.consentStatus) {
-    changes.consent_status = parsed.data.consentStatus;
-    changes.consent_version = parsed.data.consentStatus === "NOT_REVIEWED" ? null : consentVersion;
-    changes.consent_timestamp = parsed.data.consentStatus === "NOT_REVIEWED" ? null : new Date().toISOString();
+  try {
+    const updated = await withKioskTx(sessionId, async (client) => {
+      const current = await getCase(client, sessionId);
+      if (!current) return null;
+      if (current.status !== "ACTIVE" || current.expiresAt.getTime() <= Date.now()) {
+        return "INACTIVE" as const;
+      }
+      return updateCase(client, sessionId, {
+        language: parsed.language,
+        consentStatus: parsed.consentStatus,
+        workflowStep: parsed.workflowStep,
+        complaintText: parsed.complaintText,
+        bodyRegion: parsed.bodyRegion,
+        bodySubregion: parsed.bodySubregion,
+        interviewData: parsed.interviewData,
+      });
+    });
+    if (updated === null) return NextResponse.json({ error: "Session not found" }, { status: 404 });
+    if (updated === "INACTIVE") return NextResponse.json({ error: "Session is not active" }, { status: 410 });
+    return NextResponse.json({ session: toResponse(updated) });
+  } catch (error) {
+    console.error("Session update failed:", error);
+    return NextResponse.json({ error: "Unable to update session" }, { status: 503 });
   }
-  if (parsed.data.status && canTransitionStatus(current.data.status, parsed.data.status)) {
-    changes.status = parsed.data.status;
-    changes.completed_at = new Date().toISOString();
-  }
+}
 
-  const updated = await supabase.from("patient_sessions").update(changes).eq("id", id).eq("owner_id", user.id).select(sessionColumns).single<SessionRow>();
-  if (updated.error) return NextResponse.json({ error: "Unable to update session" }, { status: 503 });
-  return NextResponse.json({ session: toResponse(updated.data) });
+const WORKFLOW_STEPS = new Set(["welcome", "language", "consent", "start", "complaint", "anatomy", "interview", "documents", "summary", "complete"]);
+const BODY_REGIONS = new Set(["head", "chest", "abdomen", "back", "arm", "hand", "leg", "foot", "skin", "other"]);
+const BODY_SUBREGIONS = new Set(["front", "back", "left", "right", "upper", "lower", "middle", "face", "body"]);
+
+function parseSessionUpdate(body: unknown) {
+  const candidate = body as Record<string, unknown> | null;
+  if (!candidate) return null;
+  const result: {
+    language?: (typeof PatientLanguage.options)[number];
+    consentStatus?: "NOT_REVIEWED" | "ACCEPTED" | "DECLINED";
+    workflowStep?: PatientStep;
+    complaintText?: string | null;
+    bodyRegion?: string | null;
+    bodySubregion?: string | null;
+    interviewData?: Record<string, unknown> | null;
+  } = {};
+  if (candidate.language !== undefined) {
+    const parsed = PatientLanguage.safeParse(candidate.language);
+    if (!parsed.success) return null;
+    result.language = parsed.data;
+  }
+  if (candidate.consentStatus !== undefined) {
+    if (!["NOT_REVIEWED", "ACCEPTED", "DECLINED"].includes(candidate.consentStatus as string)) return null;
+    result.consentStatus = candidate.consentStatus as "NOT_REVIEWED" | "ACCEPTED" | "DECLINED";
+  }
+  if (candidate.workflowStep !== undefined) {
+    if (typeof candidate.workflowStep !== "string" || !WORKFLOW_STEPS.has(candidate.workflowStep)) return null;
+    result.workflowStep = candidate.workflowStep as PatientStep;
+  }
+  if (candidate.complaintText !== undefined) {
+    if (candidate.complaintText !== null && typeof candidate.complaintText !== "string") return null;
+    if (typeof candidate.complaintText === "string" && candidate.complaintText.length > 2000) return null;
+    result.complaintText = candidate.complaintText;
+  }
+  if (candidate.bodyRegion !== undefined) {
+    if (candidate.bodyRegion !== null && (typeof candidate.bodyRegion !== "string" || !BODY_REGIONS.has(candidate.bodyRegion))) return null;
+    result.bodyRegion = candidate.bodyRegion;
+  }
+  if (candidate.bodySubregion !== undefined) {
+    if (candidate.bodySubregion !== null && (typeof candidate.bodySubregion !== "string" || !BODY_SUBREGIONS.has(candidate.bodySubregion))) return null;
+    result.bodySubregion = candidate.bodySubregion;
+  }
+  if (candidate.interviewData !== undefined) {
+    if (candidate.interviewData !== null && typeof candidate.interviewData !== "object") return null;
+    result.interviewData = candidate.interviewData as Record<string, unknown> | null;
+  }
+  return result;
 }

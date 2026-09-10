@@ -1,33 +1,45 @@
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { documentRepository } from "@/lib/ocr/document-repository";
+import { cookies } from "next/headers";
+import { databaseConfigured, withKioskTx } from "@/lib/db/pool";
+import { closeSessionLifecycle, getCase } from "@/lib/db/cases";
+import { PostgresDocumentRepository } from "@/lib/db/documents-pg";
+import { SESSION_COOKIE } from "@/lib/db/session-scope";
 
-const sessionCookie = "medikiosk_session";
-
+/**
+ * Kiosk hand-off: complete the session lifecycle and purge its transient
+ * document bytes. Clinical case data (complaints, interview, evidence,
+ * signals, chat) is PRESERVED for the doctor console — a reset is a device
+ * hand-off, not a data deletion.
+ */
 export async function POST() {
-  const supabase = await createSupabaseServerClient();
-  const { data: user, error: authError } = await supabase.auth.getUser();
-  if (authError || !user.user) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
-
+  if (!databaseConfigured()) {
+    return NextResponse.json(
+      { error: "Session storage is not configured", code: "DB_NOT_CONFIGURED" },
+      { status: 503 },
+    );
+  }
   const cookieStore = await cookies();
-  const sessionId = cookieStore.get(sessionCookie)?.value;
+  const sessionId = cookieStore.get(SESSION_COOKIE)?.value;
 
   let deletedDocuments = 0;
   if (sessionId) {
-    // Purge all transient document/OCR/extraction state for this session.
-    deletedDocuments = await documentRepository.deleteBySessionId(sessionId);
-
-    const { error } = await supabase
-      .from("patient_sessions")
-      .update({ status: "COMPLETED", completed_at: new Date().toISOString() })
-      .eq("id", sessionId)
-      .eq("owner_id", user.user.id)
-      .eq("status", "ACTIVE");
-    if (error) return NextResponse.json({ error: "Unable to reset session" }, { status: 503 });
+    await withKioskTx(sessionId, async (client) => {
+      const session = await getCase(client, sessionId);
+      if (session && session.status === "ACTIVE") {
+        const documents = new PostgresDocumentRepository(client);
+        deletedDocuments = await documents.deleteBySessionId(sessionId);
+        await closeSessionLifecycle(client, sessionId, { type: "PATIENT", id: sessionId });
+      }
+    }).catch(() => {});
   }
 
   const response = NextResponse.json({ reset: true, session: null, deletedDocuments });
-  response.cookies.set(sessionCookie, "", { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: 0 });
+  response.cookies.set(SESSION_COOKIE, "", {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: 0,
+  });
   return response;
 }

@@ -14,13 +14,26 @@ function getIdempotencyKey() {
   return next;
 }
 
+/**
+ * When a Supabase project is configured (production target), the browser
+ * obtains an anonymous Supabase identity first, as before. With the durable
+ * PostgreSQL backend (kiosk mode) the server mints the session token itself,
+ * so a missing Supabase configuration is not an error for the patient flow.
+ */
 async function ensureAuthenticated() {
-  const supabase = createSupabaseBrowserClient();
-  const current = await supabase.auth.getUser();
-  if (current.data.user) return supabase;
-  const signedIn = await supabase.auth.signInAnonymously();
-  if (signedIn.error) throw new Error("Patient authentication is unavailable");
-  return supabase;
+  try {
+    const supabase = createSupabaseBrowserClient();
+    const current = await supabase.auth.getUser();
+    if (current.data.user) return supabase;
+    const signedIn = await supabase.auth.signInAnonymously();
+    if (signedIn.error) throw new Error("Patient authentication is unavailable");
+    return supabase;
+  } catch (error) {
+    if (error instanceof Error && error.message === "Supabase public configuration is missing") {
+      return null;
+    }
+    throw error;
+  }
 }
 
 /**

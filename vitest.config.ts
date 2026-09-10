@@ -4,6 +4,9 @@ import path from "node:path";
 export default defineConfig({
   resolve: {
     alias: {
+      // The server-only marker throws outside react-server; tests import
+      // server modules directly, so resolve it to an empty stub.
+      "server-only": path.resolve(__dirname, "vitest.server-only-stub.ts"),
       "@": path.resolve(__dirname),
     },
   },

@@ -20,6 +20,11 @@
 # production
 /build
 
+# environment (never commit secrets)
+.env
+.env.*
+!.env.example
+
 # misc
 .DS_Store
 *.pem

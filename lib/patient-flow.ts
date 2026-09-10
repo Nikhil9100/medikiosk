@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export const PatientLanguage = z.enum(["en", "hi", "bn", "te", "ta", "mr"]);
 export const ConsentStatus = z.enum(["NOT_REVIEWED", "ACCEPTED", "DECLINED"]);
-export const PatientStep = z.enum(["welcome", "language", "consent", "start", "complaint", "anatomy", "interview", "documents"]);
+export const PatientStep = z.enum(["welcome", "language", "consent", "start", "complaint", "anatomy", "interview", "documents", "summary", "complete"]);
 export const PatientBodyRegion = z.enum(["head", "chest", "abdomen", "back", "arm", "hand", "leg", "foot", "skin", "other"]);
 export const PatientBodySubregion = z.enum(["front", "back", "left", "right", "upper", "lower", "middle", "face", "body"]);
 
@@ -107,6 +107,7 @@ export function nextStep(step: PatientStep, consentStatus: ConsentStatus): Patie
   if (step === "complaint") return "anatomy";
   if (step === "anatomy") return "interview";
   if (step === "interview") return "documents";
+  if (step === "documents") return "summary";
   return step;
 }
 
@@ -118,5 +119,7 @@ export function previousStep(step: PatientStep): PatientStep {
   if (step === "anatomy") return "complaint";
   if (step === "interview") return "anatomy";
   if (step === "documents") return "interview";
+  if (step === "summary") return "documents";
+  if (step === "complete") return "summary";
   return "welcome";
 }

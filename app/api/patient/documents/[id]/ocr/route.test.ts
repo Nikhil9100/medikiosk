@@ -3,305 +3,177 @@
 // @ts-nocheck
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
-vi.mock("@/lib/supabase/server", () => ({
-  createSupabaseServerClient: vi.fn(() => ({
-    auth: {
-      getUser: vi.fn(() => ({
-        data: { user: { id: "user-123" } },
-        error: null,
-      })),
-    },
-  })),
+vi.mock("@/lib/db/pool", () => ({
+  databaseConfigured: vi.fn(() => true),
+  withKioskTx: vi.fn((_id: string, fn: (c: unknown) => unknown) => fn({})),
 }));
-
-let currentSessionId: string | null = "session-123";
-
-const createMockCookies = (sessionId: string | null) => {
-  const store = new Map<string, { name: string; value: string }>();
-  if (sessionId) {
-    store.set("medikiosk_session", { name: "medikiosk_session", value: sessionId });
-  }
-  return Promise.resolve({
-    get: vi.fn((name: string) => store.get(name) ?? undefined),
-    getAll: vi.fn(() => Array.from(store.values())),
-    has: vi.fn((name: string) => store.has(name)),
-    [Symbol.iterator]: vi.fn(function* () {
-      yield* store.values();
-    }),
-    size: store.size,
-  });
-};
-
-// @ts-ignore
-vi.mock("next/headers", () => ({
-  cookies: vi.fn(() => createMockCookies(currentSessionId)),
+vi.mock("@/lib/db/session-scope", () => ({
+  getActiveKioskSession: vi.fn(),
 }));
-
-vi.mock("@/lib/ocr/document-repository", () => ({
-  documentRepository: {
-    findById: vi.fn(),
-    findBySessionId: vi.fn(),
-    getBuffer: vi.fn(),
-    update: vi.fn(),
-    addOcrResult: vi.fn(),
-    getDocumentWithOcr: vi.fn(),
-  },
+vi.mock("@/lib/db/scoped-document-repository", () => ({
+  scopedDocumentRepository: vi.fn(),
 }));
-
 vi.mock("@/lib/ocr/pipeline", () => ({
   processDocumentForOcr: vi.fn(),
 }));
 
-import { cookies } from "next/headers";
+import { getActiveKioskSession } from "@/lib/db/session-scope";
+import { scopedDocumentRepository } from "@/lib/db/scoped-document-repository";
 import { POST, GET } from "./route";
 import { POST as retryPOST } from "./retry/route";
-import { documentRepository } from "@/lib/ocr/document-repository";
 import { processDocumentForOcr } from "@/lib/ocr/pipeline";
+import { makeFakeSession } from "../../../../../../test/db-mocks";
+
+const mockRepo = {
+  findById: vi.fn(),
+  update: vi.fn(),
+  getBuffer: vi.fn(),
+  addOcrResult: vi.fn(),
+  getDocumentWithOcr: vi.fn(),
+};
+
+function setup(sessionId: string | null, doc: any = null) {
+  vi.mocked(getActiveKioskSession).mockResolvedValue(sessionId ? makeFakeSession({ id: sessionId }) : null);
+  vi.mocked(scopedDocumentRepository).mockReturnValue(mockRepo);
+  vi.mocked(mockRepo.findById).mockResolvedValue(doc);
+}
 
 describe("POST /api/patient/documents/[id]/ocr", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    currentSessionId = "session-123";
-    vi.mocked(cookies).mockReturnValue(createMockCookies(currentSessionId) as any);
   });
 
-  it("requires authentication", async () => {
-    const { createSupabaseServerClient } = await import("@/lib/supabase/server");
-    vi.mocked(createSupabaseServerClient).mockReturnValueOnce({
-      auth: {
-        getUser: vi.fn(() => ({ data: { user: null }, error: { message: "unauthorized" } })),
-      },
-    } as unknown as ReturnType<typeof createSupabaseServerClient>);
-
+  it("returns 404 when there is no active session", async () => {
+    setup(null);
     const response = await POST(new Request("http://localhost/api/patient/documents/doc-123/ocr"), { params: Promise.resolve({ id: "doc-123" }) });
     const data = await response.json();
-
-    expect(response.status).toBe(401);
-    expect(data.error).toBe("Authentication required");
-  });
-
-  it("requires active session", async () => {
-    const { createSupabaseServerClient } = await import("@/lib/supabase/server");
-    vi.mocked(createSupabaseServerClient).mockReturnValueOnce({
-      auth: {
-        getUser: vi.fn(() => ({ data: { user: { id: "user-123" } }, error: null })),
-      },
-    } as unknown as ReturnType<typeof createSupabaseServerClient>);
-
-    currentSessionId = null;
-    vi.mocked(cookies).mockReturnValue(createMockCookies(currentSessionId) as any);
-
-    const response = await POST(new Request("http://localhost/api/patient/documents/doc-123/ocr"), { params: Promise.resolve({ id: "doc-123" }) });
-    const data = await response.json();
-
     expect(response.status).toBe(404);
     expect(data.error).toBe("No active session");
   });
 
   it("returns 404 for non-existent document", async () => {
-    const { createSupabaseServerClient } = await import("@/lib/supabase/server");
-    vi.mocked(createSupabaseServerClient).mockReturnValueOnce({
-      auth: {
-        getUser: vi.fn(() => ({ data: { user: { id: "user-123" } }, error: null })),
-      },
-    } as unknown as ReturnType<typeof createSupabaseServerClient>);
-
-    vi.mocked(cookies).mockReturnValue(createMockCookies("session-123"));
-
-    vi.mocked(documentRepository.findById).mockResolvedValueOnce(null);
-
+    setup("session-123", null);
     const response = await POST(new Request("http://localhost/api/patient/documents/doc-123/ocr"), { params: Promise.resolve({ id: "doc-123" }) });
     const data = await response.json();
-
     expect(response.status).toBe(404);
     expect(data.error).toBe("Document not found");
   });
 
   it("rejects OCR on already completed document", async () => {
-    const { createSupabaseServerClient } = await import("@/lib/supabase/server");
-    vi.mocked(createSupabaseServerClient).mockReturnValueOnce({
-      auth: {
-        getUser: vi.fn(() => ({ data: { user: { id: "user-123" } }, error: null })),
-      },
-    } as unknown as ReturnType<typeof createSupabaseServerClient>);
-
-    vi.mocked(cookies).mockReturnValue(createMockCookies("session-123"));
-
-    vi.mocked(documentRepository.findById).mockResolvedValueOnce({
+    setup("session-123", {
       id: "doc-123",
       sessionId: "session-123",
       processingStatus: "OCR_COMPLETE",
       ocrStatus: "COMPLETED",
       errors: [],
-    } as any);
-
+    });
     const response = await POST(new Request("http://localhost/api/patient/documents/doc-123/ocr"), { params: Promise.resolve({ id: "doc-123" }) });
     const data = await response.json();
-
     expect(response.status).toBe(409);
     expect(data.error).toBe("OCR already completed");
   });
 
   it("denies a session access to another session's document (no cross-patient access)", async () => {
-    const { createSupabaseServerClient } = await import("@/lib/supabase/server");
-    vi.mocked(createSupabaseServerClient).mockReturnValueOnce({
-      auth: {
-        getUser: vi.fn(() => ({ data: { user: { id: "user-123" } }, error: null })),
-      },
-    } as unknown as ReturnType<typeof createSupabaseServerClient>);
-
-    // Patient B's session cookie tries to touch Patient A's document.
-    vi.mocked(cookies).mockReturnValue(createMockCookies("session-patient-b"));
-    vi.mocked(documentRepository.findById).mockResolvedValueOnce({
+    // Patient B's session touches Patient A's document.
+    setup("session-patient-b", {
       id: "patient-a-doc",
       sessionId: "session-patient-a",
       processingStatus: "READY_FOR_OCR",
       ocrStatus: "PENDING",
       mimeType: "application/pdf",
       errors: [],
-    } as any);
-
+    });
     const response = await POST(new Request("http://localhost/api/patient/documents/patient-a-doc/ocr"), { params: Promise.resolve({ id: "patient-a-doc" }) });
     const data = await response.json();
-
     expect(response.status).toBe(403);
     expect(data.error).toBe("Access denied");
   });
 
   it("rejects OCR on document without stored buffer", async () => {
-    const { createSupabaseServerClient } = await import("@/lib/supabase/server");
-    vi.mocked(createSupabaseServerClient).mockReturnValueOnce({
-      auth: {
-        getUser: vi.fn(() => ({ data: { user: { id: "user-123" } }, error: null })),
-      },
-    } as unknown as ReturnType<typeof createSupabaseServerClient>);
-
-    vi.mocked(cookies).mockReturnValue(createMockCookies("session-123"));
-
-    vi.mocked(documentRepository.findById).mockResolvedValueOnce({
+    setup("session-123", {
       id: "doc-123",
       sessionId: "session-123",
       processingStatus: "READY_FOR_OCR",
       ocrStatus: "PENDING",
       mimeType: "application/pdf",
       errors: [],
-    } as any);
-
-    vi.mocked(documentRepository.update).mockResolvedValueOnce({
-      id: "doc-123",
-      sessionId: "session-123",
-      processingStatus: "OCR_PROCESSING",
-      ocrStatus: "PROCESSING",
-    } as any);
-
-    vi.mocked(documentRepository.getBuffer).mockResolvedValueOnce(null);
+    });
+    vi.mocked(mockRepo.update).mockResolvedValue({ id: "doc-123", processingStatus: "OCR_PROCESSING", ocrStatus: "PROCESSING" });
+    vi.mocked(mockRepo.getBuffer).mockResolvedValue(null);
 
     const response = await POST(new Request("http://localhost/api/patient/documents/doc-123/ocr"), { params: Promise.resolve({ id: "doc-123" }) });
     const data = await response.json();
-
     expect(response.status).toBe(410);
     expect(data.error).toBe("Document buffer not available");
   });
 
   it("processes OCR successfully", async () => {
-    const { createSupabaseServerClient } = await import("@/lib/supabase/server");
-    vi.mocked(createSupabaseServerClient).mockReturnValueOnce({
-      auth: {
-        getUser: vi.fn(() => ({ data: { user: { id: "user-123" } }, error: null })),
-      },
-    } as unknown as ReturnType<typeof createSupabaseServerClient>);
-
-    vi.mocked(cookies).mockReturnValue(createMockCookies("session-123"));
-
-    const mockDocument = {
+    setup("session-123", {
       id: "doc-123",
       sessionId: "session-123",
-      processingStatus: "READY_FOR_OCR" as const,
-      ocrStatus: "PENDING" as const,
+      processingStatus: "READY_FOR_OCR",
+      ocrStatus: "PENDING",
       mimeType: "image/png",
-      errors: [] as string[],
-    };
-
-    vi.mocked(documentRepository.findById).mockResolvedValueOnce(mockDocument as any);
-    vi.mocked(documentRepository.update).mockResolvedValueOnce({ ...mockDocument, processingStatus: "OCR_PROCESSING", ocrStatus: "PROCESSING" } as any);
-    vi.mocked(documentRepository.getBuffer).mockResolvedValueOnce(new ArrayBuffer(8));
-    vi.mocked(processDocumentForOcr).mockResolvedValueOnce({
-      ...mockDocument,
-      processingStatus: "OCR_COMPLETE" as const,
-      ocrStatus: "COMPLETED" as const,
-      ocrResults: [{
-        documentId: "doc-123",
-        sessionId: "session-123",
-        pages: [{ pageNumber: 1, extractedText: "test", language: "eng" as any }],
-        providerMetadata: { provider: "tesseract", language: "eng" as any, createdAt: new Date().toISOString() },
-        handwritingDetected: false,
-        createdAt: new Date().toISOString(),
-      }],
-    } as any);
-    vi.mocked(documentRepository.addOcrResult).mockResolvedValueOnce(null);
+      errors: [],
+    });
+    vi.mocked(mockRepo.update).mockResolvedValue({ id: "doc-123", sessionId: "session-123", processingStatus: "OCR_PROCESSING", ocrStatus: "PROCESSING" });
+    vi.mocked(mockRepo.getBuffer).mockResolvedValue(new ArrayBuffer(8));
+    vi.mocked(processDocumentForOcr).mockResolvedValue({
+      processingStatus: "OCR_COMPLETE",
+      ocrStatus: "COMPLETED",
+      ocrResults: [
+        {
+          documentId: "doc-123",
+          sessionId: "session-123",
+          pages: [{ pageNumber: 1, extractedText: "test", language: "eng" }],
+          providerMetadata: { provider: "tesseract", language: "eng", createdAt: new Date().toISOString() },
+          handwritingDetected: false,
+          createdAt: new Date().toISOString(),
+        },
+      ],
+    });
+    vi.mocked(mockRepo.addOcrResult).mockResolvedValue(null);
 
     const response = await POST(new Request("http://localhost/api/patient/documents/doc-123/ocr"), { params: Promise.resolve({ id: "doc-123" }) });
     const data = await response.json();
-
     expect(response.status).toBe(200);
     expect(data.status).toBe("OCR_COMPLETE");
     expect(data.ocrStatus).toBe("COMPLETED");
   });
 
   it("handles provider failure gracefully", async () => {
-    const { createSupabaseServerClient } = await import("@/lib/supabase/server");
-    vi.mocked(createSupabaseServerClient).mockReturnValueOnce({
-      auth: {
-        getUser: vi.fn(() => ({ data: { user: { id: "user-123" } }, error: null })),
-      },
-    } as unknown as ReturnType<typeof createSupabaseServerClient>);
-
-    vi.mocked(cookies).mockReturnValue(createMockCookies("session-123"));
-
-    const mockDocument = {
+    setup("session-123", {
       id: "doc-123",
       sessionId: "session-123",
-      processingStatus: "READY_FOR_OCR" as const,
-      ocrStatus: "PENDING" as const,
+      processingStatus: "READY_FOR_OCR",
+      ocrStatus: "PENDING",
       mimeType: "application/pdf",
-      errors: [] as string[],
-    };
-
-    vi.mocked(documentRepository.findById).mockResolvedValueOnce(mockDocument as any);
-    vi.mocked(documentRepository.update).mockResolvedValueOnce({ ...mockDocument, processingStatus: "OCR_PROCESSING", ocrStatus: "PROCESSING" } as any);
-    vi.mocked(documentRepository.getBuffer).mockResolvedValueOnce(new ArrayBuffer(8));
-    vi.mocked(processDocumentForOcr).mockRejectedValueOnce(new Error("Provider timeout"));
-    vi.mocked(documentRepository.update).mockResolvedValueOnce({ ...mockDocument, processingStatus: "FAILED", ocrStatus: "FAILED", errors: ["Provider timeout"] } as any);
+      errors: [],
+    });
+    vi.mocked(mockRepo.update).mockResolvedValue({ id: "doc-123", processingStatus: "OCR_PROCESSING", ocrStatus: "PROCESSING" });
+    vi.mocked(mockRepo.getBuffer).mockResolvedValue(new ArrayBuffer(8));
+    vi.mocked(processDocumentForOcr).mockRejectedValue(new Error("Provider timeout"));
 
     const response = await POST(new Request("http://localhost/api/patient/documents/doc-123/ocr"), { params: Promise.resolve({ id: "doc-123" }) });
     const data = await response.json();
-
     expect(response.status).toBe(500);
     expect(data.error).toBe("OCR failed");
+    // The failure was persisted with the OCR failure stage.
+    const failUpdate = vi.mocked(mockRepo.update).mock.calls.find((c) => (c[1] as any)?.failureStage === "OCR");
+    expect(failUpdate).toBeTruthy();
   });
 
   it("rejects OCR on a document that failed at extraction", async () => {
-    const { createSupabaseServerClient } = await import("@/lib/supabase/server");
-    vi.mocked(createSupabaseServerClient).mockReturnValueOnce({
-      auth: {
-        getUser: vi.fn(() => ({ data: { user: { id: "user-123" } }, error: null })),
-      },
-    } as unknown as ReturnType<typeof createSupabaseServerClient>);
-
-    vi.mocked(cookies).mockReturnValue(createMockCookies("session-123"));
-
-    vi.mocked(documentRepository.findById).mockResolvedValueOnce({
+    setup("session-123", {
       id: "doc-123",
       sessionId: "session-123",
       processingStatus: "FAILED",
       ocrStatus: "COMPLETED",
       failureStage: "EXTRACTION",
       errors: [],
-    } as any);
-
+    });
     const response = await POST(new Request("http://localhost/api/patient/documents/doc-123/ocr"), { params: Promise.resolve({ id: "doc-123" }) });
     const data = await response.json();
-
     expect(response.status).toBe(409);
     expect(data.error).toBe("OCR cannot restart after an extraction failure");
   });
@@ -310,60 +182,35 @@ describe("POST /api/patient/documents/[id]/ocr", () => {
 describe("GET /api/patient/documents/[id]/ocr", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    currentSessionId = "session-123";
-    vi.mocked(cookies).mockReturnValue(createMockCookies(currentSessionId) as any);
   });
 
-  it("requires authentication", async () => {
-    const { createSupabaseServerClient } = await import("@/lib/supabase/server");
-    vi.mocked(createSupabaseServerClient).mockReturnValueOnce({
-      auth: {
-        getUser: vi.fn(() => ({ data: { user: null }, error: { message: "unauthorized" } })),
-      },
-    } as unknown as ReturnType<typeof createSupabaseServerClient>);
-
+  it("returns 404 when there is no active session", async () => {
+    setup(null);
     const response = await GET(new Request("http://localhost/api/patient/documents/doc-123/ocr"), { params: Promise.resolve({ id: "doc-123" }) });
-    const data = await response.json();
-
-    expect(response.status).toBe(401);
-    expect(data.error).toBe("Authentication required");
+    expect(response.status).toBe(404);
   });
 
   it("returns OCR status for owned document", async () => {
-    const { createSupabaseServerClient } = await import("@/lib/supabase/server");
-    vi.mocked(createSupabaseServerClient).mockReturnValueOnce({
-      auth: {
-        getUser: vi.fn(() => ({ data: { user: { id: "user-123" } }, error: null })),
-      },
-    } as unknown as ReturnType<typeof createSupabaseServerClient>);
-
-    vi.mocked(cookies).mockReturnValue(createMockCookies("session-123"));
-
-    vi.mocked(documentRepository.findById).mockResolvedValueOnce({
+    setup("session-123", { id: "doc-123", sessionId: "session-123", processingStatus: "OCR_COMPLETE", ocrStatus: "COMPLETED" });
+    vi.mocked(mockRepo.getDocumentWithOcr).mockResolvedValue({
       id: "doc-123",
       sessionId: "session-123",
       processingStatus: "OCR_COMPLETE",
       ocrStatus: "COMPLETED",
-    } as any);
-
-    vi.mocked(documentRepository.getDocumentWithOcr).mockResolvedValueOnce({
-      id: "doc-123",
-      sessionId: "session-123",
-      processingStatus: "OCR_COMPLETE",
-      ocrStatus: "COMPLETED",
-      ocrResults: [{
-        documentId: "doc-123",
-        sessionId: "session-123",
-        pages: [{ pageNumber: 1, extractedText: "test", language: "eng" as any }],
-        providerMetadata: { provider: "tesseract", language: "eng" as any, createdAt: new Date().toISOString() },
-        handwritingDetected: false,
-        createdAt: new Date().toISOString(),
-      }],
-    } as any);
+      ocrResults: [
+        {
+          documentId: "doc-123",
+          sessionId: "session-123",
+          pages: [{ pageNumber: 1, extractedText: "test", language: "eng" }],
+          providerMetadata: { provider: "tesseract", language: "eng", createdAt: new Date().toISOString() },
+          handwritingDetected: false,
+          createdAt: new Date().toISOString(),
+        },
+      ],
+    });
 
     const response = await GET(new Request("http://localhost/api/patient/documents/doc-123/ocr"), { params: Promise.resolve({ id: "doc-123" }) });
     const data = await response.json();
-
     expect(response.status).toBe(200);
     expect(data.ocrStatus).toBe("COMPLETED");
     expect(data.ocrResults).toHaveLength(1);
@@ -371,20 +218,9 @@ describe("GET /api/patient/documents/[id]/ocr", () => {
   });
 
   it("returns 404 for non-existent document", async () => {
-    const { createSupabaseServerClient } = await import("@/lib/supabase/server");
-    vi.mocked(createSupabaseServerClient).mockReturnValueOnce({
-      auth: {
-        getUser: vi.fn(() => ({ data: { user: { id: "user-123" } }, error: null })),
-      },
-    } as unknown as ReturnType<typeof createSupabaseServerClient>);
-
-    vi.mocked(cookies).mockReturnValue(createMockCookies("session-123"));
-
-    vi.mocked(documentRepository.findById).mockResolvedValueOnce(null);
-
+    setup("session-123", null);
     const response = await GET(new Request("http://localhost/api/patient/documents/doc-123/ocr"), { params: Promise.resolve({ id: "doc-123" }) });
     const data = await response.json();
-
     expect(response.status).toBe(404);
     expect(data.error).toBe("Document not found");
   });
@@ -393,111 +229,68 @@ describe("GET /api/patient/documents/[id]/ocr", () => {
 describe("POST /api/patient/documents/[id]/ocr/retry", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    currentSessionId = "session-123";
-    vi.mocked(cookies).mockReturnValue(createMockCookies(currentSessionId) as any);
   });
 
-  it("requires authentication", async () => {
-    const { createSupabaseServerClient } = await import("@/lib/supabase/server");
-    vi.mocked(createSupabaseServerClient).mockReturnValueOnce({
-      auth: {
-        getUser: vi.fn(() => ({ data: { user: null }, error: { message: "unauthorized" } })),
-      },
-    } as unknown as ReturnType<typeof createSupabaseServerClient>);
-
+  it("returns 404 when there is no active session", async () => {
+    setup(null);
     const response = await retryPOST(new Request("http://localhost/api/patient/documents/doc-123/ocr/retry"), { params: Promise.resolve({ id: "doc-123" }) });
-    const data = await response.json();
-
-    expect(response.status).toBe(401);
-    expect(data.error).toBe("Authentication required");
+    expect(response.status).toBe(404);
   });
 
   it("rejects retry on non-failed document", async () => {
-    const { createSupabaseServerClient } = await import("@/lib/supabase/server");
-    vi.mocked(createSupabaseServerClient).mockReturnValueOnce({
-      auth: {
-        getUser: vi.fn(() => ({ data: { user: { id: "user-123" } }, error: null })),
-      },
-    } as unknown as ReturnType<typeof createSupabaseServerClient>);
-
-    vi.mocked(cookies).mockReturnValue(createMockCookies("session-123"));
-
-    vi.mocked(documentRepository.findById).mockResolvedValueOnce({
-      id: "doc-123",
-      sessionId: "session-123",
-      processingStatus: "OCR_COMPLETE",
-      ocrStatus: "COMPLETED",
-      errors: [],
-    } as any);
-
+    setup("session-123", { id: "doc-123", sessionId: "session-123", processingStatus: "OCR_COMPLETE", ocrStatus: "COMPLETED", errors: [] });
     const response = await retryPOST(new Request("http://localhost/api/patient/documents/doc-123/ocr/retry"), { params: Promise.resolve({ id: "doc-123" }) });
     const data = await response.json();
-
     expect(response.status).toBe(409);
     expect(data.error).toBe("Only failed OCR jobs can be retried");
   });
 
   it("retries failed OCR successfully", async () => {
-    const { createSupabaseServerClient } = await import("@/lib/supabase/server");
-    vi.mocked(createSupabaseServerClient).mockReturnValueOnce({
-      auth: {
-        getUser: vi.fn(() => ({ data: { user: { id: "user-123" } }, error: null })),
-      },
-    } as unknown as ReturnType<typeof createSupabaseServerClient>);
-
-    vi.mocked(cookies).mockReturnValue(createMockCookies("session-123"));
-
-    const mockDocument = {
+    setup("session-123", {
       id: "doc-123",
       sessionId: "session-123",
-      processingStatus: "FAILED" as const,
-      ocrStatus: "FAILED" as const,
+      processingStatus: "FAILED",
+      ocrStatus: "FAILED",
       mimeType: "image/png",
       errors: ["Previous error"],
-    };
-
-    vi.mocked(documentRepository.findById).mockResolvedValueOnce(mockDocument as any);
-    vi.mocked(documentRepository.update).mockResolvedValueOnce({ ...mockDocument, processingStatus: "READY_FOR_OCR", ocrStatus: "PENDING", errors: [] } as any);
-    vi.mocked(documentRepository.getBuffer).mockResolvedValueOnce(new ArrayBuffer(8));
-    vi.mocked(processDocumentForOcr).mockResolvedValueOnce({
-      ...mockDocument,
-      processingStatus: "OCR_COMPLETE" as const,
-      ocrStatus: "COMPLETED" as const,
-      ocrResults: [],
-    } as any);
-    vi.mocked(documentRepository.addOcrResult).mockResolvedValueOnce(null);
+    });
+    vi.mocked(mockRepo.update).mockResolvedValue({ id: "doc-123", sessionId: "session-123", processingStatus: "OCR_PROCESSING", ocrStatus: "PROCESSING" });
+    vi.mocked(mockRepo.getBuffer).mockResolvedValue(new ArrayBuffer(8));
+    vi.mocked(processDocumentForOcr).mockResolvedValue({
+      processingStatus: "OCR_COMPLETE",
+      ocrStatus: "COMPLETED",
+      ocrResults: [
+        {
+          documentId: "doc-123",
+          sessionId: "session-123",
+          pages: [{ pageNumber: 1, extractedText: "retried", language: "eng" }],
+          providerMetadata: { provider: "tesseract", language: "eng", createdAt: new Date().toISOString() },
+          handwritingDetected: false,
+          createdAt: new Date().toISOString(),
+        },
+      ],
+    });
+    vi.mocked(mockRepo.addOcrResult).mockResolvedValue(null);
 
     const response = await retryPOST(new Request("http://localhost/api/patient/documents/doc-123/ocr/retry"), { params: Promise.resolve({ id: "doc-123" }) });
     const data = await response.json();
-
     expect(response.status).toBe(200);
     expect(data.status).toBe("OCR_COMPLETE");
     expect(data.ocrStatus).toBe("COMPLETED");
   });
 
   it("rejects OCR retry on a document that failed at extraction", async () => {
-    const { createSupabaseServerClient } = await import("@/lib/supabase/server");
-    vi.mocked(createSupabaseServerClient).mockReturnValueOnce({
-      auth: {
-        getUser: vi.fn(() => ({ data: { user: { id: "user-123" } }, error: null })),
-      },
-    } as unknown as ReturnType<typeof createSupabaseServerClient>);
-
-    vi.mocked(cookies).mockReturnValue(createMockCookies("session-123"));
-
-    vi.mocked(documentRepository.findById).mockResolvedValueOnce({
+    setup("session-123", {
       id: "doc-123",
       sessionId: "session-123",
-      processingStatus: "FAILED" as const,
-      ocrStatus: "COMPLETED" as const,
-      failureStage: "EXTRACTION" as const,
+      processingStatus: "FAILED",
+      ocrStatus: "COMPLETED",
+      failureStage: "EXTRACTION",
       errors: [],
-    } as any);
-
+    });
     const response = await retryPOST(new Request("http://localhost/api/patient/documents/doc-123/ocr/retry"), { params: Promise.resolve({ id: "doc-123" }) });
     const data = await response.json();
-
     expect(response.status).toBe(409);
-    expect(data.error).toBe("OCR cannot retry after an extraction failure");
+    expect(data.error).toBe("This document failed at extraction. Use the extraction retry instead.");
   });
 });
