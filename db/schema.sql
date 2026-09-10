@@ -532,10 +532,13 @@ CREATE POLICY kiosk_heartbeats_write ON kiosk_heartbeats
   FOR INSERT WITH CHECK (nullif(current_setting('app.kiosk_id', true), '') IS NOT NULL
                          AND kiosk_id = nullif(current_setting('app.kiosk_id', true), ''));
 
+-- Staff may update any kiosk row (e.g. ops triage clears an interrupted
+-- session); a kiosk device may update only its own row.
 DROP POLICY IF EXISTS kiosk_heartbeats_update ON kiosk_heartbeats;
 CREATE POLICY kiosk_heartbeats_update ON kiosk_heartbeats
-  FOR UPDATE USING (nullif(current_setting('app.kiosk_id', true), '') IS NOT NULL
-                    AND kiosk_id = nullif(current_setting('app.kiosk_id', true), ''));
+  FOR UPDATE USING (app_access_role() = 'staff'
+                    OR (nullif(current_setting('app.kiosk_id', true), '') IS NOT NULL
+                        AND kiosk_id = nullif(current_setting('app.kiosk_id', true), '')));
 
 -- Knowledge base: staff can read (and the ingestion job, running as staff scope, can write).
 DROP POLICY IF EXISTS knowledge_documents_read ON knowledge_documents;
