@@ -1,6 +1,6 @@
 import "server-only";
 
-import type { PoolClient } from "pg";
+import type { PoolClient, QueryResult } from "pg";
 import type { PatientLanguage } from "@/lib/patient-flow";
 import {
   canTransitionCaseStatus,
@@ -97,21 +97,44 @@ export async function createCase(
     demoFlag?: boolean;
   },
 ): Promise<CaseRecord> {
+  // SECURITY DEFINER lookup: the row from a previous retry is invisible under
+  // this owner-scoped RLS transaction (see db/schema.sql).
   const existing = await client.query(
-    `SELECT ${caseColumns} FROM patient_sessions WHERE idempotency_key = $1`,
+    `SELECT ${caseColumns} FROM find_session_by_idempotency($1)`,
     [params.idempotencyKey],
   );
   if (existing.rows.length > 0) {
     return toCaseRecord(existing.rows[0]);
   }
 
-  const inserted = await client.query(
-    `INSERT INTO patient_sessions
-       (owner_id, idempotency_key, language, demo_flag, case_no)
-     VALUES ($1, $2, $3, $4, (SELECT COALESCE(MAX(case_no), 0) + 1 FROM patient_sessions))
-     RETURNING ${caseColumns}`,
-    [params.ownerUuid, params.idempotencyKey, params.language, params.demoFlag ?? false],
-  );
+  // A failed statement aborts the whole Postgres transaction, so the insert
+  // is isolated in a savepoint: a unique-violation can be recovered from and
+  // the re-SELECT below still runs. case_no comes from a sequence (see
+  // db/schema.sql) — atomic and RLS-immune, unlike MAX()+1.
+  await client.query(`SAVEPOINT medikiosk_case_insert`);
+  let inserted: QueryResult;
+  try {
+    inserted = await client.query(
+      `INSERT INTO patient_sessions
+         (owner_id, idempotency_key, language, demo_flag, case_no)
+       VALUES ($1, $2, $3, $4, nextval('medikiosk_case_no_seq'))
+       RETURNING ${caseColumns}`,
+      [params.ownerUuid, params.idempotencyKey, params.language, params.demoFlag ?? false],
+    );
+  } catch (error) {
+    // Concurrent duplicate of the idempotency key: the other transaction won.
+    // (The insert blocks on the unique constraint until it commits, then fails
+    // with 23505; the row is now visible to this READ COMMITTED snapshot.)
+    if ((error as { code?: string }).code === "23505") {
+      await client.query(`ROLLBACK TO SAVEPOINT medikiosk_case_insert`);
+      const dup = await client.query(
+        `SELECT ${caseColumns} FROM find_session_by_idempotency($1)`,
+        [params.idempotencyKey],
+      );
+      if (dup.rows.length > 0) return toCaseRecord(dup.rows[0]);
+    }
+    throw error;
+  }
   await writeAudit(client, { type: "PATIENT", id: inserted.rows[0].id }, "case.created", {
     type: "case",
     id: inserted.rows[0].case_id,
@@ -183,10 +206,14 @@ export async function transitionCase(
   if (!canTransitionCaseStatus(current.caseStatus, next)) {
     throw new Error(`Invalid case status transition: ${current.caseStatus} -> ${next}`);
   }
+  // $1 is always case_status; extra SET columns continue from $2, and the
+  // WHERE id placeholder is last. (A push() return value here would reuse $1
+  // for two differently-typed columns -> 42P08.)
   const extra: string[] = [];
   const values: unknown[] = [];
   if (next === "COMPLETED") {
-    extra.push(`completed_at = $${values.push(new Date().toISOString())}`);
+    values.push(new Date().toISOString());
+    extra.push(`completed_at = $${values.length + 1}`);
   }
   const sql = `UPDATE patient_sessions SET case_status = $1${extra.length ? `, ${extra.join(", ")}` : ""}
                WHERE id = $${values.length + 2} RETURNING ${caseColumns}`;

@@ -37,6 +37,33 @@ $$ LANGUAGE sql STABLE;
 -- Cases (patient sessions)
 -- ---------------------------------------------------------------------------
 
+-- case_no comes from a sequence, not MAX()+1: the insert runs under the
+-- new session's RLS scope (which sees no patient_sessions rows), so a MAX()
+-- subquery would always return NULL and collide on case_no 1. Sequences are
+-- atomic and not subject to row-level security. Gaps on rollback are
+-- acceptable: case numbers need uniqueness, not density.
+CREATE SEQUENCE IF NOT EXISTS medikiosk_case_no_seq START 1;
+
+-- Idempotency lookup for session creation. Runs SECURITY DEFINER (owner is a
+-- superuser, so RLS is bypassed) because a retried create opens a fresh
+-- owner-scoped transaction that cannot see the original row under RLS.
+-- Without this, a kiosk retry with the same Idempotency-Key would silently
+-- create a second session.
+-- RETURNS SETOF (not bare row type): on PostgreSQL 17 a SQL function with a
+-- bare `RETURNS patient_sessions` row type mis-plans `SELECT * FROM ... WHERE
+-- col = param` and returns a phantom all-NULL row, which would make every
+-- new session "find" a ghost existing session. SETOF plans correctly.
+DROP FUNCTION IF EXISTS find_session_by_idempotency(text);
+CREATE OR REPLACE FUNCTION find_session_by_idempotency(p_key text)
+RETURNS SETOF patient_sessions
+LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT * FROM patient_sessions WHERE idempotency_key = p_key LIMIT 1;
+$$;
+REVOKE EXECUTE ON FUNCTION find_session_by_idempotency(text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION find_session_by_idempotency(text) TO medikiosk_app;
+
 CREATE TABLE IF NOT EXISTS patient_sessions (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   case_no integer UNIQUE,
@@ -393,7 +420,7 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON
 TO medikiosk_app;
 
 GRANT USAGE, SELECT ON SEQUENCE ocr_results_id_seq, document_extractions_id_seq,
-  knowledge_chunks_id_seq, audit_log_id_seq TO medikiosk_app;
+  knowledge_chunks_id_seq, audit_log_id_seq, medikiosk_case_no_seq TO medikiosk_app;
 
 -- ---------------------------------------------------------------------------
 -- ROW LEVEL SECURITY (forced; no policy uses unrestricted USING (true))
