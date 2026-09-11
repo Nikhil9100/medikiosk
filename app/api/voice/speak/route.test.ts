@@ -10,6 +10,11 @@ vi.mock("@/lib/sarvam", async () => ({
   speakWithSarvam: mockSpeakWithSarvam,
 }));
 
+const mockGetActiveKioskSession = vi.fn();
+vi.mock("@/lib/db/session-scope", () => ({
+  getActiveKioskSession: mockGetActiveKioskSession,
+}));
+
 function createMockRequest(body: unknown): Request {
   return {
     json: async () => body,
@@ -22,10 +27,23 @@ describe("POST /api/voice/speak", () => {
     mockSpeakWithSarvam.mockReset();
     mockMapApplicationLanguageToSarvam.mockReset();
     mockGetSarvamApiKey.mockReset();
+    mockGetActiveKioskSession.mockReset();
+    mockGetActiveKioskSession.mockResolvedValue({ id: "session-1" });
     mockMapApplicationLanguageToSarvam.mockImplementation((lang: string) => {
       if (lang === "en") return "en-IN";
       throw new Error("Unsupported");
     });
+  });
+
+  it("rejects unauthenticated requests (no patient session -> 404)", async () => {
+    mockGetActiveKioskSession.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const response = await POST(createMockRequest({ text: "Hello", language: "en" }));
+    const data = await response.json();
+
+    expect(response.status).toBe(404);
+    expect(data.error).toBe("No active session");
+    expect(mockSpeakWithSarvam).not.toHaveBeenCalled();
   });
 
   it("rejects missing text", async () => {

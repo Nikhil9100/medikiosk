@@ -30,6 +30,13 @@ export async function PATCH(
   }
   const staff = await getAuthenticatedStaff();
   if (!staff) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  if (staff.role !== "DOCTOR") {
+    return NextResponse.json({ error: "Physician role required" }, { status: 403 });
+  }
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!UUID_RE.test(sessionId) || !UUID_RE.test(signalId)) {
+    return NextResponse.json({ error: "Signal not found" }, { status: 404 });
+  }
 
   const body = await request.json().catch(() => null);
   const parsed = PatchSchema.safeParse(body);

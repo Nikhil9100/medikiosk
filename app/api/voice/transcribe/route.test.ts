@@ -10,6 +10,11 @@ vi.mock("@/lib/sarvam", async () => ({
   transcribeWithSarvam: mockTranscribeWithSarvam,
 }));
 
+const mockGetActiveKioskSession = vi.fn();
+vi.mock("@/lib/db/session-scope", () => ({
+  getActiveKioskSession: mockGetActiveKioskSession,
+}));
+
 function createMockFileWithArrayBuffer(name: string, content: string | ArrayBuffer): File {
   const file = new File([content], name, { type: "audio/webm" });
   const originalArrayBuffer = file.arrayBuffer?.bind(file);
@@ -37,10 +42,26 @@ describe("POST /api/voice/transcribe", () => {
     mockTranscribeWithSarvam.mockReset();
     mockMapApplicationLanguageToSarvam.mockReset();
     mockGetSarvamApiKey.mockReset();
+    mockGetActiveKioskSession.mockReset();
+    mockGetActiveKioskSession.mockResolvedValue({ id: "session-1" });
     mockMapApplicationLanguageToSarvam.mockImplementation((lang: string) => {
       if (lang === "en") return "en-IN";
       throw new Error("Unsupported");
     });
+  });
+
+  it("rejects unauthenticated requests (no patient session -> 404)", async () => {
+    mockGetActiveKioskSession.mockResolvedValue(null);
+    const form = new FormData();
+    form.append("audio", createMockFileWithArrayBuffer("a.webm", "x"));
+    form.append("language", "en");
+    const { POST } = await import("./route");
+    const response = await POST(createMockRequest(form));
+    const data = await response.json();
+
+    expect(response.status).toBe(404);
+    expect(data.error).toBe("No active session");
+    expect(mockTranscribeWithSarvam).not.toHaveBeenCalled();
   });
 
   it("rejects missing audio file", async () => {

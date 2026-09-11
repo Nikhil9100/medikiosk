@@ -1,10 +1,16 @@
 import { NextResponse } from "next/server";
+import { getActiveKioskSession } from "@/lib/db/session-scope";
 import { mapApplicationLanguageToSarvam, SarvamLanguageCode, transcribeWithSarvam } from "@/lib/sarvam";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   try {
+    // Voice is a patient-session capability (kiosk assistant / interview);
+    // unauthenticated requests must not reach the provider.
+    const session = await getActiveKioskSession();
+    if (!session) return NextResponse.json({ error: "No active session" }, { status: 404 });
+
     const formData = await request.formData();
     const audio = formData.get("audio");
     const language = formData.get("language");

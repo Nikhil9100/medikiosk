@@ -23,6 +23,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ ses
   if (staff.role !== "DOCTOR") {
     return NextResponse.json({ error: "Only doctors can run consultations" }, { status: 403 });
   }
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!UUID_RE.test(sessionId)) {
+    return NextResponse.json({ error: "Case not found" }, { status: 404 });
+  }
 
   const body = await request.json().catch(() => null);
   const parsed = NoteSchema.safeParse(body ?? {});

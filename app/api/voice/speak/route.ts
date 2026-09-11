@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { getActiveKioskSession } from "@/lib/db/session-scope";
 import { mapApplicationLanguageToSarvam, SarvamLanguageCode, speakWithSarvam } from "@/lib/sarvam";
 
 export const runtime = "nodejs";
@@ -11,6 +12,11 @@ const speakRequestSchema = z.object({
 
 export async function POST(request: Request) {
   try {
+    // Voice is a patient-session capability (kiosk assistant / interview);
+    // unauthenticated requests must not reach the provider.
+    const session = await getActiveKioskSession();
+    if (!session) return NextResponse.json({ error: "No active session" }, { status: 404 });
+
     const body = await request.json();
     const parsed = speakRequestSchema.safeParse(body);
 

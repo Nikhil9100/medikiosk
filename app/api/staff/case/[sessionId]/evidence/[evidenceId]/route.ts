@@ -33,6 +33,10 @@ export async function PATCH(
   if (staff.role !== "DOCTOR") {
     return NextResponse.json({ error: "Only doctors can verify evidence" }, { status: 403 });
   }
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!UUID_RE.test(sessionId) || !UUID_RE.test(evidenceId)) {
+    return NextResponse.json({ error: "Evidence not found" }, { status: 404 });
+  }
 
   const body = await request.json().catch(() => null);
   const parsed = PatchSchema.safeParse(body);

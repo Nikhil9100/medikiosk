@@ -23,6 +23,9 @@ export async function GET() {
   }
   const staff = await getAuthenticatedStaff();
   if (!staff) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  if (staff.role !== "HOSPITAL") {
+    return NextResponse.json({ error: "Hospital operations role required" }, { status: 403 });
+  }
 
   const overview = await withStaffTx(async (client) => {
     const funnel = await getFunnelCounts(client);

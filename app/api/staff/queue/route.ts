@@ -16,6 +16,9 @@ export async function GET() {
   }
   const staff = await getAuthenticatedStaff();
   if (!staff) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  if (staff.role !== "DOCTOR") {
+    return NextResponse.json({ error: "Physician role required" }, { status: 403 });
+  }
 
   const cases = await withStaffTx((client) => listQueueCases(client));
   const now = Date.now();
