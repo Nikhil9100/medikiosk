@@ -50,3 +50,9 @@ next-env.d.ts
 
 # Local QA artifacts (screenshots from browser QA runs)
 screenshots/
+
+# runtime OCR language data (auto-downloaded by Tesseract)
+*.traineddata
+
+# ephemeral live-QA scripts (local only, never committed)
+*.tmp.mjs
