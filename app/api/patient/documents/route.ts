@@ -7,7 +7,7 @@ import { scopedDocumentRepository } from "@/lib/db/scoped-document-repository";
 
 export const runtime = "nodejs";
 
-function detectMimeType(buffer: ArrayBuffer, declaredType: string): string | null {
+function detectMimeType(buffer: ArrayBuffer): string | null {
   const bytes = new Uint8Array(buffer);
   if (bytes.length === 0) return null;
   if (bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46) {
@@ -60,7 +60,7 @@ export async function POST(request: Request) {
     }
 
     const buffer = await file.arrayBuffer();
-    const detectedMimeType = detectMimeType(buffer, file.type || "application/octet-stream");
+    const detectedMimeType = detectMimeType(buffer);
 
     if (!detectedMimeType || !isSupportedMimeType(detectedMimeType)) {
       return NextResponse.json(
