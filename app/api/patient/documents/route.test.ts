@@ -153,7 +153,7 @@ describe("POST /api/patient/documents", () => {
     expect(data.originalFilename).toBe("prescription.pdf");
     expect(data.documentType).toBe("PRESCRIPTION");
     expect(data.sessionId).toBe("session-123");
-    expect(data.status).toBe("RECEIVED");
+    expect(data.processingStatus).toBe("RECEIVED");
     expect(data.processingStatus).toBe("RECEIVED");
     expect(data.provenance).toBe("PATIENT");
   });

@@ -15,13 +15,14 @@ vi.mock("@/lib/db/scoped-document-repository", () => ({
 }));
 vi.mock("@/lib/extraction/engine", () => ({
   runExtraction: vi.fn(),
+  flagMedicationConflictWithPatientDenial: vi.fn(),
 }));
 
 import { getActiveKioskSession } from "@/lib/db/session-scope";
 import { scopedDocumentRepository } from "@/lib/db/scoped-document-repository";
 import { POST, GET, PATCH } from "./route";
 import { POST as retryPOST } from "./retry/route";
-import { runExtraction } from "@/lib/extraction/engine";
+import { runExtraction, flagMedicationConflictWithPatientDenial } from "@/lib/extraction/engine";
 import { makeFakeSession } from "../../../../../../test/db-mocks";
 
 const mockRepo = {
@@ -140,6 +141,10 @@ describe("POST /api/patient/documents/[id]/extraction", () => {
     expect(data.extractionStatus).toBe("COMPLETED");
     expect(data.aiProviderState).toBe("NOT_CONFIGURED");
     expect(data.items.length).toBe(2);
+    // The patient-claim vs document cross-check must run on the fresh run,
+    // before it is persisted (contradictions are flagged, never auto-resolved).
+    expect(flagMedicationConflictWithPatientDenial).toHaveBeenCalledTimes(1);
+    expect(flagMedicationConflictWithPatientDenial).toHaveBeenCalledWith(RUN, null);
     expect(mockRepo.saveExtractionRun).toHaveBeenCalledWith("doc-123", RUN);
     expect(mockRepo.update).toHaveBeenCalledWith("doc-123", expect.objectContaining({
       processingStatus: "EXTRACTION_COMPLETE",

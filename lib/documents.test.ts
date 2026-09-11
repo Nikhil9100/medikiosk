@@ -32,7 +32,6 @@ describe("document domain", () => {
     expect(document.id).toBeTruthy();
     expect(document.sessionId).toBe("session-1");
     expect(document.documentType).toBe("PRESCRIPTION");
-    expect(document.status).toBe("RECEIVED");
     expect(document.processingStatus).toBe("RECEIVED");
     expect(document.originalFilename).toBe("test.pdf");
     expect(document.mimeType).toBe("application/pdf");

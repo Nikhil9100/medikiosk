@@ -26,15 +26,20 @@ export async function getActiveKioskSession(): Promise<CaseRecord | null> {
     return await withKioskTx(sessionId, async (client) => {
       const session = await getCase(client, sessionId);
       if (!session) return null;
+      let live = session;
       if (session.status === "ACTIVE" && session.expiresAt.getTime() <= Date.now()) {
         await client.query(
           `UPDATE patient_sessions SET status = 'EXPIRED'
             WHERE id = $1 AND status = 'ACTIVE' AND expires_at <= now()`,
           [sessionId],
         );
-        return { ...session, status: "EXPIRED" as const };
+        live = { ...session, status: "EXPIRED" as const };
       }
-      return session;
+      // Only truly active, unexpired sessions may drive patient-scoped APIs.
+      // Expired/completed sessions are refused here; the canonical
+      // GET /api/patient/session endpoint distinguishes them and returns 410.
+      if (live.status !== "ACTIVE") return null;
+      return live;
     });
   } catch {
     return null;

@@ -130,6 +130,12 @@ export function PatientShell({ children }: { children: React.ReactNode }) {
                   selectedRegion: session.bodyRegion ?? current.selectedRegion,
                   selectedSubregion: session.bodySubregion ?? current.selectedSubregion,
                   interviewFacts: session.interviewData ?? current.interviewFacts,
+                  // Uploaded documents (incl. OCR/extraction progress) are durable
+                  // server state — restore them on a fresh client so a refresh
+                  // never makes the patient's documents "disappear".
+                  documents: Array.isArray(session.documents) && session.documents.length > 0
+                    ? session.documents
+                    : current.documents,
                 }
               : { ...current, sessionId: session.id },
           );

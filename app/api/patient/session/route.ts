@@ -8,6 +8,7 @@ import {
 } from "@/lib/db/pool";
 import { createCase, getCase, updateCase } from "@/lib/db/cases";
 import { SESSION_COOKIE } from "@/lib/db/session-scope";
+import { PostgresDocumentRepository } from "@/lib/db/documents-pg";
 
 /**
  * Patient session API — durable, database-backed.
@@ -142,7 +143,16 @@ export async function GET() {
   const sessionId = cookieStore.get(SESSION_COOKIE)?.value;
   if (!sessionId) return NextResponse.json({ error: "No active session" }, { status: 404 });
 
-  const session = await withKioskTx(sessionId, (client) => getCase(client, sessionId)).catch(() => null);
+  // The session payload carries the patient's documents (with OCR results) so
+  // a refresh rehydrates the documents step exactly where the patient left it.
+  const loaded = await withKioskTx(sessionId, async (client) => {
+    const record = await getCase(client, sessionId);
+    if (!record) return null;
+    const repository = new PostgresDocumentRepository(client);
+    const documents = await repository.getSessionDocumentsWithOcr(sessionId);
+    return { record, documents };
+  }).catch(() => null);
+  const session = loaded?.record ?? null;
   if (!session) return NextResponse.json({ error: "Session not found" }, { status: 404 });
   if (session.status === "EXPIRED" || session.expiresAt.getTime() <= Date.now()) {
     if (session.status === "ACTIVE") {
@@ -152,7 +162,7 @@ export async function GET() {
     }
     return NextResponse.json({ error: "Session expired" }, { status: 410 });
   }
-  return NextResponse.json({ session: toResponse(session) });
+  return NextResponse.json({ session: { ...toResponse(session), documents: loaded?.documents ?? [] } });
 }
 
 export async function PATCH(request: Request) {

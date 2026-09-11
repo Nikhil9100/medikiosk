@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { ExtractedEvidenceItem, ExtractionProviderMetadata } from "./types";
-import { runExtraction } from "./engine";
+import { flagMedicationConflictWithPatientDenial, runExtraction } from "./engine";
 import { AiExtractionError } from "./ai";
 
 const DOC_ID = "11111111-1111-4111-8111-111111111111";
@@ -116,5 +116,81 @@ describe("runExtraction", () => {
     expect(run.extractionStatus).toBe("COMPLETED");
     expect(run.items).toEqual([]);
     expect(run.aiProviderState).toBe("NOT_CONFIGURED");
+  });
+});
+
+describe("flagMedicationConflictWithPatientDenial", () => {
+  function medRun(): ExtractedEvidenceItem[] {
+    return [
+      makeAiItem({
+        category: "MEDICATION",
+        normalizedValue: { name: "Metformin", dose: "500mg" },
+        originalOcrWording: "Tab Metformin 500mg",
+      }),
+    ];
+  }
+
+  it("flags medication when the patient explicitly denied medicines (No button)", () => {
+    const [item] = medRun();
+    const run = { items: [item] } as never;
+    flagMedicationConflictWithPatientDenial(run, {
+      medication_current: { questionId: "medication_current", state: "DENIED", provenance: "PATIENT" },
+    });
+    expect(item.contradictionGroupId).toBeDefined();
+    expect(item.uncertaintyNotes).toMatch(/no current medicines/i);
+    expect(item.verificationState).toBe("UNVERIFIED"); // never auto-resolved
+  });
+
+  it("flags medication on a free-text denial", () => {
+    const [item] = medRun();
+    const run = { items: [item] } as never;
+    flagMedicationConflictWithPatientDenial(run, {
+      medication_current: { questionId: "medication_current", state: "KNOWN", value: "No, I am not on anything", provenance: "PATIENT" },
+    });
+    expect(item.contradictionGroupId).toBeDefined();
+  });
+
+  it("does not flag when the patient is taking medicines", () => {
+    const [item] = medRun();
+    const before = { groupId: item.contradictionGroupId, notes: item.uncertaintyNotes };
+    const run = { items: [item] } as never;
+    flagMedicationConflictWithPatientDenial(run, {
+      medication_current: { questionId: "medication_current", state: "KNOWN", value: "Metformin 500mg twice a day", provenance: "PATIENT" },
+    });
+    expect(item.contradictionGroupId).toBe(before.groupId);
+    expect(item.uncertaintyNotes).toBe(before.notes);
+  });
+
+  it("does not flag when the answer is unknown or not asked", () => {
+    for (const state of ["UNKNOWN", "DECLINED", "NOT_ASKED"]) {
+      const [item] = medRun();
+      const run = { items: [item] } as never;
+      flagMedicationConflictWithPatientDenial(run, {
+        medication_current: { questionId: "medication_current", state, provenance: "PATIENT" },
+      });
+      expect(item.contradictionGroupId).toBeUndefined();
+      expect(item.uncertaintyNotes).toBeUndefined();
+    }
+  });
+
+  it("leaves the run untouched when the document has no medication items", () => {
+    const [item] = medRun();
+    item.category = "DIAGNOSIS";
+    const run = { items: [item] } as never;
+    flagMedicationConflictWithPatientDenial(run, {
+      medication_current: { questionId: "medication_current", state: "DENIED", provenance: "PATIENT" },
+    });
+    expect(item.contradictionGroupId).toBeUndefined();
+  });
+
+  it("preserves an existing contradiction group id", () => {
+    const [item] = medRun();
+    item.contradictionGroupId = "44444444-4444-4444-8444-444444444444";
+    const run = { items: [item] } as never;
+    flagMedicationConflictWithPatientDenial(run, {
+      medication_current: { questionId: "medication_current", state: "DENIED", provenance: "PATIENT" },
+    });
+    expect(item.contradictionGroupId).toBe("44444444-4444-4444-8444-444444444444");
+    expect(item.uncertaintyNotes).toMatch(/no current medicines/i);
   });
 });

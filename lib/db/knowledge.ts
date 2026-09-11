@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { PoolClient } from "pg";
+import { relevanceGate } from "@/lib/assistant-reply";
 
 /**
  * RAG knowledge-base access. AYURVEDA and MODERN_MEDICINE are separate
@@ -170,7 +171,7 @@ export async function retrieveChunks(
   );
   const minScore = params.minScore ?? 0.01;
   return result.rows
-    .filter((row) => Number(row.score) > minScore)
+    .filter((row) => Number(row.score) > minScore && relevanceGate(row.content as string, cleanTerms))
     .map((row) => ({
       chunkId: row.chunk_id as number,
       corpus: row.corpus as KnowledgeCorpus,

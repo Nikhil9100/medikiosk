@@ -23,7 +23,6 @@ export const PatientWorkflowSchema = z.object({
   documents: z.array(z.object({
     id: z.string().uuid(),
     documentType: z.enum(["PRESCRIPTION", "LAB_REPORT", "IMAGING", "DISCHARGE_SUMMARY", "VACCINATION", "INSURANCE", "OTHER"]),
-    status: z.enum(["RECEIVED", "VALIDATING", "READY_FOR_OCR", "OCR_PROCESSING", "OCR_COMPLETE", "EXTRACTION_PROCESSING", "EXTRACTION_COMPLETE", "NEEDS_REVIEW", "VERIFIED", "FAILED"]),
     originalFilename: z.string(),
     mimeType: z.string(),
     pageCount: z.number().int().positive().optional(),

@@ -20,6 +20,50 @@ import type {
 import { extractDeterministicEvidence, detectContradictions, DETERMINISTIC_PROVIDER } from "./deterministic";
 import { aiExtractEvidence, AiExtractionError } from "./ai";
 
+/**
+ * Cross-check extracted medication evidence against what the patient said.
+ *
+ * If the patient explicitly reported no current medicines (a "No" answer or
+ * an equivalent free-text denial) but the document lists medication(s), each
+ * medication item is flagged: a shared contradiction group (surfaced by the
+ * physician "Contradictions" panel) plus an uncertainty note. The flag is
+ * additive and honest — the conflict is preserved for physician reconciliation
+ * and is NEVER auto-resolved.
+ */
+const NO_MEDICINE_PATTERNS: RegExp[] = [
+  /^no\b/i,
+  /^none\b/i,
+  /^not (?:taking|on)\b/i,
+  /^i (?:don'?t|do not|am not) /i,
+  /^\s*[-–]\s*$/,
+];
+
+export function flagMedicationConflictWithPatientDenial(
+  run: ExtractionRun,
+  interviewData: Record<string, unknown> | null | undefined,
+): void {
+  const raw = interviewData?.["medication_current"];
+  if (!raw || typeof raw !== "object") return;
+  const answer = raw as { value?: unknown; state?: unknown };
+  const value = typeof answer.value === "string" ? answer.value.trim() : undefined;
+  const denied =
+    answer.state === "DENIED" ||
+    (answer.state === "KNOWN" &&
+      Boolean(value) &&
+      NO_MEDICINE_PATTERNS.some((re) => re.test(value as string)));
+  if (!denied) return;
+
+  const medItems = run.items.filter((item) => item.category === "MEDICATION");
+  if (medItems.length === 0) return;
+
+  const groupId = crypto.randomUUID();
+  const note = "Patient reported no current medicines — physician to reconcile with this document.";
+  for (const item of medItems) {
+    item.contradictionGroupId = item.contradictionGroupId ?? groupId;
+    item.uncertaintyNotes = item.uncertaintyNotes ? `${item.uncertaintyNotes} ${note}` : note;
+  }
+}
+
 export interface OcrPageInput {
   pageNumber: number;
   extractedText: string;

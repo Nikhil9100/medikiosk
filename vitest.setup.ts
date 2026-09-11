@@ -25,9 +25,14 @@ const createStorage = () => {
   };
 };
 
-Object.defineProperty(window, "localStorage", {
-  value: createStorage(),
-  configurable: true,
-});
+// Some server-only test files opt into a real `node` environment (e.g. the OCR
+// provider, which spawns a Node worker thread). Only install the localStorage
+// shim when a window exists so those files can run without a DOM.
+if (typeof window !== "undefined") {
+  Object.defineProperty(window, "localStorage", {
+    value: createStorage(),
+    configurable: true,
+  });
+}
 
 vi.mock("server-only", () => ({}));

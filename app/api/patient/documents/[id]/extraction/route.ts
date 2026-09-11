@@ -3,7 +3,7 @@ import { databaseConfigured } from "@/lib/db/pool";
 import { getActiveKioskSession } from "@/lib/db/session-scope";
 import { scopedDocumentRepository } from "@/lib/db/scoped-document-repository";
 import { ExtractionError, EvidenceReviewPatchSchema } from "@/lib/extraction/types";
-import { runExtraction } from "@/lib/extraction/engine";
+import { flagMedicationConflictWithPatientDenial, runExtraction } from "@/lib/extraction/engine";
 import type { OcrPageInput } from "@/lib/extraction/engine";
 import type { ExtractionProviderState } from "@/lib/extraction/types";
 
@@ -75,6 +75,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
 
     try {
       const { run } = await runExtraction(document.id, document.sessionId, pages);
+      flagMedicationConflictWithPatientDenial(run, session.interviewData);
       await repository.saveExtractionRun(document.id, run);
       await repository.update(document.id, {
         processingStatus: "EXTRACTION_COMPLETE",

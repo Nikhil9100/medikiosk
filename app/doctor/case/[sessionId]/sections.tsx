@@ -368,7 +368,7 @@ export function DocumentsSection({
             {[...contradictionGroups.values()].map((group, i) => (
               <li key={i} className="rounded-md border border-amber-200 bg-white p-3 text-sm">
                 <p className="font-semibold text-slate-800">
-                  {group[0].category} — {group.length} conflicting readings
+                  {group[0].category} — {group.length > 1 ? `${group.length} conflicting readings` : "potential conflict (requires physician assessment)"}
                 </p>
                 <ul className="mt-1 list-inside list-disc text-xs text-slate-600">
                   {group.map((g) => (

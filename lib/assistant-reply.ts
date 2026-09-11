@@ -20,9 +20,31 @@ const STOP_WORDS = new Set([
   "i", "a", "an", "the", "and", "or", "but", "of", "to", "in", "on", "for", "with",
   "is", "am", "are", "was", "were", "be", "been", "have", "has", "had", "do", "does",
   "did", "my", "me", "we", "our", "you", "your", "it", "its", "this", "that", "what",
+  "they", "them", "their", "him", "her", "his", "who", "whom", "which", "all", "any",
   "when", "where", "why", "how", "will", "would", "can", "could", "should", "about",
   "feel", "feels", "feeling", "felt", "since", "much", "many", "please", "tell",
   "kya", "hai", "hain", "ka", "ki", "ke", "se", "mein", "aur",
+  // Generic descriptor/hedge words. These appear in many KB chunks (e.g.
+  // "condition", "normal", "general"), so a single one of them must never
+  // pull a chunk into a citation for an unrelated question.
+  "condition", "conditions", "normal", "range", "ranges", "general", "common",
+  "signs", "strong", "severe", "serious", "bad", "worse", "better", "mild",
+  "moderate", "little", "some", "thing", "things", "problem", "trouble", "issue",
+  "really", "very", "quite", "often", "always", "sometimes", "usually", "still",
+  "again", "just", "maybe", "probably", "likely", "lot", "kind", "sort", "bit",
+  "enough", "sudden", "suddenly", "gradual", "gradually",
+  // Time/number filler — clinically meaningful in the interview, but
+  // useless (and noisy) as retrieval terms.
+  "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten",
+  "day", "days", "week", "weeks", "month", "months", "year", "years", "hour",
+  "hours", "ago", "long", "short", "early", "late", "today", "yesterday",
+  "tonight", "now", "here", "there",
+  // Roles, meta-language, and onset verbs: ubiquitous in the KB prose
+  // (e.g. "checked by a doctor", "the patient") but meaningless as topic
+  // signals — and a vector for prompt-injection payloads to "match" noise.
+  "patient", "patients", "doctor", "doctors", "instructions", "instruction",
+  "ignore", "previous", "start", "started", "starting", "began", "begins",
+  "became", "becomes",
 ]);
 
 export function extractTerms(message: string): string[] {
@@ -32,6 +54,41 @@ export function extractTerms(message: string): string[] {
     .map((w) => w.trim())
     .filter((w) => w.length >= 3 && !STOP_WORDS.has(w));
   return Array.from(new Set(words)).slice(0, 12);
+}
+
+/**
+ * Relevance gate for full-text retrieval.
+ *
+ * Chunks are recalled with an OR-joined tsquery, so a single incidental word
+ * ("diabetes" mentioned once inside a chest-pain article) is enough for the
+ * row to come back. Citing that chunk would present unrelated material as
+ * "reference" for the patient's question. A chunk is therefore only eligible
+ * when at least one (short queries) or two (3+ term queries) of the query
+ * terms genuinely appear in its text.
+ */
+export function relevanceGate(content: string, terms: string[]): boolean {
+  const text = content.toLowerCase();
+  const required = terms.length >= 3 ? 2 : 1;
+  let matched = 0;
+  for (const term of terms) {
+    if (termAppearsInText(text, term)) {
+      matched += 1;
+      if (matched >= required) return true;
+    }
+  }
+  return false;
+}
+
+function termAppearsInText(text: string, term: string): boolean {
+  if (text.includes(term)) return true;
+  // Tolerate light inflection drift between the patient's wording and the
+  // reference wording ("breathing" vs "breath", "range" vs "ranging",
+  // "diabetes" vs "diabetic") by dropping up to four trailing characters of
+  // the query term.
+  for (let i = 1; i <= 4 && term.length - i >= 3; i++) {
+    if (text.includes(term.slice(0, term.length - i))) return true;
+  }
+  return false;
 }
 
 function excerpt(chunk: { content: string }): string {

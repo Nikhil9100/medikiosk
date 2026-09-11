@@ -137,7 +137,7 @@ describe("POST /api/patient/documents/[id]/ocr", () => {
     const response = await POST(new Request("http://localhost/api/patient/documents/doc-123/ocr"), { params: Promise.resolve({ id: "doc-123" }) });
     const data = await response.json();
     expect(response.status).toBe(200);
-    expect(data.status).toBe("OCR_COMPLETE");
+    expect(data.processingStatus).toBe("OCR_COMPLETE");
     expect(data.ocrStatus).toBe("COMPLETED");
   });
 
@@ -275,7 +275,7 @@ describe("POST /api/patient/documents/[id]/ocr/retry", () => {
     const response = await retryPOST(new Request("http://localhost/api/patient/documents/doc-123/ocr/retry"), { params: Promise.resolve({ id: "doc-123" }) });
     const data = await response.json();
     expect(response.status).toBe(200);
-    expect(data.status).toBe("OCR_COMPLETE");
+    expect(data.processingStatus).toBe("OCR_COMPLETE");
     expect(data.ocrStatus).toBe("COMPLETED");
   });
 

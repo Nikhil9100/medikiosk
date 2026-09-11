@@ -90,7 +90,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         failureStage: undefined,
       });
 
-      return NextResponse.json({ status: result.processingStatus, ocrStatus: result.ocrStatus });
+      return NextResponse.json({ processingStatus: result.processingStatus, ocrStatus: result.ocrStatus });
     } catch (error) {
       await repository.update(document.id, {
         processingStatus: "FAILED",

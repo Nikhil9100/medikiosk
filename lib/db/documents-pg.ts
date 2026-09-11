@@ -50,7 +50,6 @@ function toDocumentRecord(row: DocRow): DocumentRecord {
     id: row.id,
     sessionId: row.session_id,
     documentType: row.document_type as DocumentRecord["documentType"],
-    status: row.status as DocumentRecord["status"],
     originalFilename: row.original_filename,
     mimeType: row.mime_type,
     pageCount: row.page_count ?? undefined,
@@ -90,7 +89,7 @@ export class PostgresDocumentRepository {
         document.id,
         sessionId,
         document.documentType,
-        document.status,
+        document.processingStatus,
         document.originalFilename,
         document.mimeType,
         buffer ? Buffer.byteLength(buffer) : null,
@@ -125,7 +124,7 @@ export class PostgresDocumentRepository {
     const sets: string[] = [];
     const values: unknown[] = [];
     const fieldMap: Record<string, string> = {
-      status: "status",
+      processingStatus: "status",
       documentType: "document_type",
       ocrStatus: "ocr_status",
       extractionStatus: "extraction_status",

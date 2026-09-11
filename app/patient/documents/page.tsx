@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePatientWorkflow } from "../PatientShell";
 import {
   isSupportedMimeType,
@@ -78,6 +78,23 @@ export default function PatientDocumentsPage() {
     const data = (await response.json()) as ExtractionRun;
     setExtractionRuns((prev) => ({ ...prev, [documentId]: data }));
   }
+
+  // After a refresh, documents rehydrate from the server session. Documents
+  // whose extraction already ran must load that existing run, otherwise the UI
+  // would offer "Start extraction" again and the click would 409 (already
+  // complete) — a fake re-do of work that already happened.
+  const loadedExtractionsRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    for (const doc of workflow.documents) {
+      const needsRun =
+        (doc.processingStatus === "EXTRACTION_COMPLETE" || doc.processingStatus === "EXTRACTION_PROCESSING") &&
+        !loadedExtractionsRef.current.has(doc.id);
+      if (needsRun) {
+        loadedExtractionsRef.current.add(doc.id);
+        void loadExtractionRun(doc.id);
+      }
+    }
+  }, [workflow.documents]);
 
   async function handleStartExtraction(documentId: string) {
     if (extractionBusy) return;
@@ -201,7 +218,6 @@ export default function PatientDocumentsPage() {
         id: string;
         sessionId: string;
         documentType: "PRESCRIPTION" | "LAB_REPORT" | "IMAGING" | "DISCHARGE_SUMMARY" | "VACCINATION" | "INSURANCE" | "OTHER";
-        status: "RECEIVED" | "VALIDATING" | "READY_FOR_OCR" | "OCR_PROCESSING" | "OCR_COMPLETE" | "EXTRACTION_PROCESSING" | "EXTRACTION_COMPLETE" | "NEEDS_REVIEW" | "VERIFIED" | "FAILED";
         originalFilename: string;
         mimeType: string;
         pageCount?: number;
@@ -260,9 +276,23 @@ export default function PatientDocumentsPage() {
     }
   }
 
-  function handleRemoveDocument(documentId: string) {
-    const updatedDocuments = workflow.documents.filter((doc) => doc.id !== documentId);
-    setDocuments(updatedDocuments);
+  async function handleRemoveDocument(documentId: string) {
+    if (isUploading) return;
+    setIsUploading(true);
+    setUploadError("");
+    try {
+      const response = await fetch(`/api/patient/documents/${documentId}`, { method: "DELETE" });
+      if (!response.ok) {
+        const data = (await response.json().catch(() => ({}))) as { error?: string };
+        throw new Error(data.error || "Delete failed");
+      }
+      const updatedDocuments = workflow.documents.filter((doc) => doc.id !== documentId);
+      setDocuments(updatedDocuments);
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : "Delete failed");
+    } finally {
+      setIsUploading(false);
+    }
   }
 
   async function handleStartOcr(documentId: string) {
@@ -285,13 +315,13 @@ export default function PatientDocumentsPage() {
 
       const updatedDocuments = workflow.documents.map((doc) =>
         doc.id === documentId
-          ? { ...doc, processingStatus: (data.status as "RECEIVED" | "VALIDATING" | "READY_FOR_OCR" | "OCR_PROCESSING" | "OCR_COMPLETE" | "EXTRACTION_PROCESSING" | "EXTRACTION_COMPLETE" | "NEEDS_REVIEW" | "VERIFIED" | "FAILED") ?? doc.processingStatus, ocrStatus: (data.ocrStatus as "NOT_STARTED" | "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED" | "NOT_CONFIGURED" | "UNAVAILABLE") ?? doc.ocrStatus }
+          ? { ...doc, processingStatus: (data.processingStatus as "RECEIVED" | "VALIDATING" | "READY_FOR_OCR" | "OCR_PROCESSING" | "OCR_COMPLETE" | "EXTRACTION_PROCESSING" | "EXTRACTION_COMPLETE" | "NEEDS_REVIEW" | "VERIFIED" | "FAILED") ?? doc.processingStatus, ocrStatus: (data.ocrStatus as "NOT_STARTED" | "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED" | "NOT_CONFIGURED" | "UNAVAILABLE") ?? doc.ocrStatus }
           : doc,
       );
       setDocuments(updatedDocuments);
 
       // Refresh extraction availability when OCR completes.
-      if ((data.status as string) === "OCR_COMPLETE") {
+      if ((data.processingStatus as string) === "OCR_COMPLETE") {
         await loadExtractionRun(documentId);
       }
     } catch (error) {
@@ -321,7 +351,7 @@ export default function PatientDocumentsPage() {
       
       const updatedDocuments = workflow.documents.map((doc) =>
         doc.id === documentId
-          ? { ...doc, processingStatus: (data.status as "RECEIVED" | "VALIDATING" | "READY_FOR_OCR" | "OCR_PROCESSING" | "OCR_COMPLETE" | "EXTRACTION_PROCESSING" | "EXTRACTION_COMPLETE" | "NEEDS_REVIEW" | "VERIFIED" | "FAILED") ?? doc.processingStatus, ocrStatus: (data.ocrStatus as "NOT_STARTED" | "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED" | "NOT_CONFIGURED" | "UNAVAILABLE") ?? doc.ocrStatus }
+          ? { ...doc, processingStatus: (data.processingStatus as "RECEIVED" | "VALIDATING" | "READY_FOR_OCR" | "OCR_PROCESSING" | "OCR_COMPLETE" | "EXTRACTION_PROCESSING" | "EXTRACTION_COMPLETE" | "NEEDS_REVIEW" | "VERIFIED" | "FAILED") ?? doc.processingStatus, ocrStatus: (data.ocrStatus as "NOT_STARTED" | "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED" | "NOT_CONFIGURED" | "UNAVAILABLE") ?? doc.ocrStatus }
           : doc,
       );
       setDocuments(updatedDocuments);
@@ -672,7 +702,7 @@ export default function PatientDocumentsPage() {
                     <button
                       type="button"
                       className="document-item__remove"
-                      onClick={() => handleRemoveDocument(document.id)}
+                      onClick={() => void handleRemoveDocument(document.id)}
                       aria-label={`Remove ${document.originalFilename}`}
                     >
                       {t("documentRemove")}
