@@ -13,7 +13,7 @@ const LoginSchema = z
   .strict();
 
 // Simple in-memory rate limit (single instance, hackathon-grade): 8 attempts
-// per email per 5 minutes. Documented in SECURITY.md.
+// per email per 5 minutes. Documented in README.md (Security section).
 const attempts = new Map<string, { count: number; resetAt: number }>();
 const LIMIT = 8;
 const WINDOW_MS = 5 * 60 * 1000;
