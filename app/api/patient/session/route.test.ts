@@ -195,3 +195,63 @@ describe("PATCH /api/patient/session (consent gate)", () => {
     expect(data.session.workflowStep).toBe("complaint");
   });
 });
+
+// Interview facts must ACCUMULATE: the kiosk syncs one fact per answer.
+describe("PATCH /api/patient/session (interview fact merge)", () => {
+  const fact = (id: string, value: string, state: string) => ({ questionId: id, value, state, provenance: "PATIENT" });
+  const WITH_ONE_FACT = { ...ACTIVE_SESSION, interviewData: { medication_current: fact("medication_current", "No", "KNOWN") } };
+
+  function setupPatch(current: any, updated: any) {
+    vi.mocked(cookies).mockResolvedValue({ get: () => ({ name: "medikiosk_session", value: "session-123" }) }) as any;
+    vi.mocked(getCase).mockResolvedValue(current);
+    vi.mocked(updateCase).mockResolvedValue(updated);
+    vi.mocked(withKioskTx).mockImplementation(async (_id: string, fn: (c: unknown) => Promise<unknown>) =>
+      Promise.resolve(fn({})),
+    ) as any;
+  }
+
+  function patchRequest(body: unknown) {
+    return new Request("http://localhost/api/patient/session", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("a new answer preserves previously persisted answers (no data loss)", async () => {
+    setupPatch(WITH_ONE_FACT, WITH_ONE_FACT);
+    const response = await PATCH(patchRequest({ interviewData: { allergy_medicine: fact("allergy_medicine", "DECLINED", "DECLINED") } }));
+    expect(response.status).toBe(200);
+    const args = vi.mocked(updateCase).mock.calls[0];
+    const sent = args[2].interviewData;
+    expect(sent).toHaveProperty("medication_current");
+    expect(sent).toHaveProperty("allergy_medicine");
+    expect(sent?.allergy_medicine?.state).toBe("DECLINED");
+  });
+
+  it("re-answering the same question updates only that fact", async () => {
+    setupPatch(WITH_ONE_FACT, WITH_ONE_FACT);
+    await PATCH(patchRequest({ interviewData: { medication_current: fact("medication_current", "Metformin", "KNOWN") } }));
+    const sent = vi.mocked(updateCase).mock.calls[0][2].interviewData;
+    expect(Object.keys(sent ?? {})).toEqual(["medication_current"]);
+    expect(sent?.medication_current?.value).toBe("Metformin");
+  });
+
+  it("explicit null clears the interview data", async () => {
+    setupPatch(WITH_ONE_FACT, { ...ACTIVE_SESSION, interviewData: null });
+    await PATCH(patchRequest({ interviewData: null }));
+    const sent = vi.mocked(updateCase).mock.calls[0][2].interviewData;
+    expect(sent).toBeNull();
+  });
+
+  it("a PATCH without interviewData leaves it untouched (undefined, not null)", async () => {
+    setupPatch(WITH_ONE_FACT, WITH_ONE_FACT);
+    await PATCH(patchRequest({ workflowStep: "interview" }));
+    const sent = vi.mocked(updateCase).mock.calls[0][2].interviewData;
+    expect(sent).toBeUndefined();
+  });
+});

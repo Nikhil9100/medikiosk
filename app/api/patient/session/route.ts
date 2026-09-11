@@ -197,6 +197,15 @@ export async function PATCH(request: Request) {
           (parsed.workflowStep !== undefined && !CONSENT_FREE_STEPS.has(parsed.workflowStep));
         if (wantsClinicalData) return "CONSENT_REQUIRED" as const;
       }
+      // Interview facts MERGE, never replace: the kiosk interview syncs one
+      // fact per answer; replacing the whole map would silently delete every
+      // earlier answer from the physician's record.
+      const interviewData =
+        parsed.interviewData === undefined
+          ? undefined
+          : parsed.interviewData === null
+            ? null
+            : { ...(current.interviewData ?? {}), ...parsed.interviewData };
       return updateCase(client, sessionId, {
         language: parsed.language,
         consentStatus: parsed.consentStatus,
@@ -204,7 +213,7 @@ export async function PATCH(request: Request) {
         complaintText: parsed.complaintText,
         bodyRegion: parsed.bodyRegion,
         bodySubregion: parsed.bodySubregion,
-        interviewData: parsed.interviewData,
+        interviewData,
       });
     });
     if (updated === null) return NextResponse.json({ error: "Session not found" }, { status: 404 });

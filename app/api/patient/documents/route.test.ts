@@ -84,7 +84,39 @@ describe("POST /api/patient/documents", () => {
     const response = await POST({ formData: async () => formData } as unknown as Request);
     const data = await response.json();
     expect(response.status).toBe(400);
-    expect(data.error).toBe("Unsupported file type: text/plain");
+    expect(data.error).toBe("Unsupported file type: file content does not match a supported format (PDF, PNG, JPEG, WebP)");
+  });
+
+  it("rejects text content declared as application/pdf (magic-byte mismatch)", async () => {
+    class MockFile extends File {
+      private content: string | ArrayBuffer;
+      constructor(content: string | ArrayBuffer, name: string, mimeType: string) {
+        super([], name, { type: mimeType });
+        this.content = content;
+        Object.defineProperty(this, "size", {
+          get() {
+            if (typeof this.content === "string") {
+              return new TextEncoder().encode(this.content).length;
+            }
+            return this.content.byteLength;
+          },
+        });
+      }
+      async arrayBuffer() {
+        if (typeof this.content === "string") {
+          return new TextEncoder().encode(this.content).buffer;
+        }
+        return this.content;
+      }
+    }
+    const file = new MockFile("this is plain text, not a pdf", "fake.pdf", "application/pdf");
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("documentType", "PRESCRIPTION");
+    const response = await POST({ formData: async () => formData } as unknown as Request);
+    const data = await response.json();
+    expect(response.status).toBe(400);
+    expect(data.error).toMatch(/does not match a supported format/i);
   });
 
   it("rejects oversized files", async () => {

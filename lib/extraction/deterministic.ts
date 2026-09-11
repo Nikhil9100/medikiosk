@@ -83,7 +83,9 @@ const EXTRACTION_RULES: ExtractionRule[] = [
   {
     category: "MEDICATION",
     id: "medication-generic",
-    regex: /(?:Rx|Medication|Medicines?|Prescribed|Rx\s*ad)\s*[:\-–]\s*([^\n.;]{2,120})/gi,
+    // The captured list must start with a letter: prescription numbers such as
+    // "RX-2026-0412" on a "Prescription No:" line must not surface as medicine.
+    regex: /(?:Rx|Medication|Medicines?|Prescribed|Rx\s*ad)\s*[:\-–]\s*([A-Za-z][^\n.;]{1,119})/gi,
     baseConfidence: 0.55,
     toValue: (m) => ({
       details: m[1].trim(),

@@ -7,8 +7,9 @@ import { scopedDocumentRepository } from "@/lib/db/scoped-document-repository";
 
 export const runtime = "nodejs";
 
-function detectMimeType(buffer: ArrayBuffer, declaredType: string): string {
+function detectMimeType(buffer: ArrayBuffer, declaredType: string): string | null {
   const bytes = new Uint8Array(buffer);
+  if (bytes.length === 0) return null;
   if (bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46) {
     return "application/pdf";
   }
@@ -21,7 +22,9 @@ function detectMimeType(buffer: ArrayBuffer, declaredType: string): string {
   if (bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46) {
     return "image/webp";
   }
-  return declaredType;
+  // No recognizable signature: the content does not match any supported
+  // format, so the client-declared type must not be trusted.
+  return null;
 }
 
 export async function POST(request: Request) {
@@ -52,11 +55,18 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "File is too large. Maximum size is 20MB." }, { status: 400 });
     }
 
+    if (file.size === 0) {
+      return NextResponse.json({ error: "File is empty" }, { status: 400 });
+    }
+
     const buffer = await file.arrayBuffer();
     const detectedMimeType = detectMimeType(buffer, file.type || "application/octet-stream");
 
-    if (!isSupportedMimeType(detectedMimeType)) {
-      return NextResponse.json({ error: `Unsupported file type: ${detectedMimeType}` }, { status: 400 });
+    if (!detectedMimeType || !isSupportedMimeType(detectedMimeType)) {
+      return NextResponse.json(
+        { error: "Unsupported file type: file content does not match a supported format (PDF, PNG, JPEG, WebP)" },
+        { status: 400 },
+      );
     }
 
     const record = createDocumentRecord(session.id, file, parsedType?.data);

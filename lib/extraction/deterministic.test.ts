@@ -338,3 +338,38 @@ describe("DETERMINISTIC_PROVIDER", () => {
     expect(DETERMINISTIC_PROVIDER.createdAt).toBeTruthy();
   });
 });
+
+describe("medication-generic false-positive guard (prescription numbers)", () => {
+  const sid = "11111111-1111-4111-8111-111111111111";
+  const did = "22222222-2222-4222-8222-222222222222";
+
+  it("a 'Prescription No: RX-2026-0412' line never surfaces as a medication", () => {
+    const pages: OcrPageInput[] = [
+      { pageNumber: 1, extractedText: "Prescription No: RX-2026-0412\nDiagnosis: Type 2 Diabetes Mellitus" },
+    ];
+    const items = extractDeterministicEvidence(pages, provider, sid, did);
+    const meds = items.filter((i) => i.category === "MEDICATION");
+    expect(meds).toEqual([]);
+  });
+
+  it("a real 'Rx:' medicine list is still extracted", () => {
+    const pages: OcrPageInput[] = [
+      { pageNumber: 1, extractedText: "Rx: Paracetamol 650 mg, Metformin 500 mg" },
+    ];
+    const items = extractDeterministicEvidence(pages, provider, sid, did);
+    const meds = items.filter((i) => i.category === "MEDICATION");
+    expect(meds.length).toBeGreaterThanOrEqual(1);
+    expect(JSON.stringify(meds[0].normalizedValue)).toMatch(/Paracetamol/);
+  });
+
+  it("Tab.-form medications keep name + dose", () => {
+    const pages: OcrPageInput[] = [
+      { pageNumber: 1, extractedText: "1. Tab. Metformin 500 mg - twice daily after food for 3 months" },
+    ];
+    const items = extractDeterministicEvidence(pages, provider, sid, did);
+    const med = items.find((i) => i.category === "MEDICATION" && /metformin/i.test(JSON.stringify(i.normalizedValue)));
+    expect(med).toBeDefined();
+    expect(med!.normalizedValue.name).toBe("Metformin");
+    expect(med!.normalizedValue.dose).toBe("500mg");
+  });
+});

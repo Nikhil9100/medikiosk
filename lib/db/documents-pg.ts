@@ -340,6 +340,8 @@ export async function materializeEvidence(
  */
 export type EvidenceRow = Omit<ExtractedEvidenceItem, "verificationState"> & {
   verificationState: "UNVERIFIED" | "PENDING_REVIEW" | "VERIFIED" | "REJECTED" | "ACCEPTED";
+  /** Canonical fact provenance (PATIENT/VOICE/TOUCH/OCR/AI/DOCTOR/SYSTEM). */
+  provenance?: string;
   verifiedBy?: string;
   verifiedAt?: string;
   verificationNote?: string;
@@ -363,6 +365,7 @@ export function evidenceRowToItem(row: Record<string, unknown>): EvidenceRow {
       createdAt: new Date(0).toISOString(),
     },
     confidence: row.confidence === null ? undefined : Number(row.confidence),
+    provenance: (row.provenance as string | null) ?? "OCR",
     verificationState: row.verification_state as ExtractedEvidenceItem["verificationState"],
     uncertaintyNotes: (row.uncertainty_notes as string | null) ?? undefined,
     contradictionGroupId: (row.contradiction_group_id as string | null) ?? undefined,
