@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { fetchStaffMe, staffJson, type StaffIdentity } from "@/lib/staff-client";
@@ -15,12 +15,20 @@ export default function DoctorCasePage({ params }: { params: Promise<{ sessionId
   const [bundle, setBundle] = useState<CaseBundle | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
+  // Only the most recently issued load may update state: concurrent refetches
+  // (e.g. "Mark reviewed" and "Start consultation" in quick succession) must
+  // not let a stale response clobber a newer one.
+  const loadSeqRef = useRef(0);
   const load = useCallback(async (sid: string) => {
+    const seq = ++loadSeqRef.current;
     try {
-      const data = await staffJson<CaseBundle>(`/api/staff/case/${sid}`);
-      setBundle(data);
+      // The endpoint wraps the bundle in a { case } envelope.
+      const data = await staffJson<{ case: CaseBundle }>(`/api/staff/case/${sid}`);
+      if (seq !== loadSeqRef.current) return; // superseded by a newer load
+      setBundle(data.case);
       setLoadError(null);
     } catch (err) {
+      if (seq !== loadSeqRef.current) return;
       setLoadError(err instanceof Error ? err.message : "Failed to load case");
     }
   }, []);
