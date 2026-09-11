@@ -96,8 +96,10 @@ describe("clinical interview engine", () => {
     const unknownNext = determineNextQuestion({ ...baseState, surgery_history: { questionId: "surgery_history", state: "UNKNOWN", value: "i don't know", provenance: "PATIENT" } }, patientInterviewQuestions);
     const declinedNext = determineNextQuestion({ ...baseState, surgery_history: { questionId: "surgery_history", state: "DECLINED", value: "prefer not to answer", provenance: "PATIENT" } }, patientInterviewQuestions);
 
-    expect(unknownNext?.id).toBe("surgery_history");
-    expect(declinedNext?.id).toBe("surgery_history");
+    // Recorded answers advance the flow (no dead ends) and skip the "yes"
+    // branch details, navigating like a denial without assuming one.
+    expect(unknownNext?.id).toBe("medication_current");
+    expect(declinedNext?.id).toBe("medication_current");
   });
 
   it("medicine follow-up appears only when the patient is actively taking medicines", () => {

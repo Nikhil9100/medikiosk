@@ -398,14 +398,14 @@ export function determineNextQuestion(currentState: InterviewState, questions: I
       return currentQuestion;
     }
 
-    if (currentAnswer.state === "UNKNOWN" || currentAnswer.state === "DECLINED") {
-      return currentQuestion;
-    }
-
+    // UNKNOWN and DECLINED are recorded answers — the value is preserved in
+    // the interview data for the doctor. For navigation they behave like a
+    // denial: no "yes" branch assumptions, and the follow-up details question
+    // is skipped. (Re-presenting the same question forever is a dead end.)
     let branchTarget: string | undefined;
     if (currentAnswer.state === "KNOWN") {
       branchTarget = currentQuestion.nextWhenKnown;
-    } else if (currentAnswer.state === "DENIED") {
+    } else if (currentAnswer.state === "DENIED" || currentAnswer.state === "UNKNOWN" || currentAnswer.state === "DECLINED") {
       branchTarget = currentQuestion.nextWhenDenied;
     }
 

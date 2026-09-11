@@ -8,6 +8,7 @@ import LanguagePage from "./language/page";
 import ConsentPage from "./consent/page";
 import ComplaintPage from "./complaint/page";
 import AnatomyPage from "./anatomy/page";
+import SymptomsPage from "./symptoms/page";
 import DocumentsPage from "./documents/page";
 import { getMissingTranslationKeys, getTranslation } from "@/lib/i18n";
 import type { PatientWorkflow, ConsentStatus, PatientLanguage } from "@/lib/patient-flow";
@@ -268,10 +269,112 @@ describe("patient onboarding routes", () => {
     });
 
     expect(screen.getByText(/anatomyPrompt/i)).toBeInTheDocument();
-    const headButton = screen.getByRole("button", { name: /head/i });
+    // The region list is the accessible fallback; the SVG figure exposes the
+    // same regions as separate role="button" nodes, so scope to the list.
+    // Mock shell t() returns keys verbatim, so the aria-label is the key.
+    const regionList = screen.getByRole("list", { name: /regionListLabel/i });
+    const headButton = within(regionList).getByRole("button", { name: /head/i });
     expect(headButton).toHaveAttribute("aria-pressed", "false");
     fireEvent.click(headButton);
-    expect(screen.getByRole("button", { name: /head/i })).toHaveAttribute("aria-pressed", "true");
+    expect(within(regionList).getByRole("button", { name: /head/i })).toHaveAttribute("aria-pressed", "true");
+  });
+
+  describe("other symptoms step (multiple complaints)", () => {
+    const baseOverrides: Partial<PatientWorkflow> = {
+      language: "en",
+      currentStep: "symptoms",
+      consentStatus: "ACCEPTED",
+      sessionId: "test-session",
+      complaint: "chief complaint text",
+      selectedRegion: "head",
+      selectedSubregion: "face",
+      interviewFacts: {},
+    };
+
+    function mockComplaintsApi(existing: Array<{ id: string; position: number; complaintText: string; bodyRegion?: string | null; severity?: string | null }>) {
+      const calls: Array<{ method: string; body: unknown }> = [];
+      const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        const method = init?.method ?? "GET";
+        if (method === "GET" && url.includes("/api/patient/complaints")) {
+          return { ok: true, json: async () => ({ complaints: existing }) };
+        }
+        if (method === "POST" && url.includes("/api/patient/complaints")) {
+          calls.push({ method, body: JSON.parse(String(init?.body)) });
+          return { ok: true, json: async () => ({ complaint: { id: "new-id" } }) };
+        }
+        if (method === "DELETE" && url.includes("/api/patient/complaints")) {
+          calls.push({ method, body: JSON.parse(String(init?.body)) });
+          return { ok: true, json: async () => ({ ok: true }) };
+        }
+        return { ok: true, json: async () => ({}) };
+      });
+      vi.stubGlobal("fetch", fetchMock);
+      return calls;
+    }
+
+    it("renders the chief complaint, offers adding a symptom, and persists additions with severity", async () => {
+      pathname = "/patient/symptoms";
+      const calls = mockComplaintsApi([
+        { id: "c1", position: 1, complaintText: "chief complaint text", bodyRegion: "head", severity: "SEVERE" },
+      ]);
+      renderWithMockShell(<SymptomsPage />, baseOverrides as PatientWorkflow);
+
+      expect(await screen.findByRole("heading", { name: /symptomsTitle/i })).toBeInTheDocument();
+      // Chief complaint is shown read-only with its label key.
+      expect(screen.getByText(/symptomsChiefLabel/i)).toBeInTheDocument();
+      expect(screen.getByText("chief complaint text")).toBeInTheDocument();
+
+      const addButton = await screen.findByRole("button", { name: /symptomAdd/i });
+      fireEvent.click(addButton);
+      const input = await screen.findByRole("textbox", { name: /symptomPrompt/i });
+      fireEvent.change(input, { target: { value: "dizziness since yesterday" } });
+      // Severity picker is scoped to its group; mock t() returns keys verbatim.
+      const severityGroup = screen.getByRole("group", { name: /severityLabel/i });
+      fireEvent.click(within(severityGroup).getByRole("button", { name: /severityModerate/i }));
+      fireEvent.click(screen.getByRole("button", { name: /symptomAdd/i }));
+
+      await waitFor(() => {
+        expect(calls).toHaveLength(1);
+      });
+      expect(calls[0].method).toBe("POST");
+      expect(calls[0].body).toMatchObject({
+        complaintText: "dizziness since yesterday",
+        severity: "MODERATE",
+      });
+    });
+
+    it("caps extra symptoms at three and explains the limit", async () => {
+      pathname = "/patient/symptoms";
+      mockComplaintsApi([
+        { id: "c1", position: 1, complaintText: "chief", bodyRegion: null, severity: null },
+        { id: "c2", position: 2, complaintText: "extra one", bodyRegion: null, severity: null },
+        { id: "c3", position: 3, complaintText: "extra two", bodyRegion: null, severity: null },
+        { id: "c4", position: 4, complaintText: "extra three", bodyRegion: null, severity: null },
+      ]);
+      renderWithMockShell(<SymptomsPage />, baseOverrides as PatientWorkflow);
+
+      expect(await screen.findByText("extra one")).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /symptomAdd/i })).not.toBeInTheDocument();
+      expect(screen.getByText(/symptomsLimit/i)).toBeInTheDocument();
+    });
+
+    it("removes an extra symptom via DELETE (chief complaint stays anchored)", async () => {
+      pathname = "/patient/symptoms";
+      const calls = mockComplaintsApi([
+        { id: "c1", position: 1, complaintText: "chief", bodyRegion: null, severity: null },
+        { id: "c2", position: 2, complaintText: "extra one", bodyRegion: null, severity: null },
+      ]);
+      renderWithMockShell(<SymptomsPage />, baseOverrides as PatientWorkflow);
+
+      const removeButton = await screen.findByRole("button", { name: /symptomsRemove/i });
+      fireEvent.click(removeButton);
+      await waitFor(() => {
+        expect(calls).toHaveLength(1);
+      });
+      expect(calls[0].method).toBe("DELETE");
+      expect(calls[0].body).toEqual({ complaintId: "c2" });
+    });
   });
 
   it("renders the documents step with upload control", async () => {

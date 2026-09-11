@@ -48,8 +48,10 @@ export default function PatientInterviewPage() {
   }
 
   function handleComplete() {
-    void syncSession({ workflowStep: "interview" });
-    router.push("/patient");
+    void syncSession({ workflowStep: "documents" });
+    // The documents step is the last stage of the kiosk journey; finishing the
+    // interview must not strand it (document evidence feeds the doctor console).
+    router.push("/patient/documents");
   }
 
   async function startListening() {
@@ -163,7 +165,9 @@ export default function PatientInterviewPage() {
     };
   }, []);
 
-  if (!currentQuestion) {
+  // The terminal marker question (domain "system") means every real question
+  // has an answer — show the completion screen instead of a question card.
+  if (!currentQuestion || currentQuestion.domain === "system") {
     return (
       <section className="flow-screen" aria-labelledby="interview-title">
         <p className="eyebrow">{t("interviewStep")}</p>
@@ -386,12 +390,16 @@ export default function PatientInterviewPage() {
         </div>
 
         <div className="primary-action-stack">
-          {canUseVoice && !transcript ? (
+          {/* Submit must be available for every question type (no dead ends):
+              yes/no drafts need an explicit advance, and once an answer is
+              recorded (KNOWN/DENIED/UNKNOWN/DECLINED) the same button
+              advances to the next question. */}
+          {!transcript ? (
             <button
               type="button"
               className="primary-button"
               onClick={() => submitAnswer(currentQuestion.id, draft.value || undefined, draft.state === "NOT_ASKED" ? "KNOWN" : draft.state)}
-              disabled={isSubmitting || isAnswered || !draft.value.trim()}
+              disabled={isSubmitting || (!isAnswered && !draft.value.trim())}
             >
               {t("interviewNext")} <span aria-hidden="true">→</span>
             </button>

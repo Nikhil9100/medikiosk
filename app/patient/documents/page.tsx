@@ -1,7 +1,6 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import { usePatientWorkflow } from "../PatientShell";
 import {
   isSupportedMimeType,
@@ -62,9 +61,11 @@ function formatFileSize(bytes: number): string {
 }
 
 export default function PatientDocumentsPage() {
-  const router = useRouter();
   const { workflow, setDocuments, resetPatientFlow, t } = usePatientWorkflow();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [completion, setCompletion] = useState<{ caseId: string | null; caseStatus: string } | null>(null);
+  const [completing, setCompleting] = useState(false);
+  const [completionError, setCompletionError] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string>("");
   const [extractionRuns, setExtractionRuns] = useState<Record<string, ExtractionRun>>({});
@@ -520,6 +521,52 @@ export default function PatientDocumentsPage() {
     return null;
   }
 
+  async function submitToDoctor() {
+    if (completing || completion) return;
+    setCompleting(true);
+    setCompletionError("");
+    try {
+      // Canonical completion: safety-signal detection + clinical summary +
+      // AWAITING_REVIEW / URGENT_REVIEW transition, in one transaction.
+      const response = await fetch("/api/patient/complete", { method: "POST" });
+      const data = (await response.json().catch(() => ({}))) as { caseId?: string; caseStatus?: string };
+      if (response.ok || response.status === 410) {
+        setCompletion({ caseId: data.caseId ?? null, caseStatus: data.caseStatus ?? "AWAITING_REVIEW" });
+      } else {
+        setCompletionError(t("errorDescription"));
+      }
+    } catch {
+      setCompletionError(t("errorDescription"));
+    } finally {
+      setCompleting(false);
+    }
+  }
+
+  if (completion) {
+    return (
+      <section className="flow-screen documents-screen" aria-labelledby="documents-complete-title">
+        <div className="completion-card" role="status">
+          <span className="completion-card__icon" aria-hidden="true">✓</span>
+          <h1 id="documents-complete-title">{t("completeTitle")}</h1>
+          <p className="lead-copy">{t("completeDescription")}</p>
+          {completion.caseStatus === "URGENT_REVIEW" && (
+            <p className="completion-card__urgent" role="alert">{t("completeUrgent")}</p>
+          )}
+          {completion.caseId && (
+            <p className="completion-card__case">
+              {t("completeCaseLabel")}: <strong>{completion.caseId}</strong>
+            </p>
+          )}
+          <div className="primary-action-stack">
+            <button type="button" className="primary-button" onClick={() => void resetPatientFlow()}>
+              {t("completeNextPatient")} <span aria-hidden="true">→</span>
+            </button>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="flow-screen" aria-labelledby="documents-title">
       <p className="eyebrow">{t("documentsStep")}</p>
@@ -664,9 +711,18 @@ export default function PatientDocumentsPage() {
       </div>
 
       <div className="primary-action-stack">
-        <button type="button" className="primary-button" onClick={() => router.push("/patient")}>
-          {t("documentsComplete")} <span aria-hidden="true">→</span>
+        <button
+          type="button"
+          className="primary-button"
+          disabled={completing}
+          aria-busy={completing}
+          onClick={() => void submitToDoctor()}
+        >
+          {completing ? t("completing") : t("completeSubmit")} <span aria-hidden="true">→</span>
         </button>
+        {completionError && (
+          <p className="complaint-helper" role="alert">{completionError}</p>
+        )}
         <button type="button" className="secondary-button" onClick={() => void resetPatientFlow()}>
           {t("newPatient")}
         </button>

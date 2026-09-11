@@ -1532,3 +1532,247 @@ li {
   color: var(--indigo);
   font-weight: 600;
 }
+
+/* ── Patient completion (kiosk hand-off) ────────────────────────────────── */
+.completion-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.9rem;
+  text-align: center;
+  padding: 2rem 1rem;
+}
+
+.completion-card__icon {
+  width: 4rem;
+  height: 4rem;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #dcfce7;
+  color: var(--green);
+  font-size: 2rem;
+  font-weight: 700;
+}
+
+.completion-card__urgent {
+  margin: 0;
+  padding: 0.6rem 0.9rem;
+  border-left: 3px solid #b91c1c;
+  background: #fef2f2;
+  color: #7f1d1d;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-align: left;
+}
+
+.completion-card__case {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--muted);
+}
+
+/* ── Complaint severity picker ──────────────────────────────────────────── */
+.severity-picker {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.severity-picker__label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.severity-picker__options {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.severity-option {
+  min-height: 44px;
+  padding: 0.45rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--foreground);
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+
+.severity-option--selected {
+  font-weight: 700;
+  color: #ffffff;
+  border-color: transparent;
+}
+
+.severity-option--mild.severity-option--selected {
+  background: #15803d;
+}
+
+.severity-option--moderate.severity-option--selected {
+  background: #b45309;
+}
+
+.severity-option--severe.severity-option--selected {
+  background: #dc2626;
+}
+
+.severity-option--very_severe.severity-option--selected {
+  background: #7f1d1d;
+}
+
+/* ── Other symptoms step ────────────────────────────────────────────────── */
+.symptoms-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.symptoms-subtitle {
+  max-width: 30rem;
+}
+
+.symptoms-chief {
+  width: 100%;
+  max-width: 30rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.8rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 0.9rem;
+  background: var(--panel);
+}
+
+.symptoms-chief__label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.symptoms-chief__text {
+  margin: 0;
+  font-size: 0.98rem;
+}
+
+.symptoms-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  max-width: 30rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.symptom-card {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.8rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 0.9rem;
+  background: var(--panel);
+}
+
+.symptom-card--draft {
+  border-style: dashed;
+}
+
+.symptom-card__text {
+  margin: 0;
+  font-size: 0.98rem;
+}
+
+.symptom-card__input {
+  width: 100%;
+  resize: vertical;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 0.7rem;
+  font: inherit;
+  background: var(--background);
+  color: var(--foreground);
+}
+
+.symptom-card__meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.symptom-card__tag {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  color: var(--muted);
+}
+
+.symptom-card__tag--severe,
+.symptom-card__tag--very_severe {
+  color: #ffffff;
+  border-color: transparent;
+  background: #dc2626;
+}
+
+.symptom-card__tag--very_severe {
+  background: #7f1d1d;
+}
+
+.symptom-card__tag--moderate {
+  color: #ffffff;
+  border-color: transparent;
+  background: #b45309;
+}
+
+.symptom-card__remove {
+  margin-left: auto;
+  min-height: 44px;
+  padding: 0.2rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: #b91c1c;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.symptom-card__regions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.symptom-card__actions {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.symptom-card__save {
+  flex: 1;
+}
+
+.symptoms-add {
+  width: 100%;
+  max-width: 30rem;
+  min-height: 52px;
+}
+
+.symptoms-limit {
+  max-width: 30rem;
+}

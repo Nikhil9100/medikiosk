@@ -139,6 +139,26 @@ export default function PatientAnatomyPage() {
     [t]
   );
 
+  /** Mirror the body area onto the complaint row (the doctor console reads
+      region/severity from complaints, not just the session). */
+  async function syncRegionToComplaint(region: PatientBodyRegion | null, subregion: PatientBodySubregion | null) {
+    try {
+      const listRes = await fetch("/api/patient/complaints", { cache: "no-store" });
+      if (!listRes.ok) return;
+      const data = (await listRes.json()) as { complaints?: { id: string }[] };
+      const first = data.complaints?.[0];
+      if (!first) return;
+      await fetch("/api/patient/complaints", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ complaintId: first.id, bodyRegion: region, bodySubregion: subregion }),
+      });
+    } catch {
+      // Best effort: the session still carries the region for the assistant
+      // and summary; the doctor console shows the complaint text regardless.
+    }
+  }
+
   function handleRegionClick(region: DiagramRegion) {
     const nextRegion: PatientBodyRegion | null = activeRegion === region ? null : region;
     const nextSubregion: PatientBodySubregion | null = nextRegion
@@ -151,6 +171,7 @@ export default function PatientAnatomyPage() {
       bodySubregion: nextSubregion,
       workflowStep: "anatomy",
     });
+    void syncRegionToComplaint(nextRegion, nextSubregion);
   }
 
   function handleSubregionClick(subregion: PatientBodySubregion) {
@@ -161,6 +182,7 @@ export default function PatientAnatomyPage() {
       bodySubregion: subregion,
       workflowStep: "anatomy",
     });
+    void syncRegionToComplaint(activeRegion, subregion);
   }
 
   return (
@@ -224,7 +246,7 @@ export default function PatientAnatomyPage() {
       </div>
 
       <div className="primary-action-stack">
-        <button type="button" className="primary-button" onClick={() => router.push("/patient/interview")}>
+        <button type="button" className="primary-button" onClick={() => router.push("/patient/symptoms")}>
           {t("complaintNext")} <span aria-hidden="true">→</span>
         </button>
       </div>

@@ -1,9 +1,10 @@
 import { z } from "zod";
+import { PatientStep } from "@/lib/patient-flow";
 import { PatientLanguage } from "./patient-flow";
 
 export const SessionStatus = z.enum(["ACTIVE", "EXPIRED", "COMPLETED"]);
 export const SessionConsentStatus = z.enum(["NOT_REVIEWED", "ACCEPTED", "DECLINED"]);
-export const SessionWorkflowStep = z.enum(["welcome", "language", "consent", "start", "complaint", "anatomy", "interview", "documents", "summary", "complete"]);
+export const SessionWorkflowStep = PatientStep;
 export const SessionBodyRegion = z.enum([
   "head",
   "chest",

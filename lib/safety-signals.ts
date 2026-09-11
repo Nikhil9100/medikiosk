@@ -103,6 +103,15 @@ const K = {
     "ஒரு பக்கம் தளர்வு",
     "एक बाजूला कमजोरी",
   ] as KeywordSet,
+  headTrauma: [
+    "fell on my head", "fell and hit", "hit my head", "head injury", "head wound",
+    "bumped my head", "injury to my head", "bleeding from my head", "cut on my head", "head strike",
+    "गिरकर सिर", "सिर पर गिरा", "सिर चोट", "सिर पर धक्का", "सिर पर आघात",
+    "পড়ে মাথায়", "মাথায় আঘাত", "মাথায় ধাক্কা", "মাথা কেটে",
+    "పడి తల", "తలకు గాయం", "తల కొట్టుకుంది", "తలపై ధోకా",
+    "படி தலையில்", "தலையில் காயம்", "தலையில் இடி", "தலையில் வெட்டு",
+    "पडून डोक्याला", "डोक्याला घायाळ", "डोक्यावर धक्का", "डोक्याला जखम",
+  ] as KeywordSet,
   abdominal: [
     "stomach pain", "belly pain", "severe stomach",
     "पेट में दर्द",
@@ -216,6 +225,20 @@ export function detectSafetySignals(input: SignalInput): SafetySignalDraft[] {
       summary: "You described symptoms that can need urgent attention. The doctor will review this first.",
       reason: "Patient text contains neurological descriptors (focal weakness, slurred speech, convulsion, loss of consciousness). Time-sensitive assessment indicated.",
       evidenceRef: "interview",
+      source: "PATIENT",
+    });
+  }
+
+  // 4b. Head trauma (fall or impact on the head) — intracranial injury risk.
+  if (matchesAny(allText, K.headTrauma)) {
+    const ref = matchesAny(complaintText, K.headTrauma)
+      ? `complaint:${input.complaints[0]?.position ?? 1}`
+      : "interview";
+    add({
+      type: "HEAD_TRAUMA",
+      summary: "You told us about an injury to your head. This is being checked by the doctor first.",
+      reason: "Patient text reports a head injury (fall or impact on the head). Risk of intracranial injury requires physician assessment.",
+      evidenceRef: ref,
       source: "PATIENT",
     });
   }

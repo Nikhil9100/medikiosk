@@ -52,6 +52,33 @@ describe("detectSafetySignals", () => {
     expect(drafts.map((d) => d.type)).toContain("NEUROLOGICAL");
   });
 
+  it("flags head trauma (fall onto the head) with complaint reference", () => {
+    const drafts = detectSafetySignals({
+      ...base,
+      complaints: [{ text: "I fell on my head two days ago and have a headache since", region: "head", severity: null, position: 1 }],
+    });
+    const head = drafts.find((d) => d.type === "HEAD_TRAUMA");
+    expect(head).toBeDefined();
+    expect(head?.evidenceRef).toBe("complaint:1");
+    expect(head?.source).toBe("PATIENT");
+  });
+
+  it("flags head trauma reported in Hindi", () => {
+    const drafts = detectSafetySignals({
+      ...base,
+      complaints: [{ text: "गिरकर सिर पर चोट लगी है", region: "head", severity: null, position: 1 }],
+    });
+    expect(drafts.map((d) => d.type)).toContain("HEAD_TRAUMA");
+  });
+
+  it("does NOT flag a plain headache as head trauma", () => {
+    const drafts = detectSafetySignals({
+      ...base,
+      complaints: [{ text: "Headache since morning", region: "head", severity: "MILD", position: 1 }],
+    });
+    expect(drafts.map((d) => d.type)).not.toContain("HEAD_TRAUMA");
+  });
+
   it("flags self-harm text with escalation summary", () => {
     const drafts = detectSafetySignals({
       ...base,

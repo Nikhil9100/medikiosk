@@ -23,10 +23,11 @@ const stepByPath: Record<string, PatientStep> = {
   "/patient/start": "start",
   "/patient/complaint": "complaint",
   "/patient/anatomy": "anatomy",
+  "/patient/symptoms": "symptoms",
   "/patient/interview": "interview",
   "/patient/documents": "documents",
 };
-const stepOrder: PatientStep[] = ["language", "consent", "start", "complaint", "anatomy", "interview", "documents"];
+const stepOrder: PatientStep[] = ["language", "consent", "start", "complaint", "anatomy", "symptoms", "interview", "documents"];
 const languageNameKeys: Record<PatientLanguage, TranslationKey> = {
   en: "languageEnglish",
   hi: "languageHindi",
@@ -114,7 +115,7 @@ export function PatientShell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!isReady || pathname === "/patient") return;
-    if ((currentStep === "start" || currentStep === "complaint" || currentStep === "anatomy" || currentStep === "interview" || currentStep === "documents") && workflow.consentStatus !== "ACCEPTED") {
+    if ((currentStep === "start" || currentStep === "complaint" || currentStep === "anatomy" || currentStep === "symptoms" || currentStep === "interview" || currentStep === "documents") && workflow.consentStatus !== "ACCEPTED") {
       router.replace("/patient/consent");
     }
   }, [currentStep, isReady, pathname, router, workflow.consentStatus]);
@@ -202,7 +203,7 @@ export function PatientShell({ children }: { children: React.ReactNode }) {
     return <LoadingState language={workflow.language} />;
   }
 
-  if ((currentStep === "start" || currentStep === "complaint" || currentStep === "anatomy" || currentStep === "interview" || currentStep === "documents") && workflow.consentStatus !== "ACCEPTED") {
+  if ((currentStep === "start" || currentStep === "complaint" || currentStep === "anatomy" || currentStep === "symptoms" || currentStep === "interview" || currentStep === "documents") && workflow.consentStatus !== "ACCEPTED") {
     return <LoadingState language={workflow.language} />;
   }
 

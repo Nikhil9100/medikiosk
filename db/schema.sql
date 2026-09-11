@@ -33,6 +33,10 @@ CREATE OR REPLACE FUNCTION app_access_role() RETURNS text AS $$
   SELECT current_setting('app.access_role', true)
 $$ LANGUAGE sql STABLE;
 
+CREATE OR REPLACE FUNCTION app_kiosk_id() RETURNS text AS $$
+  SELECT nullif(current_setting('app.kiosk_id', true), '')
+$$ LANGUAGE sql STABLE;
+
 -- ---------------------------------------------------------------------------
 -- Cases (patient sessions)
 -- ---------------------------------------------------------------------------
@@ -44,25 +48,6 @@ $$ LANGUAGE sql STABLE;
 -- acceptable: case numbers need uniqueness, not density.
 CREATE SEQUENCE IF NOT EXISTS medikiosk_case_no_seq START 1;
 
--- Idempotency lookup for session creation. Runs SECURITY DEFINER (owner is a
--- superuser, so RLS is bypassed) because a retried create opens a fresh
--- owner-scoped transaction that cannot see the original row under RLS.
--- Without this, a kiosk retry with the same Idempotency-Key would silently
--- create a second session.
--- RETURNS SETOF (not bare row type): on PostgreSQL 17 a SQL function with a
--- bare `RETURNS patient_sessions` row type mis-plans `SELECT * FROM ... WHERE
--- col = param` and returns a phantom all-NULL row, which would make every
--- new session "find" a ghost existing session. SETOF plans correctly.
-DROP FUNCTION IF EXISTS find_session_by_idempotency(text);
-CREATE OR REPLACE FUNCTION find_session_by_idempotency(p_key text)
-RETURNS SETOF patient_sessions
-LANGUAGE sql STABLE SECURITY DEFINER
-SET search_path = public
-AS $$
-  SELECT * FROM patient_sessions WHERE idempotency_key = p_key LIMIT 1;
-$$;
-REVOKE EXECUTE ON FUNCTION find_session_by_idempotency(text) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION find_session_by_idempotency(text) TO medikiosk_app;
 
 CREATE TABLE IF NOT EXISTS patient_sessions (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -83,7 +68,7 @@ CREATE TABLE IF NOT EXISTS patient_sessions (
   consent_timestamp timestamptz,
   workflow_step text NOT NULL DEFAULT 'welcome'
     CHECK (workflow_step IN ('welcome', 'language', 'consent', 'start', 'complaint',
-                             'anatomy', 'interview', 'documents', 'summary', 'complete')),
+                             'anatomy', 'symptoms', 'interview', 'documents', 'summary', 'complete')),
   -- Legacy single-complaint columns (superseded by the complaints table; kept
   -- for backward compatibility with the Supabase production schema).
   complaint_text text,
@@ -104,6 +89,26 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_patient_sessions_case_id ON patient_sessio
 DROP TRIGGER IF EXISTS trg_patient_sessions_updated ON patient_sessions;
 CREATE TRIGGER trg_patient_sessions_updated BEFORE UPDATE ON patient_sessions
   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+-- Idempotency lookup for session creation. Runs SECURITY DEFINER (owner is a
+-- superuser, so RLS is bypassed) because a retried create opens a fresh
+-- owner-scoped transaction that cannot see the original row under RLS.
+-- Without this, a kiosk retry with the same Idempotency-Key would silently
+-- create a second session.
+-- RETURNS SETOF (not bare row type): on PostgreSQL 17 a SQL function with a
+-- bare `RETURNS patient_sessions` row type mis-plans `SELECT * FROM ... WHERE
+-- col = param` and returns a phantom all-NULL row, which would make every
+-- new session "find" a ghost existing session. SETOF plans correctly.
+DROP FUNCTION IF EXISTS find_session_by_idempotency(text);
+CREATE OR REPLACE FUNCTION find_session_by_idempotency(p_key text)
+RETURNS SETOF patient_sessions
+LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT * FROM patient_sessions WHERE idempotency_key = p_key LIMIT 1;
+$$;
+REVOKE EXECUTE ON FUNCTION find_session_by_idempotency(text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION find_session_by_idempotency(text) TO medikiosk_app;
 
 -- ---------------------------------------------------------------------------
 -- Complaints (multiple, with severity + per-complaint HPI)
@@ -522,23 +527,28 @@ DROP POLICY IF EXISTS staff_sessions_scope ON staff_sessions;
 CREATE POLICY staff_sessions_scope ON staff_sessions
   USING (app_access_role() = 'staff') WITH CHECK (app_access_role() = 'staff');
 
--- Kiosk telemetry: staff can read; a kiosk device may insert/update only its own row.
+-- Kiosk telemetry: staff sees all rows; a kiosk device may read/insert/update
+-- only its own row (kiosk_id = app.kiosk_id GUC).
+--
+-- TWO safeguards against a PostgreSQL 17.10 (Debian) planner quirk:
+-- `current_setting` is STABLE in this build, and a raw GUC reference inside a
+-- command-scoped write policy (FOR INSERT / FOR UPDATE) gets constant-folded
+-- at plan time to a stale value, silently turning the heartbeat UPDATE into
+-- a 0-row no-op (kiosks stuck at OFFLINE; reproducible on a fresh table).
+--   1. A single FOR ALL policy — the shape every other table here uses,
+--      which evaluates the GUC at runtime.
+--   2. The GUC is read through the app_kiosk_id() SQL wrapper (same pattern
+--      as app_session_id()/app_access_role()), which resists the stale fold
+--      even in the worst case (backend's first plan made with no GUC set).
+-- Do not "simplify" either guard back out.
 DROP POLICY IF EXISTS kiosk_heartbeats_read ON kiosk_heartbeats;
-CREATE POLICY kiosk_heartbeats_read ON kiosk_heartbeats
-  FOR SELECT USING (app_access_role() = 'staff');
-
 DROP POLICY IF EXISTS kiosk_heartbeats_write ON kiosk_heartbeats;
-CREATE POLICY kiosk_heartbeats_write ON kiosk_heartbeats
-  FOR INSERT WITH CHECK (nullif(current_setting('app.kiosk_id', true), '') IS NOT NULL
-                         AND kiosk_id = nullif(current_setting('app.kiosk_id', true), ''));
-
--- Staff may update any kiosk row (e.g. ops triage clears an interrupted
--- session); a kiosk device may update only its own row.
 DROP POLICY IF EXISTS kiosk_heartbeats_update ON kiosk_heartbeats;
-CREATE POLICY kiosk_heartbeats_update ON kiosk_heartbeats
-  FOR UPDATE USING (app_access_role() = 'staff'
-                    OR (nullif(current_setting('app.kiosk_id', true), '') IS NOT NULL
-                        AND kiosk_id = nullif(current_setting('app.kiosk_id', true), '')));
+CREATE POLICY kiosk_heartbeats_scope ON kiosk_heartbeats
+  USING (app_access_role() = 'staff'
+         OR (app_kiosk_id() IS NOT NULL AND kiosk_id = app_kiosk_id()))
+  WITH CHECK (app_access_role() = 'staff'
+         OR (app_kiosk_id() IS NOT NULL AND kiosk_id = app_kiosk_id()));
 
 -- Knowledge base: readable by staff and by any active kiosk session (the
 -- assistant retrieves from inside the patient's session scope). The content

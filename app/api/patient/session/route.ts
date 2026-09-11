@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { PatientLanguage, type PatientStep } from "@/lib/patient-flow";
+import { PatientLanguage, PatientStep } from "@/lib/patient-flow";
 import { PatientSessionRecordSchema, type PatientSessionRecord } from "@/lib/session";
 import {
   databaseConfigured,
@@ -192,7 +192,8 @@ export async function PATCH(request: Request) {
   }
 }
 
-const WORKFLOW_STEPS = new Set(["welcome", "language", "consent", "start", "complaint", "anatomy", "interview", "documents", "summary", "complete"]);
+// Derived from the PatientStep enum so new workflow steps cannot drift out of sync.
+const WORKFLOW_STEPS = new Set<string>(PatientStep.options);
 const BODY_REGIONS = new Set(["head", "chest", "abdomen", "back", "arm", "hand", "leg", "foot", "skin", "other"]);
 const BODY_SUBREGIONS = new Set(["front", "back", "left", "right", "upper", "lower", "middle", "face", "body"]);
 

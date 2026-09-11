@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export const PatientLanguage = z.enum(["en", "hi", "bn", "te", "ta", "mr"]);
 export const ConsentStatus = z.enum(["NOT_REVIEWED", "ACCEPTED", "DECLINED"]);
-export const PatientStep = z.enum(["welcome", "language", "consent", "start", "complaint", "anatomy", "interview", "documents", "summary", "complete"]);
+export const PatientStep = z.enum(["welcome", "language", "consent", "start", "complaint", "anatomy", "symptoms", "interview", "documents", "summary", "complete"]);
 export const PatientBodyRegion = z.enum(["head", "chest", "abdomen", "back", "arm", "hand", "leg", "foot", "skin", "other"]);
 export const PatientBodySubregion = z.enum(["front", "back", "left", "right", "upper", "lower", "middle", "face", "body"]);
 
@@ -105,7 +105,8 @@ export function nextStep(step: PatientStep, consentStatus: ConsentStatus): Patie
   if (step === "consent" && consentStatus === "ACCEPTED") return "start";
   if (step === "start") return "complaint";
   if (step === "complaint") return "anatomy";
-  if (step === "anatomy") return "interview";
+  if (step === "anatomy") return "symptoms";
+  if (step === "symptoms") return "interview";
   if (step === "interview") return "documents";
   if (step === "documents") return "summary";
   return step;
@@ -117,7 +118,8 @@ export function previousStep(step: PatientStep): PatientStep {
   if (step === "start") return "consent";
   if (step === "complaint") return "start";
   if (step === "anatomy") return "complaint";
-  if (step === "interview") return "anatomy";
+  if (step === "symptoms") return "anatomy";
+  if (step === "interview") return "symptoms";
   if (step === "documents") return "interview";
   if (step === "summary") return "documents";
   if (step === "complete") return "summary";
