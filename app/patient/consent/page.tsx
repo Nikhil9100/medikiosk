@@ -5,11 +5,15 @@ import { usePatientWorkflow } from "../PatientShell";
 
 export default function PatientConsentPage() {
   const router = useRouter();
-  const { workflow, setConsentStatus, t } = usePatientWorkflow();
+  const { workflow, setConsentStatus, syncSession, t } = usePatientWorkflow();
 
-  function acceptConsent() {
+  async function acceptConsent() {
     setConsentStatus("ACCEPTED");
-    router.push("/patient/start");
+    // Consent is a durable record: persist it server-side before advancing.
+    // On failure the session banner is shown and the patient stays on this
+    // page to retry — the flow never advances on an unsaved consent.
+    const saved = await syncSession({ consentStatus: "ACCEPTED" });
+    if (saved) router.push("/patient/start");
   }
 
   function declineConsent() {

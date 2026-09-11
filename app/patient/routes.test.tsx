@@ -106,7 +106,7 @@ function renderWithMockShell(ui: React.ReactNode, workflowOverrides: Partial<Pat
       setSelectedSubregion: (subregion: PatientWorkflow["selectedSubregion"]) => setWorkflow(prev => ({ ...prev, selectedSubregion: subregion })),
       setInterviewFact: vi.fn(),
       setDocuments: vi.fn(),
-      syncSession: vi.fn(),
+      syncSession: vi.fn().mockResolvedValue(true),
       resetPatientFlow: vi.fn(),
       t: (key: TranslationKey) => key,
       openHelp: vi.fn(),
@@ -119,7 +119,7 @@ function renderWithMockShell(ui: React.ReactNode, workflowOverrides: Partial<Pat
       setSelectedSubregion: (subregion: PatientWorkflow["selectedSubregion"]) => void;
       setInterviewFact: (questionId: string, value: string | undefined, provenance?: string) => void;
       setDocuments: (documents: PatientWorkflow["documents"]) => void;
-      syncSession: (payload: Partial<Record<string, unknown>>) => Promise<void>;
+      syncSession: (payload: Partial<Record<string, unknown>>) => Promise<boolean>;
       resetPatientFlow: () => Promise<void>;
       t: (key: TranslationKey) => string;
       openHelp: () => void;
@@ -215,7 +215,28 @@ describe("patient onboarding routes", () => {
     expect(continueButton).toBeEnabled();
     fireEvent.click(continueButton);
 
-    expect(router.push).toHaveBeenCalledWith("/patient/start");
+    // Consent is persisted before the flow advances (durable record).
+    const { updatePatientSession } = await import("@/lib/patient-session-client");
+    await waitFor(() => expect(updatePatientSession).toHaveBeenCalledWith({ consentStatus: "ACCEPTED" }));
+    await waitFor(() => expect(router.push).toHaveBeenCalledWith("/patient/start"));
+  });
+
+  it("does not advance to start when consent cannot be persisted", async () => {
+    const { updatePatientSession } = await import("@/lib/patient-session-client");
+    vi.mocked(updatePatientSession).mockRejectedValueOnce(new Error("storage unavailable"));
+    pathname = "/patient/consent";
+    render(
+      <PatientShell>
+        <ConsentPage />
+      </PatientShell>,
+    );
+
+    const continueButton = await screen.findByRole("button", { name: /I Agree & Continue/ });
+    fireEvent.click(continueButton);
+
+    await waitFor(() => expect(updatePatientSession).toHaveBeenCalledWith({ consentStatus: "ACCEPTED" }));
+    await new Promise((r) => setTimeout(r, 50));
+    expect(router.push).not.toHaveBeenCalledWith("/patient/start");
   });
 
   it("takes the consent back action to language selection without acceptance", async () => {

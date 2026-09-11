@@ -15,10 +15,11 @@ const languageOptions: Array<{ code: PatientLanguage; nameKey: "languageEnglish"
 
 export default function PatientLanguagePage() {
   const router = useRouter();
-  const { workflow, setLanguage, t } = usePatientWorkflow();
+  const { workflow, setLanguage, syncSession, t } = usePatientWorkflow();
 
   function chooseLanguage(language: PatientLanguage) {
     setLanguage(language);
+    void syncSession({ language });
     router.push("/patient/consent");
   }
 

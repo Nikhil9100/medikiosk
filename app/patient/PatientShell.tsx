@@ -46,7 +46,7 @@ type PatientContextValue = {
   setSelectedSubregion: (subregion: PatientWorkflow["selectedSubregion"]) => void;
   setInterviewFact: (questionId: string, value: string | undefined, provenance?: ClinicalProvenance) => void;
   setDocuments: (documents: PatientWorkflow["documents"]) => void;
-  syncSession: (payload: SessionUpdatePayload) => Promise<void>;
+  syncSession: (payload: SessionUpdatePayload) => Promise<boolean>;
   resetPatientFlow: () => Promise<void>;
   t: (key: TranslationKey) => string;
   openHelp: () => void;
@@ -64,6 +64,10 @@ export function PatientShell({ children }: { children: React.ReactNode }) {
   const [sessionRetryNonce, setSessionRetryNonce] = useState(0);
   const bootstrapLanguageRef = useRef<PatientLanguage>("en");
   const resetInFlightRef = useRef(false);
+  const workflowRef = useRef(workflow);
+  useEffect(() => {
+    workflowRef.current = workflow;
+  }, [workflow]);
   const currentStep = stepByPath[pathname] ?? "welcome";
   const language = workflow.language;
   const t = (key: TranslationKey) => getTranslation(language, key);
@@ -101,7 +105,44 @@ export function PatientShell({ children }: { children: React.ReactNode }) {
       try {
         const session = await bootstrapPatientSession(bootstrapLanguageRef.current);
         if (cancelled) return;
-        setWorkflow((current) => (current.sessionId === session.id ? current : { ...current, sessionId: session.id }));
+        const current = workflowRef.current;
+        // A hard refresh loses in-memory workflow state. When the client holds
+        // no local progress (pristine defaults) and the browser landed on a
+        // mid-flow page, restore the flow from the durable server session so
+        // the patient resumes where they left off instead of being bounced
+        // back to consent. A client with in-flight progress is never
+        // overwritten (client state is authoritative mid-flow).
+        const clientIsFresh =
+          current.consentStatus === "NOT_REVIEWED" &&
+          current.complaint === "" &&
+          current.selectedRegion === null &&
+          current.selectedSubregion === null &&
+          Object.keys(current.interviewFacts).length === 0;
+        if (current.sessionId !== session.id) {
+          setWorkflow(() =>
+            clientIsFresh
+              ? {
+                  ...current,
+                  sessionId: session.id,
+                  language: session.language ?? current.language,
+                  consentStatus: session.consentStatus ?? current.consentStatus,
+                  complaint: session.complaintText ?? current.complaint,
+                  selectedRegion: session.bodyRegion ?? current.selectedRegion,
+                  selectedSubregion: session.bodySubregion ?? current.selectedSubregion,
+                  interviewFacts: session.interviewData ?? current.interviewFacts,
+                }
+              : { ...current, sessionId: session.id },
+          );
+        }
+        // Resume on the durable step if the browser landed somewhere else.
+        if (
+          clientIsFresh &&
+          session.workflowStep &&
+          session.workflowStep !== "welcome" &&
+          session.workflowStep !== (stepByPath[pathname] ?? "welcome")
+        ) {
+          router.push(`/patient/${session.workflowStep}`);
+        }
         setSessionStatus("READY");
       } catch {
         if (cancelled) return;
@@ -111,14 +152,20 @@ export function PatientShell({ children }: { children: React.ReactNode }) {
     return () => {
       cancelled = true;
     };
+    // pathname/router are intentionally read once (the page the browser
+    // landed on), not re-run on every client-side navigation.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isReady, sessionRetryNonce]);
 
   useEffect(() => {
-    if (!isReady || pathname === "/patient") return;
+    // While the session is still bootstrapping, the server session is the
+    // source of truth for consent — redirecting first would bounce a
+    // refreshed mid-flow patient to consent before rehydration lands.
+    if (!isReady || pathname === "/patient" || sessionStatus === "BOOTSTRAPPING") return;
     if ((currentStep === "start" || currentStep === "complaint" || currentStep === "anatomy" || currentStep === "symptoms" || currentStep === "interview" || currentStep === "documents") && workflow.consentStatus !== "ACCEPTED") {
       router.replace("/patient/consent");
     }
-  }, [currentStep, isReady, pathname, router, workflow.consentStatus]);
+  }, [currentStep, isReady, pathname, router, workflow.consentStatus, sessionStatus]);
 
   function setLanguage(nextLanguage: PatientLanguage) {
     setWorkflow((current) => ({ ...current, language: nextLanguage }));
@@ -154,11 +201,13 @@ export function PatientShell({ children }: { children: React.ReactNode }) {
     setWorkflow((current) => ({ ...current, documents }));
   }
 
-  async function syncSession(payload: SessionUpdatePayload) {
+  async function syncSession(payload: SessionUpdatePayload): Promise<boolean> {
     try {
       await updatePatientSession(payload);
+      return true;
     } catch {
       setSessionStatus("ERROR");
+      return false;
     }
   }
 
