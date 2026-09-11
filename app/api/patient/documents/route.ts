@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createDocumentRecord, isSupportedMimeType, validateFileSize, DocumentType } from "@/lib/documents";
 import { databaseConfigured } from "@/lib/db/pool";
 import { getActiveKioskSession } from "@/lib/db/session-scope";
+import { hasAcceptedConsent, consentRequiredResponse } from "@/lib/patient-consent";
 import { scopedDocumentRepository } from "@/lib/db/scoped-document-repository";
 
 export const runtime = "nodejs";
@@ -32,6 +33,7 @@ export async function POST(request: Request) {
     if (!session) {
       return NextResponse.json({ error: "No active session" }, { status: 404 });
     }
+    if (!hasAcceptedConsent(session)) return consentRequiredResponse();
 
     const formData = await request.formData();
     const file = formData.get("file");

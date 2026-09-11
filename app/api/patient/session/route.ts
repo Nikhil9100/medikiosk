@@ -9,6 +9,7 @@ import {
 import { createCase, getCase, updateCase } from "@/lib/db/cases";
 import { SESSION_COOKIE } from "@/lib/db/session-scope";
 import { PostgresDocumentRepository } from "@/lib/db/documents-pg";
+import { CONSENT_FREE_STEPS, consentRequiredResponse } from "@/lib/patient-consent";
 
 /**
  * Patient session API — durable, database-backed.
@@ -183,6 +184,19 @@ export async function PATCH(request: Request) {
       if (current.status !== "ACTIVE" || current.expiresAt.getTime() <= Date.now()) {
         return "INACTIVE" as const;
       }
+      // Consent gate: clinical fields and post-consent workflow steps are
+      // refused until the effective consent state is ACCEPTED (the update may
+      // itself carry the acceptance). Nulls clear data and stay allowed.
+      const effectiveConsent = parsed.consentStatus ?? current.consentStatus;
+      if (effectiveConsent !== "ACCEPTED") {
+        const wantsClinicalData =
+          (parsed.complaintText !== undefined && parsed.complaintText !== null) ||
+          (parsed.bodyRegion !== undefined && parsed.bodyRegion !== null) ||
+          (parsed.bodySubregion !== undefined && parsed.bodySubregion !== null) ||
+          (parsed.interviewData !== undefined && parsed.interviewData !== null) ||
+          (parsed.workflowStep !== undefined && !CONSENT_FREE_STEPS.has(parsed.workflowStep));
+        if (wantsClinicalData) return "CONSENT_REQUIRED" as const;
+      }
       return updateCase(client, sessionId, {
         language: parsed.language,
         consentStatus: parsed.consentStatus,
@@ -195,6 +209,7 @@ export async function PATCH(request: Request) {
     });
     if (updated === null) return NextResponse.json({ error: "Session not found" }, { status: 404 });
     if (updated === "INACTIVE") return NextResponse.json({ error: "Session is not active" }, { status: 410 });
+    if (updated === "CONSENT_REQUIRED") return consentRequiredResponse();
     return NextResponse.json({ session: toResponse(updated) });
   } catch (error) {
     console.error("Session update failed:", error);

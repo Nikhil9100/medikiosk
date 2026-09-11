@@ -3,6 +3,7 @@ import { z } from "zod";
 import type { PoolClient } from "pg";
 import { databaseConfigured, withKioskTx } from "@/lib/db/pool";
 import { getActiveKioskSession } from "@/lib/db/session-scope";
+import { hasAcceptedConsent, consentRequiredResponse } from "@/lib/patient-consent";
 import { addComplaint, deleteComplaint, getComplaint, listComplaints, updateComplaint, type ComplaintRecord } from "@/lib/db/complaints";
 import { transitionCase } from "@/lib/db/cases";
 
@@ -49,6 +50,7 @@ export async function POST(request: Request) {
   }
   const session = await getActiveKioskSession();
   if (!session) return NextResponse.json({ error: "No active session" }, { status: 404 });
+  if (!hasAcceptedConsent(session)) return consentRequiredResponse();
 
   const body = await request.json().catch(() => null);
   const parsed = CreateComplaintSchema.safeParse(body);
@@ -144,6 +146,7 @@ export async function PATCH(request: Request) {
   }
   const session = await getActiveKioskSession();
   if (!session) return NextResponse.json({ error: "No active session" }, { status: 404 });
+  if (!hasAcceptedConsent(session)) return consentRequiredResponse();
 
   const body = await request.json().catch(() => null);
   const parsed = UpdateComplaintSchema.safeParse(body);

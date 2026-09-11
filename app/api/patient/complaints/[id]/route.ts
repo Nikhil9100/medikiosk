@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { databaseConfigured, withKioskTx } from "@/lib/db/pool";
 import { getActiveKioskSession } from "@/lib/db/session-scope";
+import { hasAcceptedConsent, consentRequiredResponse } from "@/lib/patient-consent";
 import { deleteComplaint, getComplaint, updateComplaint } from "@/lib/db/complaints";
 
 export const runtime = "nodejs";
@@ -23,6 +24,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   }
   const session = await getActiveKioskSession();
   if (!session) return NextResponse.json({ error: "No active session" }, { status: 404 });
+  if (!hasAcceptedConsent(session)) return consentRequiredResponse();
 
   const body = await request.json().catch(() => null);
   const parsed = UpdateComplaintSchema.safeParse(body);

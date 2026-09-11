@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { databaseConfigured } from "@/lib/db/pool";
 import { getActiveKioskSession } from "@/lib/db/session-scope";
+import { hasAcceptedConsent, consentRequiredResponse } from "@/lib/patient-consent";
 import { scopedDocumentRepository } from "@/lib/db/scoped-document-repository";
 import { ExtractionError } from "@/lib/extraction/types";
 import { runExtraction } from "@/lib/extraction/engine";
@@ -26,6 +27,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     if (!session) {
       return NextResponse.json({ error: "No active session" }, { status: 404 });
     }
+    if (!hasAcceptedConsent(session)) return consentRequiredResponse();
     const sessionId = session.id;
     const repository = scopedDocumentRepository(sessionId);
 

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { databaseConfigured, withKioskTx } from "@/lib/db/pool";
 import { getActiveKioskSession } from "@/lib/db/session-scope";
+import { hasAcceptedConsent, consentRequiredResponse } from "@/lib/patient-consent";
 import { completeKioskIntake, getCase } from "@/lib/db/cases";
 import { listComplaints } from "@/lib/db/complaints";
 import { listEvidenceForSession } from "@/lib/db/documents-pg";
@@ -36,6 +37,7 @@ export async function POST() {
   }
   const session = await getActiveKioskSession();
   if (!session) return NextResponse.json({ error: "No active session" }, { status: 404 });
+  if (!hasAcceptedConsent(session)) return consentRequiredResponse();
   if (session.status !== "ACTIVE") {
     return NextResponse.json({ error: "Session is not active" }, { status: 410 });
   }

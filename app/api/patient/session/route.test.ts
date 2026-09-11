@@ -22,9 +22,9 @@ vi.mock("next/headers", () => ({
 
 import { cookies } from "next/headers";
 import { withKioskTx } from "@/lib/db/pool";
-import { getCase } from "@/lib/db/cases";
+import { getCase, updateCase } from "@/lib/db/cases";
 import { PostgresDocumentRepository } from "@/lib/db/documents-pg";
-import { GET } from "./route";
+import { GET, PATCH } from "./route";
 
 const now = new Date();
 const ACTIVE_SESSION = {
@@ -120,5 +120,78 @@ describe("GET /api/patient/session (documents rehydration)", () => {
     setup(null);
     const response = await GET();
     expect(response.status).toBe(404);
+  });
+});
+
+// Consent gate: no clinical write before ACCEPTED (server-side enforcement).
+describe("PATCH /api/patient/session (consent gate)", () => {
+  const NOT_REVIEWED = {
+    ...ACTIVE_SESSION,
+    consentStatus: "NOT_REVIEWED",
+    consentVersion: null,
+    consentTimestamp: null,
+    workflowStep: "welcome",
+    complaintText: null,
+  };
+
+  function setupPatch(current: any, updated: any) {
+    vi.mocked(cookies).mockResolvedValue({ get: () => ({ name: "medikiosk_session", value: "session-123" }) }) as any;
+    vi.mocked(getCase).mockResolvedValue(current);
+    vi.mocked(updateCase).mockResolvedValue(updated);
+    vi.mocked(withKioskTx).mockImplementation(async (_id: string, fn: (c: unknown) => Promise<unknown>) =>
+      Promise.resolve(fn({})),
+    ) as any;
+  }
+
+  function patchRequest(body: unknown) {
+    return new Request("http://localhost/api/patient/session", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  }
+
+  it("refuses workflow advancement to a post-consent step without consent (403)", async () => {
+    setupPatch(NOT_REVIEWED, NOT_REVIEWED);
+    const response = await PATCH(patchRequest({ workflowStep: "complaint" }));
+    const data = await response.json();
+    expect(response.status).toBe(403);
+    expect(data.code).toBe("CONSENT_REQUIRED");
+  });
+
+  it("refuses recording complaint text without consent (403)", async () => {
+    setupPatch(NOT_REVIEWED, NOT_REVIEWED);
+    const response = await PATCH(patchRequest({ complaintText: "headache" }));
+    expect(response.status).toBe(403);
+  });
+
+  it("refuses recording interview data without consent (403)", async () => {
+    setupPatch(NOT_REVIEWED, NOT_REVIEWED);
+    const response = await PATCH(patchRequest({ interviewData: { q1: "UNKNOWN" } }));
+    expect(response.status).toBe(403);
+  });
+
+  it("still allows the consent screen and language choice without consent", async () => {
+    setupPatch(NOT_REVIEWED, { ...NOT_REVIEWED, workflowStep: "consent", language: "hi" });
+    const response = await PATCH(patchRequest({ workflowStep: "consent", language: "hi" }));
+    const data = await response.json();
+    expect(response.status).toBe(200);
+    expect(data.session.workflowStep).toBe("consent");
+  });
+
+  it("accepts consent and advances the step in one update", async () => {
+    setupPatch(NOT_REVIEWED, { ...NOT_REVIEWED, consentStatus: "ACCEPTED", workflowStep: "start" });
+    const response = await PATCH(patchRequest({ consentStatus: "ACCEPTED", workflowStep: "start" }));
+    const data = await response.json();
+    expect(response.status).toBe(200);
+    expect(data.session.consentStatus).toBe("ACCEPTED");
+  });
+
+  it("allows workflow advancement after consent is accepted", async () => {
+    setupPatch(ACTIVE_SESSION, { ...ACTIVE_SESSION, workflowStep: "complaint" });
+    const response = await PATCH(patchRequest({ workflowStep: "complaint" }));
+    const data = await response.json();
+    expect(response.status).toBe(200);
+    expect(data.session.workflowStep).toBe("complaint");
   });
 });
