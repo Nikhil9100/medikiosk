@@ -77,6 +77,19 @@ test("essential clinical intake keys exist and are non-empty for all 6 languages
     "verySevere",
     "noPain",
 
+    // Voice-assisted Anatomy
+    "speakAffectedArea",
+    "voiceListeningArea",
+    "voiceHeardPrefix",
+    "voiceHeardQuestion",
+    "voiceConfirmBtn",
+    "voiceEditManuallyBtn",
+    "voiceProposedTag",
+    "voiceNoMatch",
+    "voicePartialMatch",
+    "voiceMicDenied",
+    "voiceUnsupported",
+
     // Connection chips
     "connectionOnline",
     "connectionSyncing",

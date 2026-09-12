@@ -256,7 +256,18 @@ const en = {
   "footerPrivacy": "Privacy",
   "footerHelp": "Help",
   "footerLanguage": "Language",
-  "footerTerms": "Terms"
+  "footerTerms": "Terms",
+  "speakAffectedArea": "Speak affected area",
+  "voiceListeningArea": "Listening… speak affected area (e.g. chest, stomach, back)",
+  "voiceHeardPrefix": "We heard:",
+  "voiceHeardQuestion": "Is this correct?",
+  "voiceConfirmBtn": "Confirm",
+  "voiceEditManuallyBtn": "Edit manually",
+  "voiceProposedTag": "(heard)",
+  "voiceNoMatch": "We didn't catch that — try again or tap the body area.",
+  "voicePartialMatch": "Understood part of your speech. Confirm below or tap the rest.",
+  "voiceMicDenied": "Microphone access was denied. You can select your affected areas by tapping below.",
+  "voiceUnsupported": "Voice input is not supported in this browser. Please use tap/click."
 };
 
 export type TranslationKey = keyof typeof en;
@@ -495,7 +506,18 @@ const hi: Record<TranslationKey, string> = {
   "footerPrivacy": "गोपनीयता",
   "footerHelp": "सहायता",
   "footerLanguage": "भाषा",
-  "footerTerms": "शर्तें"
+  "footerTerms": "शर्तें",
+  "speakAffectedArea": "प्रभावित क्षेत्र बोलें",
+  "voiceListeningArea": "सुन रहे हैं… प्रभावित क्षेत्र बोलें (जैसे छाती, पेट, पीठ)",
+  "voiceHeardPrefix": "हमने सुना:",
+  "voiceHeardQuestion": "क्या यह सही है?",
+  "voiceConfirmBtn": "पुष्टि करें",
+  "voiceEditManuallyBtn": "स्वयं ठीक करें",
+  "voiceProposedTag": "(सुना गया)",
+  "voiceNoMatch": "हम समझ नहीं पाए — फिर से बोलें या नीचे शरीर पर स्पर्श करें।",
+  "voicePartialMatch": "कुछ भाग समझ आया। नीचे पुष्टि करें या बाकी स्पर्श करें।",
+  "voiceMicDenied": "माइक की अनुमति नहीं मिली। आप नीचे स्पर्श करके चुन सकते हैं।",
+  "voiceUnsupported": "इस ब्राउज़र में वॉयस इनपुट समर्थित नहीं है। कृपया स्पर्श का उपयोग करें।"
 };
 const bn: Record<TranslationKey, string> = {
   "appName": "MediKiosk",
@@ -731,7 +753,18 @@ const bn: Record<TranslationKey, string> = {
   "footerPrivacy": "গোপনীয়তা",
   "footerHelp": "সাহায্য",
   "footerLanguage": "ভাষা",
-  "footerTerms": "শর্তাবলী"
+  "footerTerms": "শর্তাবলী",
+  "speakAffectedArea": "আক্রান্ত স্থান বলুন",
+  "voiceListeningArea": "শুনছি… আক্রান্ত স্থান বলুন (যেমন বুক, পেট, পিঠ)",
+  "voiceHeardPrefix": "আমরা শুনেছি:",
+  "voiceHeardQuestion": "এটি কি সঠিক?",
+  "voiceConfirmBtn": "নিশ্চিত করুন",
+  "voiceEditManuallyBtn": "নিজে ঠিক করুন",
+  "voiceProposedTag": "(শোনা গেছে)",
+  "voiceNoMatch": "আমরা বুঝতে পারিনি — আবার বলুন অথবা শরীরে স্পর্শ করুন।",
+  "voicePartialMatch": "কিছু অংশ বোঝা গেছে। নিচে নিশ্চিত করুন অথবা বাকি স্পর্শ করুন।",
+  "voiceMicDenied": "মাইক্রোফোনের অনুমতি পাওয়া যায়নি। আপনি স্পর্শ করে বেছে নিতে পারেন।",
+  "voiceUnsupported": "এই ব্রাউজারে ভয়েস সমর্থিত নয়। স্পর্শ করে বেছে নিন।"
 };
 const te: Record<TranslationKey, string> = {
   "appName": "MediKiosk",
@@ -967,7 +1000,18 @@ const te: Record<TranslationKey, string> = {
   "footerPrivacy": "గోప్యత",
   "footerHelp": "సహాయం",
   "footerLanguage": "భాష",
-  "footerTerms": "నిబంధనలు"
+  "footerTerms": "నిబంధనలు",
+  "speakAffectedArea": "బాధిత ప్రాంతాన్ని చెప్పండి",
+  "voiceListeningArea": "వింటున్నాము… బాధిత ప్రాంతం చెప్పండి (ఉదా. ఛాతీ, పొట్ట, వెనుక)",
+  "voiceHeardPrefix": "మేము విన్నాము:",
+  "voiceHeardQuestion": "ఇది సరైనదేనా?",
+  "voiceConfirmBtn": "నిర్ధారించండి",
+  "voiceEditManuallyBtn": "మాన్యువల్గా సరిచేయండి",
+  "voiceProposedTag": "(వినిపించింది)",
+  "voiceNoMatch": "మేము గుర్తించలేకపోయాము — మళ్లీ ప్రయత్నించండి లేదా తాకండి.",
+  "voicePartialMatch": "కొంత భాగం అర్థమైంది. కింద నిర్ధారించండి లేదా మిగిలినది తాకండి.",
+  "voiceMicDenied": "మైక్రోఫోన్ అనుమతి నిరాకరించబడింది. మీరు తాకి ఎంచుకోవచ్చు.",
+  "voiceUnsupported": "ఈ బ్రౌజర్‌లో వాయిస్ ఇన్‌పుట్ సపోర్ట్ లేదు. దయచేసి ట్యాప్ చేయండి."
 };
 const ta: Record<TranslationKey, string> = {
   "appName": "MediKiosk",
@@ -1203,7 +1247,18 @@ const ta: Record<TranslationKey, string> = {
   "footerPrivacy": "தனியுரிமை",
   "footerHelp": "உதவி",
   "footerLanguage": "மொழி",
-  "footerTerms": "விதிமுறைகள்"
+  "footerTerms": "விதிமுறைகள்",
+  "speakAffectedArea": "பாதிக்கப்பட்ட பகுதியை சொல்லுங்கள்",
+  "voiceListeningArea": "கேட்கிறது… பகுதியை சொல்லுங்கள் (எ.கா. மார்பு, வயிறு, முதுகு)",
+  "voiceHeardPrefix": "நாங்கள் கேட்டது:",
+  "voiceHeardQuestion": "இது சரியா?",
+  "voiceConfirmBtn": "உறுதிப்படுத்து",
+  "voiceEditManuallyBtn": "கைமுறையாக திருத்து",
+  "voiceProposedTag": "(கேட்டது)",
+  "voiceNoMatch": "எங்களால் புரிந்துகொள்ள முடியவில்லை — மீண்டும் கூறவும் அல்லது தொடவும்.",
+  "voicePartialMatch": "பகுதி புரிந்தது. கீழே உறுதிப்படுத்தவும் அல்லது மீதியை தொடவும்.",
+  "voiceMicDenied": "மைக் அனுமதி மறுக்கப்பட்டது. தொட்டு தேர்ந்தெடுக்கலாம்.",
+  "voiceUnsupported": "இந்த உலாவியில் குரல் உள்ளீடு ஆதரிக்கப்படவில்லை."
 };
 const mr: Record<TranslationKey, string> = {
   "appName": "MediKiosk",
@@ -1439,7 +1494,18 @@ const mr: Record<TranslationKey, string> = {
   "footerPrivacy": "गोपनीयता",
   "footerHelp": "मदत",
   "footerLanguage": "भाषा",
-  "footerTerms": "अटी"
+  "footerTerms": "अटी",
+  "speakAffectedArea": "त्रास असलेला भाग सांगा",
+  "voiceListeningArea": "ऐकत आहे… त्रास असलेला भाग सांगा (उदा. छाती, पोट, पाठ)",
+  "voiceHeardPrefix": "आम्ही ऐकले:",
+  "voiceHeardQuestion": "हे बरोबर आहे का?",
+  "voiceConfirmBtn": "पुष्टी करा",
+  "voiceEditManuallyBtn": "स्वतः दुरुस्त करा",
+  "voiceProposedTag": "(ऐकले)",
+  "voiceNoMatch": "समजले नाही — पुन्हा बोला किंवा शरीरावर स्पर्श करा.",
+  "voicePartialMatch": "काही भाग समजला. खाली पुष्टी करा किंवा उर्वरित स्पर्श करा.",
+  "voiceMicDenied": "मायक्रोफोन परवानगी नाकारली. आपण खाली स्पर्श करून निवडू शकता.",
+  "voiceUnsupported": "या ब्राउझरमध्ये व्हॉइस इनपुट समर्थित नाही. कृपया स्पर्श वापरा."
 };
 
 const translations: Record<PatientLanguage, Record<TranslationKey, string>> = {

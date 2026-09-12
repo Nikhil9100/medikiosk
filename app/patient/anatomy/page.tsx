@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { BodyRegion, Severity } from "@/lib/patient-flow";
 import type { TranslationKey } from "@/lib/i18n";
+import { parseAnatomyVoice, getLocaleForLanguage } from "@/lib/anatomy-voice";
 import { usePatient } from "../PatientShell";
 
 const regions: [BodyRegion, TranslationKey, string][] = [
@@ -99,9 +100,168 @@ export default function Anatomy() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
+  // Voice proposed state (transient, NOT committed until explicit confirmation)
+  const [proposedRegions, setProposedRegions] = useState<BodyRegion[]>([]);
+  const [proposedSubregions, setProposedSubregions] = useState<Record<string, string[]>>({});
+  const [listening, setListening] = useState(false);
+  const [voiceFeedback, setVoiceFeedback] = useState("");
+  const [speechSupported, setSpeechSupported] = useState(true);
+
+  const recRef = useRef<any>(null);
+  const silenceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const maxTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const supported = "SpeechRecognition" in window || "webkitSpeechRecognition" in window;
+      setSpeechSupported(supported);
+    }
+    return () => {
+      stopVoice();
+    };
+  }, []);
+
   const region = selectedRegions.length > 0 ? selectedRegions[selectedRegions.length - 1] : null;
 
+  function stopVoice() {
+    if (silenceTimeoutRef.current) {
+      clearTimeout(silenceTimeoutRef.current);
+      silenceTimeoutRef.current = null;
+    }
+    if (maxTimeoutRef.current) {
+      clearTimeout(maxTimeoutRef.current);
+      maxTimeoutRef.current = null;
+    }
+    if (recRef.current) {
+      try {
+        recRef.current.stop();
+      } catch {}
+      recRef.current = null;
+    }
+    setListening(false);
+  }
+
+  function startListening() {
+    stopVoice();
+    setVoiceFeedback("");
+
+    if (typeof window === "undefined") return;
+    const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRec) {
+      setSpeechSupported(false);
+      setVoiceFeedback(t("voiceUnsupported") || "Voice input is not supported in this browser. Please use tap/click.");
+      return;
+    }
+
+    try {
+      const rec = new SpeechRec();
+      rec.lang = getLocaleForLanguage(workflow.language);
+      rec.continuous = false;
+      rec.interimResults = true;
+
+      rec.onstart = () => {
+        setListening(true);
+        setVoiceFeedback("");
+        // Safety max duration timeout: 10s
+        maxTimeoutRef.current = setTimeout(() => {
+          stopVoice();
+        }, 10000);
+        // Silence timeout: 2.5s
+        silenceTimeoutRef.current = setTimeout(() => {
+          stopVoice();
+        }, 3000);
+      };
+
+      rec.onresult = (e: any) => {
+        // Reset silence timer on any speech event
+        if (silenceTimeoutRef.current) {
+          clearTimeout(silenceTimeoutRef.current);
+        }
+        silenceTimeoutRef.current = setTimeout(() => {
+          stopVoice();
+        }, 2500);
+
+        let transcript = "";
+        for (let i = 0; i < e.results.length; i++) {
+          transcript += e.results[i][0].transcript + " ";
+        }
+
+        const parsed = parseAnatomyVoice(transcript, workflow.language);
+        if (parsed.isMatched) {
+          setProposedRegions(parsed.matchedRegions);
+          setProposedSubregions(parsed.matchedSubregions);
+          setVoiceFeedback("");
+        } else if (e.results[0]?.isFinal) {
+          setVoiceFeedback(t("voiceNoMatch") || "We didn't catch that — try again or tap the body area.");
+        }
+      };
+
+      rec.onerror = (e: any) => {
+        if (e.error === "not-allowed" || e.error === "permission-denied") {
+          setVoiceFeedback(
+            t("voiceMicDenied") ||
+              "Microphone access was denied. You can select your affected areas by tapping below."
+          );
+        } else if (e.error === "no-speech") {
+          setVoiceFeedback(t("voiceNoMatch") || "We didn't catch that — try again or tap the body area.");
+        }
+        stopVoice();
+      };
+
+      rec.onend = () => {
+        setListening(false);
+      };
+
+      recRef.current = rec;
+      rec.start();
+    } catch {
+      setListening(false);
+      setVoiceFeedback(t("voiceNoMatch") || "We didn't catch that — try again or tap the body area.");
+    }
+  }
+
+  function toggleVoice() {
+    if (listening) {
+      stopVoice();
+    } else {
+      startListening();
+    }
+  }
+
+  function confirmProposed() {
+    if (proposedRegions.length === 0) return;
+    setSelectedRegions((prev) => Array.from(new Set([...prev, ...proposedRegions])));
+    setSelectedSubregions((prev) => {
+      const next = { ...prev };
+      for (const [rk, subs] of Object.entries(proposedSubregions)) {
+        next[rk] = Array.from(new Set([...(next[rk] || []), ...subs]));
+      }
+      return next;
+    });
+
+    if (proposedRegions.includes("back")) {
+      setView("back");
+    } else if (proposedRegions.includes("chest") || proposedRegions.includes("abdomen")) {
+      setView("front");
+    }
+
+    setProposedRegions([]);
+    setProposedSubregions({});
+    setVoiceFeedback("");
+  }
+
+  function discardProposed() {
+    setProposedRegions([]);
+    setProposedSubregions({});
+    setVoiceFeedback("");
+  }
+
   function toggleRegion(key: BodyRegion) {
+    // Clear any pending proposed voice state on manual interaction
+    if (proposedRegions.length > 0) {
+      discardProposed();
+    }
+
     if (selectedRegions.includes(key)) {
       setSelectedRegions((prev) => prev.filter((r) => r !== key));
       setSelectedSubregions((prev) => {
@@ -117,6 +277,10 @@ export default function Anatomy() {
   }
 
   function toggleSubregion(regionKey: BodyRegion, subKey: string) {
+    if (proposedRegions.length > 0) {
+      discardProposed();
+    }
+
     setSelectedSubregions((prev) => {
       const current = prev[regionKey] || [];
       const updated = current.includes(subKey)
@@ -129,6 +293,7 @@ export default function Anatomy() {
   function clearAllSelections() {
     setSelectedRegions([]);
     setSelectedSubregions({});
+    discardProposed();
   }
 
   function handleKey(e: React.KeyboardEvent, key: BodyRegion) {
@@ -207,7 +372,74 @@ export default function Anatomy() {
         ))}
       </div>
 
-      <h2 className="reference-subheading">{t("selectAffectedArea") || "Select affected area(s)"}</h2>
+      <div className="reference-subheading-row">
+        <h2 className="reference-subheading">{t("selectAffectedArea") || "Select affected area(s)"}</h2>
+        {speechSupported && (
+          <button
+            type="button"
+            className={`anatomy-voice-trigger ${listening ? "live" : ""}`}
+            onClick={toggleVoice}
+            aria-label={listening ? (t("stopRecording") || "Stop recording") : (t("speakAffectedArea") || "Speak affected area")}
+            aria-pressed={listening}
+          >
+            <span className="anatomy-mic-icon" aria-hidden="true">{listening ? "■" : "🎙"}</span>
+            <span className="anatomy-mic-label">{listening ? (t("listening") || "Listening…") : (t("speakAffectedArea") || "Speak area")}</span>
+          </button>
+        )}
+      </div>
+
+      {/* Voice status announcement & feedback */}
+      {listening && (
+        <div className="voice-status-notice listening" role="status" aria-live="polite">
+          <div className="voice-wave-mini" aria-hidden="true">
+            <i /><i /><i /><i /><i />
+          </div>
+          <span>{t("voiceListeningArea") || "Listening… speak affected area (e.g. chest, stomach, back)"}</span>
+        </div>
+      )}
+
+      {!listening && voiceFeedback && (
+        <div className="voice-status-notice feedback" role="status" aria-live="polite">
+          <span>{voiceFeedback}</span>
+        </div>
+      )}
+
+      {/* Mandatory voice confirmation strip (Propose -> Confirm workflow) */}
+      {proposedRegions.length > 0 && (
+        <div className="voice-confirmation-strip" role="region" aria-live="polite">
+          <div className="voice-confirmation-content">
+            <span className="voice-heard-badge" aria-hidden="true">🎙</span>
+            <p className="voice-heard-text">
+              <b>{t("voiceHeardPrefix") || "We heard:"}</b>{" "}
+              <span className="voice-heard-regions">
+                {proposedRegions
+                  .map((rk) => {
+                    const tup = regions.find(([k]) => k === rk);
+                    return tup ? (t(tup[1]) || tup[2]) : rk;
+                  })
+                  .join(", ")}
+              </span>
+              . {t("voiceHeardQuestion") || "Is this correct?"}
+            </p>
+          </div>
+          <div className="voice-confirmation-actions">
+            <button
+              type="button"
+              className="voice-confirm-btn"
+              onClick={confirmProposed}
+            >
+              ✓ {t("voiceConfirmBtn") || "Confirm"}
+            </button>
+            <button
+              type="button"
+              className="voice-edit-btn"
+              onClick={discardProposed}
+            >
+              {t("voiceEditManuallyBtn") || "Edit manually"}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Selected areas chips */}
       {selectedRegions.length > 0 && (
@@ -289,7 +521,7 @@ export default function Anatomy() {
               cx="80"
               cy="38"
               r="22"
-              className={`body-part ${region === "head" || selectedRegions.includes("head") ? "selected" : ""}`}
+              className={`body-part ${region === "head" || selectedRegions.includes("head") ? "selected" : ""} ${proposedRegions.includes("head") ? "proposed" : ""}`}
               role="button"
               tabIndex={0}
               aria-label={t("regionHead")}
@@ -303,7 +535,7 @@ export default function Anatomy() {
                 {/* Front: Chest */}
                 <path
                   d="M54 66 Q80 60 106 66 L110 118 L50 118 Z"
-                  className={`body-part ${region === "chest" || selectedRegions.includes("chest") ? "selected" : ""}`}
+                  className={`body-part ${region === "chest" || selectedRegions.includes("chest") ? "selected" : ""} ${proposedRegions.includes("chest") ? "proposed" : ""}`}
                   role="button"
                   tabIndex={0}
                   aria-label={t("regionChest")}
@@ -314,7 +546,7 @@ export default function Anatomy() {
                 {/* Front: Abdomen */}
                 <path
                   d="M50 118 L110 118 L104 176 L56 176 Z"
-                  className={`body-part ${region === "abdomen" || selectedRegions.includes("abdomen") ? "selected" : ""}`}
+                  className={`body-part ${region === "abdomen" || selectedRegions.includes("abdomen") ? "selected" : ""} ${proposedRegions.includes("abdomen") ? "proposed" : ""}`}
                   role="button"
                   tabIndex={0}
                   aria-label={t("regionAbdomen")}
@@ -327,7 +559,7 @@ export default function Anatomy() {
               /* Back: Upper & Lower Back */
               <path
                 d="M54 66 Q80 60 106 66 L110 176 L50 176 Z"
-                className={`body-part ${region === "back" || selectedRegions.includes("back") ? "selected" : ""}`}
+                className={`body-part ${region === "back" || selectedRegions.includes("back") ? "selected" : ""} ${proposedRegions.includes("back") ? "proposed" : ""}`}
                 role="button"
                 tabIndex={0}
                 aria-label={t("regionBack")}
@@ -339,7 +571,7 @@ export default function Anatomy() {
 
             {/* Arms: Left & Right */}
             <g
-              className={`body-part ${region === "arm" || selectedRegions.includes("arm") ? "selected" : ""}`}
+              className={`body-part ${region === "arm" || selectedRegions.includes("arm") ? "selected" : ""} ${proposedRegions.includes("arm") ? "proposed" : ""}`}
               role="button"
               tabIndex={0}
               aria-label={t("regionArms")}
@@ -353,7 +585,7 @@ export default function Anatomy() {
 
             {/* Legs: Left & Right */}
             <g
-              className={`body-part ${region === "leg" || selectedRegions.includes("leg") ? "selected" : ""}`}
+              className={`body-part ${region === "leg" || selectedRegions.includes("leg") ? "selected" : ""} ${proposedRegions.includes("leg") ? "proposed" : ""}`}
               role="button"
               tabIndex={0}
               aria-label={t("regionLegs")}
@@ -381,6 +613,7 @@ export default function Anatomy() {
         <div className="body-region-list" role="group" aria-label="Body region selection list">
           {regions.map(([key, labelKey, fallback]) => {
             const isSelected = selectedRegions.includes(key);
+            const isProposed = proposedRegions.includes(key);
             const subList = subregionsByRegion[key] || [];
             const activeSubs = selectedSubregions[key] || [];
 
@@ -388,12 +621,17 @@ export default function Anatomy() {
               <div key={key} className="body-region-item-wrap">
                 <button
                   type="button"
-                  className="body-region-choice"
+                  className={`body-region-choice ${isSelected ? "selected" : ""} ${isProposed ? "proposed" : ""}`}
                   aria-pressed={isSelected}
                   onClick={() => toggleRegion(key)}
                 >
-                  <span>{isSelected ? "✓" : "○"}</span>
-                  {t(labelKey) || fallback}
+                  <span>{isSelected ? "✓" : isProposed ? "◌" : "○"}</span>
+                  <span className="body-region-choice-label">{t(labelKey) || fallback}</span>
+                  {isProposed && (
+                    <span className="proposed-badge" aria-hidden="true">
+                      {t("voiceProposedTag") || "(heard)"}
+                    </span>
+                  )}
                 </button>
 
                 {/* Subregions drawer for selected region */}
