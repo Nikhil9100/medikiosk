@@ -553,7 +553,7 @@ export default function Assistant() {
           <li className="msg assistant assistant-message assistant-message--assistant" aria-live="polite">
             <div className="bubble assistant-bubble" style={{ display: "inline-flex", alignItems: "center", gap: 6, color: "#25534b" }}>
               <span aria-hidden="true">⏳</span>
-              <em>{assistantName} {t("thinking") || "is thinking…"}</em>
+              <em>{assistantName} · {t("processing")}</em>
             </div>
           </li>
         )}
