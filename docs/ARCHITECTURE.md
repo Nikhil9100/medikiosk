@@ -1,89 +1,28 @@
-# MediKiosk Architecture Baseline
+# MediKiosk release architecture
 
-## Stack choice
-- Next.js 16 App Router + TypeScript
-- Tailwind CSS for responsive UI
-- Zod for typed validation and clinical domain rules
-- Vitest + Testing Library for component and domain tests
-- Supabase PostgreSQL as the intended backend/database boundary
-- Gemini as the planned LLM provider behind a provider abstraction
-- Sarvam as the planned voice provider behind a provider abstraction
+## One case, three role-specific surfaces
 
-## Repository structure
-- app/: application UI, routes, and shell screens
-- lib/: shared domain logic and typed state validation
-- docs/: product, architecture, clinical, security, roadmap, QA documentation
-- public/: static assets
-- vitest.config.ts: test configuration
+`Patient Console → Supabase PostgreSQL → Doctor Console → Hospital Operations`
 
-## Major boundaries
-1. Patient Kiosk UI
-2. Doctor Console UI
-3. Clinical Data Layer
-4. Safety Layer
-5. Voice Layer
-6. Document/OCR Layer
-7. AI Layer
-8. RAG Layer
-9. Security/Audit Layer
+The patient creates a server-scoped kiosk session. Clinical writes use that session as the PostgreSQL RLS scope. After submission, the case becomes read-only to patient clinical APIs while remaining visible to authorised doctors. Hospital operations uses aggregate operational views and audit/kiosk telemetry rather than doctor-level clinical detail.
 
-## Phase 2 session boundary
-The durable session contract is defined in `lib/session.ts`, persisted by `supabase/migrations/20260906090000_create_patient_sessions.sql`, and exposed through `app/api/patient/session/route.ts` plus the reset route. The session stores Phase 2 fields and the patient-intake augmentation fields added for Phase 3: complaint text, selected body region, selected body subregion, lifecycle status, language, consent metadata, workflow step, timestamps, expiry, and idempotency key.
+## Trust boundaries
 
-The server derives identity from `supabase.auth.getUser()`. The browser never sends an owner ID, and the database RLS policies require `owner_id = auth.uid()`. A unique `(owner_id, idempotency_key)` index handles duplicate create retries. The server checks expiry and rejects inactive sessions; status transitions only move from `ACTIVE` to `EXPIRED` or `COMPLETED`.
+- **Patient browser:** untrusted UI; never supplies an authoritative database identity.
+- **Next.js server:** establishes the patient/staff/kiosk transaction scope and performs validation.
+- **PostgreSQL/RLS:** final row-isolation boundary for PHI.
+- **OCR/extraction:** evidence-generation assistance only; provenance/confidence stay visible and physician verification is separate.
+- **Medi:** deterministic reference retrieval plus safety screening; no diagnosis/prescribing.
+- **Sarvam:** optional STT/TTS provider; failure leaves text/touch workflow available.
+- **ABDM/FHIR:** export preview only. No live ABDM verification/certification is represented.
 
-The repository is linked to a live Supabase project, but the local Docker API is not available in this environment, so live migration execution and database runtime verification remain environment-limited rather than code-blocked. The code path itself is structured and validated locally; production/live session verification depends on the target environment configuration.
+## Console responsibilities
 
-## Phase 6A document intake
-Medical documents are handled through a dedicated patient-facing upload flow integrated into the existing patient workflow. The document domain model (`lib/documents.ts`) defines typed schemas for documents, processing states, OCR status, verification status, and extracted facts with provenance.
+### Patient
+Consent, optional identity, chief complaint/severity, body location, additional symptoms, adaptive history, voice/touch, documents/OCR/extraction, Medi assistance, submission and secure handoff.
 
-The server-side API (`POST /api/patient/documents`) validates MIME types via magic bytes and enforces a 20MB size limit. Documents are tracked client-side with a processing state machine; no permanent object storage is introduced in Phase 6A. The OCR provider boundary is clean and deterministic, with test doubles only in tests.
+### Doctor
+Urgent-first queue, complete case bundle, safety review, evidence verification/rejection, exact 10-part Dashavidha, notes, consultation lifecycle and FHIR R4 export.
 
-## Phase 6B OCR processing
-OCR processing is implemented as a server-side pipeline behind a repository interface so persistence can later be replaced by Supabase/object storage without changing OCR business logic. The current implementation uses an in-memory store for the hackathon stage.
-
-The OCR provider abstraction (`lib/ocr/provider.ts`) defines a typed interface with `processImage(buffer, language, pageNumber)` and exposes `supportsHandwriting` honestly. Tesseract.js is the default provider. It is server-side only and accepts image buffers such as PNG/JPEG. The system does not claim reliable handwriting recognition; `supportsHandwriting` is `false`.
-
-PDF page rasterization is handled by `lib/ocr/page-renderer.ts` using `pdf-raster`, which uses PDFium for high-performance server-side rendering. The renderer produces PNG buffers per page, preserving page-level source information. The renderer interface can be replaced later without changing pipeline logic.
-
-The processing pipeline (`lib/ocr/pipeline.ts`) enforces state transitions: `RECEIVED → READY_FOR_OCR → OCR_PROCESSING → OCR_COMPLETE` or `FAILED`. OCR output is stored as unverified candidate data with `OCR` provenance. No automatic clinical fact confirmation occurs. The patient and physician verification steps remain separate operations.
-
-The OCR API routes (`POST /api/patient/documents/[id]/ocr`, `GET /api/patient/documents/[id]/ocr`, `POST /api/patient/documents/[id]/ocr/retry`) validate session ownership and document ownership on every request. The document upload API (`POST /api/patient/documents`) now stores the raw buffer server-side for later OCR processing, linked to a real session ID from the HTTP-only cookie.
-
-Six-language OCR selection is explicit. The application language is mapped to Tesseract language codes (`en` → `eng`, `hi` → `hin`, `bn` → `ben`, `te` → `tel`, `ta` → `tam`, `mr` → `mar`). Unsupported languages throw explicit errors.
-
-## Phase 6C structured medical evidence extraction
-Structured evidence extraction converts OCR page text into seven typed categories (`DIAGNOSIS`, `MEDICATION`, `INVESTIGATION`, `PROCEDURE`, `ALLERGY`, `MEDICAL_HISTORY`, `CHRONOLOGY`). The typed foundation lives in `lib/extraction/types.ts` (`ExtractedEvidenceItemSchema`, `ExtractionRunSchema`, `EvidenceReviewPatchSchema`, `ExtractionError`).
-
-### Deterministic engine (always-on baseline)
-`lib/extraction/deterministic.ts` applies regex rules per category. Each extracted item is created via `createUnverifiedEvidenceItem`, so it always starts `UNVERIFIED`. Items carry the verbatim `originalOcrWording`, page number, OCR span, `extractionMethod: DETERMINISTIC`, provider metadata, a heuristic confidence, and uncertainty notes ("Doctor review required").
-
-Safety properties:
-- DIAGNOSIS and MEDICAL_HISTORY are extracted only from explicit markers ("Diagnosis:", "H/O", "Known case of", ...); nothing is inferred from symptoms or lab values.
-- No treatment-recommendation rule exists in the category set.
-- No item is ever auto-verified.
-- `detectContradictions` groups items that share a primary key (drug name, investigation name) with differing secondary values (dose, value) and assigns a shared `contradictionGroupId` plus an uncertainty note. Conflicts are preserved, never resolved.
-
-### Optional AI provider (fail-closed)
-`lib/extraction/ai.ts` calls the Gemini REST API only when `GEMINI_API_KEY` is present; otherwise the engine reports `aiProviderState: NOT_CONFIGURED`. The response is validated against a strict Zod schema. Any malformed or out-of-contract output causes `MALFORMED_RESPONSE` and no partial/fabricated evidence is accepted. AI items carry `extractionMethod: AI`, AI provider metadata, and start `UNVERIFIED`. The prompt forbids inferred diagnosis and treatment.
-
-### Orchestrator
-`lib/extraction/engine.ts`: always runs the deterministic engine, optionally augments with AI, merges items, and runs contradiction detection over the combined set. It returns an `ExtractionRun` (status `COMPLETED`) that the caller persists.
-
-### Persistence boundary
-Runtime source of truth is `InMemoryDocumentRepository` (`lib/ocr/document-repository.ts`), which stores extraction runs and persisted review decisions. `updateEvidenceVerification(documentId, itemId, verificationState)` applies Accept/Reject/Reset. The migration `20260908120000_add_extraction_fields.sql` adds a `document_extractions` jsonb column (and admits the `documents` workflow step) as the durable boundary for a later persistence phase; no second live database is introduced.
-
-## Phase 5 Sarvam voice
-Voice is implemented as an optional input/output modality behind a server-side provider boundary. The browser never calls Sarvam directly. All voice requests go through MediKiosk server API routes (`POST /api/voice/transcribe` and `POST /api/voice/speak`), which validate payloads, enforce language mapping, and forward requests to Sarvam using the server-side `SARVAM_API_KEY`.
-
-STT uses Saaras v4 (`model: saaras:v4`) with `mode: transcribe`. TTS uses Bulbul v3 (`model: bulbul:v3`) with a calm female speaker, pace 0.9, and 24000 Hz sample rate. The selected patient language is mapped to BCP-47 codes (e.g., `en` → `en-IN`) and sent explicitly; the system never silently switches the patient's language.
-
-Voice transcripts are surfaced to the patient for review and edit before becoming clinical facts. Accepted voice answers are persisted with `VOICE` provenance, distinct from `PATIENT`, `AI`, or other sources. The deterministic interview engine remains the sole source of branching logic; voice does not duplicate or bypass it.
-
-## Phase 4 clinical interview engine
-The deterministic interview engine (`lib/interview-engine.ts`) provides a typed question bank with branching logic and explicit clinical states. The engine is persisted through the existing session API via the `interviewData` field. The live schema was synchronized with a forward-only migration (`supabase/migrations/20260906121327_add_patient_intake_fields.sql`) that added nullable columns for `complaint_text`, `body_region`, `body_subregion`, and `interview_data` (JSONB), and expanded the `workflow_step` constraint to include `complaint`, `anatomy`, and `interview`.
-
-The interview UI (`app/patient/interview/page.tsx`) renders questions based on the current interview state, supports free text, yes/no, single choice, numeric, and date/duration inputs, and persists facts with `PATIENT` provenance by default. The engine never infers negative answers from UNKNOWN or DECLINED states.
-
-## Reasoning
-The first phase must establish a real, testable foundation for healthcare intake. We avoid fake providers or fake patient data. The initial implementation keeps the architecture modular and deliberately separates clinical state, UI shell, and future provider integrations.
+### Hospital
+OPD/pre-consultation operational counts, urgent load, document pipeline, kiosk health, staff workload and audit events. It intentionally does not inherit Doctor-role PHI access.

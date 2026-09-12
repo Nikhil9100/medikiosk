@@ -1,45 +1,4 @@
-import { NextResponse } from "next/server";
-import { z } from "zod";
-import { databaseConfigured, withKioskDeviceTx } from "@/lib/db/pool";
-import { recordHeartbeat } from "@/lib/db/kiosk";
-
-export const runtime = "nodejs";
-
-const HeartbeatSchema = z
-  .object({
-    kioskId: z.string().min(1).max(64),
-    label: z.string().max(80).optional(),
-    activeSessionId: z.string().uuid().nullable().optional(),
-    lastActivity: z.string().max(160).optional(),
-  })
-  .strict();
-
-/**
- * POST /api/kiosk/heartbeat
- *
- * Kiosk devices report liveness every ~30s while a patient flow is open.
- * The row is scoped to the device by RLS (a kiosk can only write its own
- * kiosk_id), so a misbehaving or compromised kiosk cannot forge another
- * device's telemetry.
- */
-export async function POST(request: Request) {
-  if (!databaseConfigured()) {
-    return NextResponse.json({ error: "Telemetry is not configured", code: "DB_NOT_CONFIGURED" }, { status: 503 });
-  }
-  const body = await request.json().catch(() => null);
-  const parsed = HeartbeatSchema.safeParse(body);
-  if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid heartbeat" }, { status: 400 });
-  }
-  const { kioskId, label, activeSessionId, lastActivity } = parsed.data;
-
-  try {
-    await withKioskDeviceTx(kioskId, (client) =>
-      recordHeartbeat(client, kioskId, label ?? null, activeSessionId ?? null, lastActivity ?? null),
-    );
-    return NextResponse.json({ ok: true });
-  } catch (error) {
-    console.error("Heartbeat failed:", error);
-    return NextResponse.json({ error: "Unable to record heartbeat" }, { status: 500 });
-  }
-}
+import { NextResponse } from "next/server";import { timingSafeEqual } from "node:crypto";import { z } from "zod";import { databaseConfigured,withTx } from "@/lib/db/pool";
+const S=z.object({kioskId:z.string().min(2).max(80).regex(/^[A-Za-z0-9._-]+$/),label:z.string().max(120).nullable().optional(),activeSessionId:z.string().uuid().nullable().optional(),lastActivity:z.string().max(120).nullable().optional(),sessionInterrupted:z.boolean().optional()}).strict();
+function deviceAuth(req:Request){const expected=process.env.KIOSK_HEARTBEAT_SECRET;if(!expected)return process.env.NODE_ENV!=="production"?{ok:true}:{ok:false,misconfigured:true};const supplied=req.headers.get("x-medikiosk-kiosk-key")??"";const a=Buffer.from(expected),b=Buffer.from(supplied);return{ok:a.length===b.length&&a.length>=32&&timingSafeEqual(a,b),misconfigured:false};}
+export async function POST(req:Request){if(!databaseConfigured())return NextResponse.json({error:"Database not configured"},{status:503});const auth=deviceAuth(req);if(!auth.ok)return NextResponse.json({error:auth.misconfigured?"Kiosk heartbeat authentication is not configured":"Unauthorized kiosk"},{status:auth.misconfigured?503:401});const p=S.safeParse(await req.json().catch(()=>null));if(!p.success)return NextResponse.json({error:"Invalid heartbeat"},{status:400});await withTx({kioskId:p.data.kioskId,role:"kiosk"},c=>c.query(`INSERT INTO kiosk_heartbeats(kiosk_id,label,last_seen,active_session_id,last_activity,session_interrupted) VALUES($1,$2,now(),$3,$4,$5) ON CONFLICT(kiosk_id) DO UPDATE SET label=COALESCE(EXCLUDED.label,kiosk_heartbeats.label),last_seen=now(),active_session_id=EXCLUDED.active_session_id,last_activity=EXCLUDED.last_activity,session_interrupted=EXCLUDED.session_interrupted`,[p.data.kioskId,p.data.label??null,p.data.activeSessionId??null,p.data.lastActivity??null,p.data.sessionInterrupted??false]).then(()=>undefined));return NextResponse.json({ok:true});}

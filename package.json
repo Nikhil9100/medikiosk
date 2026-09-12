@@ -1,14 +1,25 @@
 {
   "name": "medikiosk",
-  "version": "0.1.0",
+  "version": "1.0.0-rc.1",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint",
-    "qa:responsive": "node scripts/check-patient-responsive.js",
-    "test:rls": "node scripts/rls-regression.mjs"
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test tests/*.test.mjs",
+    "quality": "node scripts/quality-gate.mjs && node --test tests/*.test.mjs",
+    "qa:responsive": "node scripts/qa-responsive.mjs",
+    "qa:accessibility": "node scripts/qa-accessibility.mjs",
+    "test:rls": "node scripts/rls-regression.mjs",
+    "test:e2e": "node scripts/e2e-release.mjs",
+    "db:preflight": "node scripts/db-preflight.mjs",
+    "db:reconcile": "node scripts/reconcile-supabase.mjs",
+    "seed:staff": "node scripts/seed-staff.mjs",
+    "seed:knowledge": "node scripts/seed-knowledge.mjs",
+    "test:vitest": "vitest run",
+    "qa:resilience": "node scripts/qa-resilience.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.6",

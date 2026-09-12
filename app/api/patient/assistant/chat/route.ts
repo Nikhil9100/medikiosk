@@ -1,128 +1,13 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { databaseConfigured, withKioskTx } from "@/lib/db/pool";
-import { getCase } from "@/lib/db/cases";
-import { SESSION_COOKIE } from "@/lib/db/session-scope";
-import { listChatMessages, addChatMessage } from "@/lib/db/chat";
-import { retrieveChunks } from "@/lib/db/knowledge";
-import { detectSafetySignals } from "@/lib/safety-signals";
-import { composeReply, extractTerms } from "@/lib/assistant-reply";
-
-export const runtime = "nodejs";
-
-const PostSchema = z
-  .object({
-    message: z.string().trim().min(1).max(2000),
-  })
-  .strict();
-
-/**
- * Patient assistant chat — one consistent identity ("Medi"), text + voice.
- *
- * Pipeline (deterministic, honest):
- *  1. Safety screen: the message is run through the same safety-signal
- *     engine as the intake flow; red flags are surfaced FIRST and routed to
- *     physician review. The assistant never diagnoses or prescribes.
- *  2. Retrieval: full-text search over the two knowledge corpora, run as
- *     SEPARATE queries (MODERN_MEDICINE and AYURVEDA are never blended).
- *  3. Answer: a transparent, template-composed reply that quotes which
- *     reference set each point came from, with citations persisted to the
- *     chat record.
- *
- * The provider label is `deterministic-kb`: the answer is real computation
- * over real knowledge content, not a canned reply — and it is labeled as
- * rule-based retrieval, not as an LLM, when no LLM is configured.
- */
-
-export async function GET() {
-  if (!databaseConfigured()) {
-    return NextResponse.json({ error: "Assistant storage is not configured", code: "DB_NOT_CONFIGURED" }, { status: 503 });
-  }
-  const { cookies } = await import("next/headers");
-  const cookieStore = await cookies();
-  const sessionId = cookieStore.get(SESSION_COOKIE)?.value;
-  if (!sessionId) return NextResponse.json({ error: "No active session" }, { status: 404 });
-
-  const messages = await withKioskTx(sessionId, (client) => listChatMessages(client, sessionId)).catch(() => null);
-  if (!messages) return NextResponse.json({ error: "Session not found" }, { status: 404 });
-  return NextResponse.json({
-    messages: messages.map((m) => ({
-      id: m.id,
-      role: m.role,
-      content: m.content,
-      intent: m.intent,
-      citations: m.citations,
-      provider: m.provider,
-      createdAt: m.createdAt.toISOString(),
-    })),
-  });
-}
-
-export async function POST(request: Request) {
-  if (!databaseConfigured()) {
-    return NextResponse.json({ error: "Assistant storage is not configured", code: "DB_NOT_CONFIGURED" }, { status: 503 });
-  }
-  const { cookies } = await import("next/headers");
-  const cookieStore = await cookies();
-  const sessionId = cookieStore.get(SESSION_COOKIE)?.value;
-  if (!sessionId) return NextResponse.json({ error: "No active session" }, { status: 404 });
-
-  const body = await request.json().catch(() => null);
-  const parsed = PostSchema.safeParse(body);
-  if (!parsed.success) return NextResponse.json({ error: "Invalid message" }, { status: 400 });
-  const message = parsed.data.message;
-
-  try {
-    return await withKioskTx(sessionId, async (client) => {
-      const session = await getCase(client, sessionId);
-      if (!session || session.status !== "ACTIVE") {
-        return NextResponse.json({ error: "Session not active" }, { status: 410 });
-      }
-
-      // 1. Safety screen — the same engine as intake.
-      const safetyDrafts = detectSafetySignals({
-        complaints: [{ text: message, region: session.bodyRegion, severity: null, position: 0 }],
-        facts: [],
-        evidence: [],
-      });
-
-      // 2. Retrieval — separate corpora, never blended.
-      const terms = extractTerms(message);
-      const [modern, ayurveda] = await Promise.all([
-        terms.length > 0 ? retrieveChunks(client, { corpus: "MODERN_MEDICINE", terms, limit: 3 }) : [],
-        terms.length > 0 ? retrieveChunks(client, { corpus: "AYURVEDA", terms, limit: 2 }) : [],
-      ]);
-
-      // 3. Compose (deterministic, cited, honest).
-      // composeReply dedupes by document, applies the Ayurveda relevance
-      // gate, and returns the citations that were actually shown.
-      const { reply, intent, citations } = composeReply({
-        safety: safetyDrafts,
-        modern,
-        ayurveda,
-      });
-
-      // 4. Persist both sides of the exchange.
-      await addChatMessage(client, { sessionId, role: "PATIENT", content: message });
-      await addChatMessage(client, {
-        sessionId,
-        role: "ASSISTANT",
-        content: reply,
-        intent,
-        citations: citations.length > 0 ? citations : null,
-        provider: "deterministic-kb",
-      });
-
-      return NextResponse.json({
-        reply,
-        intent,
-        citations,
-        provider: "deterministic-kb",
-        safety: safetyDrafts.map((s) => ({ type: s.type, summary: s.summary })),
-      });
-    });
-  } catch (error) {
-    console.error("Assistant chat failed:", error);
-    return NextResponse.json({ error: "Unable to process message" }, { status: 500 });
-  }
+import { databaseConfigured,withKioskTx } from "@/lib/db/pool";
+import { getActiveKioskSession,patientWritable } from "@/lib/db/session-scope";
+import { answerPatient } from "@/lib/assistant";
+export const runtime="nodejs";
+const Body=z.object({message:z.string().trim().min(1).max(2000),clientMutationId:z.string().min(8).max(100).regex(/^[A-Za-z0-9._:-]+$/)}).strict();
+export async function GET(){if(!databaseConfigured())return NextResponse.json({error:"Assistant storage not configured"},{status:503});const s=await getActiveKioskSession();if(!s)return NextResponse.json({error:"No active session"},{status:404});const messages=await withKioskTx(s.id,async c=>(await c.query(`SELECT id,role,content,intent,citations,provider,created_at FROM chat_messages WHERE session_id=$1 ORDER BY created_at,id`,[s.id])).rows);return NextResponse.json({messages:messages.map((m:any)=>({...m,createdAt:m.created_at}))},{headers:{"Cache-Control":"no-store, private"}});}
+export async function POST(req:Request){
+ if(!databaseConfigured())return NextResponse.json({error:"Assistant storage not configured"},{status:503});const s=await getActiveKioskSession();if(!s)return NextResponse.json({error:"No active session"},{status:404});if(s.consentStatus!=="ACCEPTED")return NextResponse.json({error:"Consent required"},{status:403});if(!patientWritable(s))return NextResponse.json({error:"Case has already been submitted"},{status:409});
+ const parsed=Body.safeParse(await req.json().catch(()=>null));if(!parsed.success)return NextResponse.json({error:"Invalid message"},{status:400});
+ try{const out=await withKioskTx(s.id,async c=>{const prior=await c.query(`SELECT content,citations,intent FROM chat_messages WHERE session_id=$1 AND role='ASSISTANT' AND client_mutation_id=$2 LIMIT 1`,[s.id,parsed.data.clientMutationId]);if(prior.rows[0])return{reply:prior.rows[0].content,citations:prior.rows[0].citations??[],safety:[],idempotent:true};return answerPatient(c,s.id,parsed.data.message,parsed.data.clientMutationId);});return NextResponse.json(out,{headers:{"Cache-Control":"no-store, private"}});}catch(e){if(e instanceof Error&&/duplicate key/i.test(e.message)){return NextResponse.json({error:"This message is already being processed",code:"MESSAGE_REPLAY"},{status:409});}return NextResponse.json({error:"Unable to process message"},{status:500});}
 }

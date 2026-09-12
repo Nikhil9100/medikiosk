@@ -1,22 +1,2 @@
-"use client";
-
-import { useRouter } from "next/navigation";
-import { usePatientWorkflow } from "../PatientShell";
-
-export default function PatientStartPage() {
-  const router = useRouter();
-  const { t } = usePatientWorkflow();
-
-  return (
-    <section className="flow-screen start-screen" aria-labelledby="start-title">
-      <div className="success-mark" aria-hidden="true">✓</div>
-      <p className="eyebrow">{t("startStep")}</p>
-      <h1 id="start-title">{t("startTitle")}</h1>
-      <p className="lead-copy">{t("startDescription")}</p>
-      <p className="supporting-note">{t("startNote")}</p>
-      <button type="button" className="primary-button" onClick={() => router.push("/patient/complaint")}>
-        {t("complaintNext")} <span aria-hidden="true">→</span>
-      </button>
-    </section>
-  );
-}
+"use client";import { useEffect } from "react";import { useRouter } from "next/navigation";import { usePatient } from "../PatientShell";
+export default function Start(){const r=useRouter();const {sync}=usePatient();useEffect(()=>{void (async()=>{if(await sync({workflowStep:"complaint"}))r.replace("/patient/complaint")})();},[r,sync]);return <section className="flow-card reference-card"><div className="loading-card" role="status">Preparing your health concern step…</div></section>}

@@ -1,50 +1,10 @@
 "use client";
-
-import { useRouter } from "next/navigation";
-import { usePatientWorkflow } from "../PatientShell";
-
-export default function PatientConsentPage() {
-  const router = useRouter();
-  const { workflow, setConsentStatus, syncSession, t } = usePatientWorkflow();
-
-  async function acceptConsent() {
-    setConsentStatus("ACCEPTED");
-    // Consent is a durable record: persist it server-side before advancing.
-    // On failure the session banner is shown and the patient stays on this
-    // page to retry — the flow never advances on an unsaved consent.
-    const saved = await syncSession({ consentStatus: "ACCEPTED" });
-    if (saved) router.push("/patient/start");
-  }
-
-  function declineConsent() {
-    router.push("/patient/language");
-  }
-
-  return (
-    <section className="flow-screen flow-screen--consent" aria-labelledby="consent-title">
-      <p className="eyebrow">{t("consentStep")}</p>
-      <h1 id="consent-title">{t("consentTitle")}</h1>
-      <div className="consent-panel">
-        <p className="consent-panel__intro">{t("consentIntro")}</p>
-        <ul>
-          <li>{t("consentPointOne")}</li>
-          <li>{t("consentPointTwo")}</li>
-          <li>{t("consentPointThree")}</li>
-        </ul>
-        <details>
-          <summary>{t("consentReadMore")}</summary>
-          <p>{t("consentDetails")}</p>
-        </details>
-      </div>
-      {workflow.consentStatus === "DECLINED" && (
-        <p className="inline-status inline-status--warning" role="status">{t("consentDeclined")}</p>
-      )}
-      <div className="primary-action-stack">
-        <button type="button" className="primary-button" onClick={acceptConsent}>
-          {t("consentAgree")} <span aria-hidden="true">→</span>
-        </button>
-        <button type="button" className="text-button" onClick={declineConsent}>{t("consentBack")}</button>
-      </div>
-    </section>
-  );
-}
+import { useState } from "react";import { useRouter } from "next/navigation";import { usePatient } from "../PatientShell";
+export default function Consent(){const r=useRouter();const {sync,setWorkflow,t}=usePatient();const [busy,setBusy]=useState(false);const [declined,setDeclined]=useState(false);
+async function accept(){if(busy)return;setBusy(true);const ok=await sync({consentStatus:"ACCEPTED",workflowStep:"identity"});if(ok){setWorkflow(w=>({...w,consentStatus:"ACCEPTED",currentStep:"identity"}));r.push("/patient/identity");return;}setBusy(false);}
+async function decline(){if(busy)return;setBusy(true);await sync({consentStatus:"DECLINED",workflowStep:"consent"});setDeclined(true);setBusy(false);}
+return <section className="flow-card reference-card consent-reference-card"><div className="centered-reference-heading"><div className="reference-icon-badge shield" aria-hidden="true">⌾</div><p className="eyebrow">2 · Consent</p><h1>Your Information Stays Private</h1><p className="lead">We collect only what is needed to prepare your visit for the clinical team.</p></div>
+<div className="privacy-points"><div><span>🛡</span><p><b>Only for your care</b><small>Your visit data is used for this consultation workflow.</small></p></div><div><span>🔒</span><p><b>Protected and access controlled</b><small>Only authorised clinical staff can review the case.</small></p></div><div><span>🩺</span><p><b>Doctor makes the final decision</b><small>OCR and AI output stays unverified until reviewed.</small></p></div><div><span>↺</span><p><b>Connection-safe</b><small>Safe text answers can be encrypted locally and resumed after reconnecting.</small></p></div></div>
+<div className="consent-note">By continuing, you agree to clinical intake for this visit. Optional identity information can be skipped, and MediKiosk does not replace emergency care.</div>
+{declined&&<div className="system-banner warning" role="status">Consent was declined. You can review the information and choose “I Agree and Continue” if you want to proceed.</div>}
+<div className="reference-actions stacked-mobile"><button className="primary reference-primary" disabled={busy} onClick={()=>void accept()}>{busy?t("processing"):"I Agree and Continue"}</button><button className="secondary" disabled={busy} onClick={()=>void decline()}>Decline</button></div></section>}
