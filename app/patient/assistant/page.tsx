@@ -135,17 +135,26 @@ export default function Assistant() {
     const message = text.trim();
     if (!message || busy) return;
 
-    const clientMutationId = voiceOrigin
-      ? crypto.randomUUID()
-      : draftMutationId || crypto.randomUUID();
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      setNote(
+        t("offlineNotice") ||
+          "Offline — your typed draft is preserved on this device. Please reconnect to chat with Anaya."
+      );
+      return;
+    }
 
-    if (!(await ensureSynced())) {
+    const synced = await ensureSynced();
+    if (!synced && typeof navigator !== "undefined" && !navigator.onLine) {
       setNote(
         t("reconnectBeforeSubmit") ||
           "Reconnect before sending this message. Your typed draft is encrypted and preserved on this device."
       );
       return;
     }
+
+    const clientMutationId = voiceOrigin
+      ? crypto.randomUUID()
+      : draftMutationId || crypto.randomUUID();
 
     setBusy(true);
     setNote("");
@@ -222,7 +231,7 @@ export default function Assistant() {
       return;
     }
 
-    if (connection === "offline" || !(await ensureSynced())) {
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
       setNote(
         t("voiceOfflineNotice") ||
           "Voice chat requires a connection. You can type a draft now and send it after reconnecting."
@@ -471,15 +480,19 @@ export default function Assistant() {
           messages.map((m, idx) => {
             const isLastAssistant = m.role === "ASSISTANT" && idx === messages.length - 1;
             return (
-              <li key={m.id} className={`msg ${m.role === "ASSISTANT" ? "assistant" : "patient"}`}>
-                <div className="bubble">
-                  <p style={{ margin: 0 }}>{m.content}</p>
-                  {m.safety?.[0] && <p className="urgent-box">{m.safety[0].summary}</p>}
-                  {m.citations?.map((c, i) => (
-                    <p key={i} className="citation">
-                      <b>{c.corpus === "AYURVEDA" ? "Ayurveda" : "Modern Medicine"}</b> · {c.title}
-                    </p>
-                  ))}
+              <li key={m.id} className={`msg assistant-message ${m.role === "ASSISTANT" ? "assistant assistant-message--assistant" : "patient assistant-message--patient"}`}>
+                <div className="bubble assistant-bubble">
+                  <p style={{ margin: 0, whiteSpace: "pre-line" }}>{m.content}</p>
+                  {m.safety?.[0] && <div className="urgent-box assistant-safety" role="alert">{m.safety[0].summary}</div>}
+                  {m.citations && m.citations.length > 0 && (
+                    <ul className="assistant-citations" style={{ listStyle: "none", margin: "8px 0 0", padding: 0 }}>
+                      {m.citations.map((c, i) => (
+                        <li key={i} className={`citation ${c.corpus === "AYURVEDA" ? "assistant-citations__corpus--ayurveda" : "assistant-citations__corpus--modern"}`}>
+                          <b>{c.corpus === "AYURVEDA" ? "Ayurveda" : "Modern Medicine"}</b> · {c.title}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                   {m.role === "ASSISTANT" && (
                     <div className="anaya-msg-actions">
                       <button
@@ -536,6 +549,14 @@ export default function Assistant() {
             );
           })
         )}
+        {busy && (
+          <li className="msg assistant assistant-message assistant-message--assistant" aria-live="polite">
+            <div className="bubble assistant-bubble" style={{ display: "inline-flex", alignItems: "center", gap: 6, color: "#25534b" }}>
+              <span aria-hidden="true">⏳</span>
+              <em>{assistantName} {t("thinking") || "is thinking…"}</em>
+            </div>
+          </li>
+        )}
       </ol>
 
       <form
@@ -560,6 +581,7 @@ export default function Assistant() {
           onChange={(e) => setDraft(e.target.value)}
           placeholder={t("assistantHint")}
           aria-label={t("assistantComposerAria") || `Message ${assistantName}`}
+          className="assistant-input"
         />
         <button className="primary" disabled={busy || !draft.trim()}>
           {busy ? t("processing") : t("send")}

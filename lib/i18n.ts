@@ -1773,7 +1773,7 @@ const mr: Record<TranslationKey, string> = {
   "anayaStarterDoctorPrepPrompt": "मी डॉक्टरांना कोणते प्रश्न विचारावेत आणि माझ्या सल्ल्यासाठी काय तयार ठेवावे?",
   "anayaStarterDocumentsTitle": "कागदपत्रे आणि अहवाल",
   "anayaStarterDocumentsDesc": "जुने प्रिस्क्रिप्शन किंवा लॅब अहवाल स्कॅन आणि अपलोड करण्याची पद्धत",
-  "anayaStarterDocumentsPrompt": "मी माझे वैद्यकीय record आणि प्रिस्क्रिप्शन कसे स्कॅन आणि अपलोड करू?",
+  "anayaStarterDocumentsPrompt": "मी माझे वैद्यकीय रेकॉर्ड आणि प्रिस्क्रिप्शन कसे स्कॅन आणि अपलोड करू?",
   "anayaStarterWhereItHurtsTitle": "कुठे दुखत आहे?",
   "anayaStarterWhereItHurtsDesc": "शरीराच्या नकाशावर बाधित भाग निवडण्यासाठी मार्गदर्शक",
   "anayaStarterWhereItHurtsPrompt": "शरीराच्या नकाशावर दुखणारा भाग निवडण्यासाठी तुम्ही मला मार्गदर्शन करू शकता का?",

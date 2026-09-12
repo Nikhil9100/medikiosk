@@ -60,7 +60,25 @@ export default function PatientShell({children}:{children:React.ReactNode}){
   await updatePending();
   if(out.networkLost){setConnection("offline");setError("Connection lost. Your encrypted draft remains on this device and will sync when the network returns.");return false;}
   if(out.conflict||out.remaining>0){setConnection("attention");setError("Some saved changes need attention before submission. Please retry sync or ask hospital staff.");return false;}
-  try{const res=await fetch("/api/patient/session",{cache:"no-store"});if(res.ok){const data=await res.json();setAndPersist(data.workflow);setConnection("online");setError("");return true;}if(res.status===404||res.status===410){const resumed=await resumeSavedSession();if(resumed){setConnection("online");setError("");return true;}setConnection("attention");setError("The server session is no longer writable. Your encrypted local draft is preserved for staff-assisted recovery.");return false;}}
+  try{
+    const res=await fetch("/api/patient/session",{cache:"no-store"});
+    if(res.ok){const data=await res.json();setAndPersist(data.workflow);setConnection("online");setError("");return true;}
+    if(res.status===404||res.status===410){
+      const resumed=await resumeSavedSession();
+      if(resumed){setConnection("online");setError("");return true;}
+      const local=await loadOfflineWorkflow();
+      const pending=await pendingMutationCount();
+      if(local?.sessionId||pending>0){
+        setConnection("attention");
+        setError("The server session is no longer writable. Your encrypted local draft is preserved for staff-assisted recovery.");
+        return false;
+      }else{
+        setConnection("online");
+        setError("");
+        return true;
+      }
+    }
+  }
   catch{setConnection("offline");return false;}
   setConnection("attention");return false;
  },[resumeSavedSession,setAndPersist,updatePending]);
@@ -106,9 +124,17 @@ export default function PatientShell({children}:{children:React.ReactNode}){
   try{
    const r=await fetch("/api/patient/session",{cache:"no-store"});
    if(r.ok){const d=await r.json();if(pending===0)setAndPersist(d.workflow);else{setConnection("syncing");void flush();}const source=pending>0&&local?local:d.workflow;const expected=routeForStep[source.currentStep as keyof typeof routeForStep];if(expected&&pathname!==expected&&pathname!=="/patient/assistant")router.replace(expected);}
-   else if(r.status===404||r.status===410){const resumed=await resumeSavedSession();if(resumed){void flush();}else if(local?.sessionId){setConnection("attention");setError("A saved local visit exists, but secure server resume is unavailable. Do not start a second patient until staff resolves it.");}else setWorkflow(defaultWorkflow);}
+   else if(r.status===404||r.status===410){
+     const resumed=await resumeSavedSession();
+     if(resumed){void flush();}
+     else if(local?.sessionId||pending>0){setConnection("attention");setError("A saved local visit exists, but secure server resume is unavailable. Do not start a second patient until staff resolves it.");}
+     else{setWorkflow(defaultWorkflow);setConnection("online");setError("");}
+   }
    else setError("Session service is unavailable. Your local encrypted draft, if any, is preserved.");
-  }catch{if(local?.sessionId){setConnection("offline");setError("Offline mode — your encrypted saved work is available on this device. Changes will sync automatically after reconnection.");const expected=routeForStep[local.currentStep];if(expected&&pathname!==expected&&pathname!=="/patient/assistant")router.replace(expected);}else{setConnection("offline");setError("You are offline. Connect before starting a new secure patient session.");}}
+  }catch{
+    if(local?.sessionId||pending>0){setConnection("offline");setError("Offline mode — your encrypted saved work is available on this device. Changes will sync automatically after reconnection.");const expected=local?.currentStep?routeForStep[local.currentStep]:undefined;if(expected&&pathname!==expected&&pathname!=="/patient/assistant")router.replace(expected);}
+    else{setConnection(typeof navigator!=="undefined"&&!navigator.onLine?"offline":"online");if(typeof navigator!=="undefined"&&!navigator.onLine)setError("You are offline. Connect before starting a new secure patient session.");}
+  }
   finally{setBoot(false);}
  },[flush,pathname,resumeSavedSession,router,setAndPersist]);
 
