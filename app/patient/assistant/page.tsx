@@ -44,8 +44,29 @@ export default function Assistant() {
   const audio = useRef<HTMLAudioElement | null>(null);
   const discard = useRef(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const threadRef = useRef<HTMLOListElement | null>(null);
+  const bottomRef = useRef<HTMLDivElement | null>(null);
+  const isNearBottomRef = useRef(true);
+  const [showScrollBottom, setShowScrollBottom] = useState(false);
 
   const assistantName = localizedAssistantName(workflow.language);
+
+  const handleScroll = () => {
+    const el = threadRef.current;
+    if (!el) return;
+    const distanceToBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    const near = distanceToBottom < 90;
+    isNearBottomRef.current = near;
+    if (near) {
+      setShowScrollBottom(false);
+    }
+  };
+
+  const scrollToBottom = (behavior: ScrollBehavior = "smooth") => {
+    bottomRef.current?.scrollIntoView({ behavior, block: "end" });
+    setShowScrollBottom(false);
+    isNearBottomRef.current = true;
+  };
 
   async function load() {
     try {
@@ -84,6 +105,14 @@ export default function Assistant() {
       audio.current?.pause();
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (isNearBottomRef.current) {
+      scrollToBottom(messages.length <= 2 ? "auto" : "smooth");
+    } else if (messages.length > 0) {
+      setShowScrollBottom(true);
+    }
+  }, [messages, busy]);
 
   useEffect(() => {
     if (draft && draftMutationId) {
@@ -158,6 +187,9 @@ export default function Assistant() {
 
     setBusy(true);
     setNote("");
+    isNearBottomRef.current = true;
+    setShowScrollBottom(false);
+    setTimeout(() => scrollToBottom("smooth"), 30);
 
     try {
       const r = await fetch("/api/patient/assistant/chat", {
@@ -304,7 +336,7 @@ export default function Assistant() {
   const showStepContext = step === "anatomy" || step === "interview" || step === "documents" || step === "complete" || step === "symptoms" || step === "complaint";
 
   return (
-    <section className="assistant-page reference-assistant-page" aria-labelledby="anaya-title">
+    <section className="assistant-page reference-assistant-page" aria-labelledby="anaya-title" style={{ position: "relative" }}>
       <header className="assistant-header reference-assistant-header">
         <div className="assistant-header-main">
           <button className="secondary" onClick={() => router.back()} aria-label="Go back">
@@ -315,13 +347,13 @@ export default function Assistant() {
           </span>
           <div className="assistant-header-meta">
             <p className="eyebrow" style={{ margin: "0 0 3px" }}>
-              {assistantName} · Female voice health assistant
+              {assistantName} · {t("anayaHeaderEyebrow") || "Female voice health assistant"}
             </p>
             <h1 id="anaya-title" style={{ margin: 0 }}>
-              {t("assistantTitle")}
+              {t("assistantTitle") || "Health Assistant"}
             </h1>
             <p style={{ margin: 0, color: "#557069", fontSize: "0.85rem" }}>
-              Voice and chat support · general information only · not a diagnosis
+              {t("anayaHeaderSub") || "Voice and chat support · general information only · not a diagnosis"}
             </p>
           </div>
         </div>
@@ -349,7 +381,7 @@ export default function Assistant() {
         </div>
       </header>
 
-      <ol className="assistant-thread" aria-live="polite">
+      <ol ref={threadRef} onScroll={handleScroll} className="assistant-thread" aria-live="polite">
         {messages.length === 0 ? (
           <li className="anaya-starter-container">
             <div className="assistant-welcome-card reference-welcome-hero">
@@ -557,7 +589,38 @@ export default function Assistant() {
             </div>
           </li>
         )}
+        <div ref={bottomRef} style={{ height: 1, minHeight: 1 }} aria-hidden="true" />
       </ol>
+
+      {showScrollBottom && (
+        <button
+          type="button"
+          className="anaya-scroll-bottom-pill"
+          onClick={() => scrollToBottom("smooth")}
+          aria-label="Scroll to newest messages"
+          style={{
+            position: "absolute",
+            bottom: "84px",
+            left: "50%",
+            transform: "translateX(-50%)",
+            background: "#0b5d4b",
+            color: "white",
+            border: "1px solid #148068",
+            borderRadius: "999px",
+            padding: "8px 16px",
+            fontSize: "0.82rem",
+            fontWeight: 700,
+            boxShadow: "0 4px 16px rgba(0,0,0,0.18)",
+            cursor: "pointer",
+            zIndex: 20,
+            display: "flex",
+            alignItems: "center",
+            gap: "6px"
+          }}
+        >
+          ↓ {t("newMessages") || "New messages"}
+        </button>
+      )}
 
       <form
         className="assistant-composer"

@@ -318,7 +318,8 @@ const en = {
   "anayaRestartSuccess": "Conversation restarted.",
   "anayaNavAnatomy": "Go to Body Map →",
   "anayaNavInterview": "Go to Symptoms →",
-  "anayaNavDocuments": "Go to Documents →"
+  "anayaNavDocuments": "Go to Documents →",
+  "newMessages": "New messages"
 };
 
 export type TranslationKey = keyof typeof en;
@@ -619,7 +620,8 @@ const hi: Record<TranslationKey, string> = {
   "anayaRestartSuccess": "बातचीत फिर से शुरू कर दी गई है।",
   "anayaNavAnatomy": "शरीर के नक्शे पर जाएं →",
   "anayaNavInterview": "लक्षणों पर जाएं →",
-  "anayaNavDocuments": "दस्तावेज़ों पर जाएं →"
+  "anayaNavDocuments": "दस्तावेज़ों पर जाएं →",
+  "newMessages": "नए संदेश"
 };
 const bn: Record<TranslationKey, string> = {
   "appName": "MediKiosk",
@@ -917,7 +919,8 @@ const bn: Record<TranslationKey, string> = {
   "anayaRestartSuccess": "কথোপকথন পুনরায় শুরু হয়েছে।",
   "anayaNavAnatomy": "বডি ম্যাপে যান →",
   "anayaNavInterview": "উপসর্গে যান →",
-  "anayaNavDocuments": "নথিপত্রে যান →"
+  "anayaNavDocuments": "নথিপত্রে যান →",
+  "newMessages": "নতুন বার্তা"
 };
 const te: Record<TranslationKey, string> = {
   "appName": "MediKiosk",
@@ -1215,7 +1218,8 @@ const te: Record<TranslationKey, string> = {
   "anayaRestartSuccess": "సంభాషణ పునఃప్రారంభించబడింది.",
   "anayaNavAnatomy": "బాడీ మ్యాప్‌కు వెళ్లండి →",
   "anayaNavInterview": "లక్షణాలకు వెళ్లండి →",
-  "anayaNavDocuments": "పత్రాలకు వెళ్లండి →"
+  "anayaNavDocuments": "పత్రాలకు వెళ్లండి →",
+  "newMessages": "కొత్త సందేశాలు"
 };
 const ta: Record<TranslationKey, string> = {
   "appName": "MediKiosk",
@@ -1513,7 +1517,8 @@ const ta: Record<TranslationKey, string> = {
   "anayaRestartSuccess": "உரையாடல் மீண்டும் தொடங்கப்பட்டது.",
   "anayaNavAnatomy": "உடல் வரைபடத்திற்குச் செல்லவும் →",
   "anayaNavInterview": "அறிகுறிகளுக்குச் செல்லவும் →",
-  "anayaNavDocuments": "ஆவணங்களுக்குச் செல்லவும் →"
+  "anayaNavDocuments": "ஆவணங்களுக்குச் செல்லவும் →",
+  "newMessages": "புதிய செய்திகள்"
 };
 const mr: Record<TranslationKey, string> = {
   "appName": "MediKiosk",
@@ -1811,7 +1816,8 @@ const mr: Record<TranslationKey, string> = {
   "anayaRestartSuccess": "संभाषण पुन्हा सुरू झाले आहे.",
   "anayaNavAnatomy": "शरीराच्या नकाशावर जा →",
   "anayaNavInterview": "लक्षणांवर जा →",
-  "anayaNavDocuments": "कागदपत्रांवर जा →"
+  "anayaNavDocuments": "कागदपत्रांवर जा →",
+  "newMessages": "नवीन संदेश"
 };
 
 const translations: Record<PatientLanguage, Record<TranslationKey, string>> = {

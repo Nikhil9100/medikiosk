@@ -129,6 +129,7 @@ test("All 6 languages provide full native translations for Anaya guided chat key
     "anayaNavAnatomy",
     "anayaNavInterview",
     "anayaNavDocuments",
+    "newMessages",
   ];
 
   for (const lang of ["en", "hi", "bn", "te", "ta", "mr"]) {
@@ -142,6 +143,29 @@ test("All 6 languages provide full native translations for Anaya guided chat key
       }
     }
   }
+});
+
+test("Anaya UI implements auto-scrolling with smooth behavior and floating new messages indicator", () => {
+  const page = read("app/patient/assistant/page.tsx");
+  assert.match(page, /threadRef/);
+  assert.match(page, /bottomRef/);
+  assert.match(page, /isNearBottomRef/);
+  assert.match(page, /scrollToBottom/);
+  assert.match(page, /showScrollBottom/);
+  assert.match(page, /anaya-scroll-bottom-pill/);
+  assert.match(page, /newMessages/);
+});
+
+test("Anaya backend provides rich conversational replies for wellness, fitness, sleep, vitals, and safety", () => {
+  const code = read("lib/assistant.ts");
+  assert.match(code, /isFitnessQuery/);
+  assert.match(code, /isSleepQuery/);
+  assert.match(code, /isNutritionQuery/);
+  assert.match(code, /isFeverOrVitalsQuery/);
+  assert.match(code, /getDeterministicResponse/);
+  assert.match(code, /callGemini/);
+  assert.match(code, /150 minutes/);
+  assert.match(code, /7–9 hours/);
 });
 
 test("Anaya UI preserves voice transcription, speech audio and draft encryption contract", () => {

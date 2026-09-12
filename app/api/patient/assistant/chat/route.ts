@@ -93,7 +93,7 @@ export async function POST(req: Request) {
           idempotent:true,
         };
       }
-      return answerPatient(c, s.id, parsed.data.message, parsed.data.clientMutationId);
+      return answerPatient(c, s.id, parsed.data.message, parsed.data.clientMutationId, s.language || "en");
     });
 
     const res = NextResponse.json(out, { headers: { "Cache-Control": "no-store, private" } });
