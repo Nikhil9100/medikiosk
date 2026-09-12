@@ -1,5 +1,2 @@
 import { redirect } from "next/navigation";
-
-export default function Home() {
-  redirect("/patient");
-}
+export default function Home(){redirect("/patient");}

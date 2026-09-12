@@ -1,92 +1,32 @@
-# MediKiosk
+# MediKiosk — Digital Clinical History & Pre-Consultation System
 
-**Digital Clinical History** — a patient pre-consultation kiosk with connected Doctor and Hospital Operations consoles. A patient records their medical history on a touch kiosk *before* the consultation; the doctor enters the room already knowing the complaints, history, digitized documents, and any safety signals; the hospital sees the whole pipeline live.
-
-MediKiosk is **not an autonomous AI doctor**. It is patient pre-consultation, structured clinical history, document digitization (OCR + structured extraction), safety-signal triage, AYUSH/Dashavidha support, physician review, and hospital operations. AI assists; the physician remains the final clinical authority.
-
-> MediKiosk is an independent product. It has no affiliation with, or endorsement by, any government department or ministry, and displays no official seals.
+MediKiosk is an independent SIH 2026 healthcare prototype for problem statement **SIH26047**. It provides one canonical Patient → Doctor → Hospital data flow backed by Supabase-hosted PostgreSQL.
 
 ## Consoles
 
-| Console | Path | Who | What |
-|---|---|---|---|
-| Patient Kiosk | `/patient` | Patient | 6-language guided intake: language → consent → complaint → visual anatomy → multiple complaints + severity → adaptive interview → documents (OCR + extraction) → completion |
-| Doctor | `/doctor` | Physician (`DOCTOR` role) | Triage queue, full case review, evidence verification (AI ≠ Doctor-Verified), contradiction resolution, safety-signal review, Dashavidha observations, consultations, notes |
-| Hospital Operations | `/hospital` | Ops lead (`HOSPITAL` role) | Live funnel, active-case queue, document-processing pipeline, kiosk device network (ONLINE / ATTENTION / OFFLINE / SESSION INTERRUPTED + triage), staff on duty, audit feed |
+- **Patient Console** — multilingual consent-first kiosk, optional ABHA capture, complaint + anatomy + multiple symptoms, adaptive interview, document upload/OCR/extraction, safety escalation, and **Medi** (female-voice patient assistant using Sarvam `priya`).
+- **Doctor Console** — urgent-first live queue, physician-ready case bundle, provenance-aware evidence, safety review, 10-part Dashavidha Atura Pariksha, notes, consultation lifecycle and FHIR R4 export.
+- **Hospital Console** — district-hospital-style pre-consultation operations view: OPD intake funnel, urgent review load, document pipeline, doctor workload, kiosk health and auditable events. All displayed values come from the same database; no fake statistics.
 
-Demo staff (development only — **not** production credentials):
-- Doctor: `doctor@medikiosk.local` / `doctor-demo-2026`
-- Hospital: `hospital@medikiosk.local` / `hospital-demo-2026`
+## Clinical boundaries
 
-## Architecture
+MediKiosk is **not an autonomous doctor**. It does not independently diagnose or prescribe. OCR/AI output remains unverified evidence until a physician reviews it. Unknown information is preserved as unknown. The two knowledge corpora (Modern Medicine and Ayurveda) remain separate from patient facts.
 
-- **Next.js 16** (App Router) + React + strict TypeScript; `next start` production server
-- **PostgreSQL 17** — all state. Row-Level Security enforces patient/kiosk/staff ownership at the database layer (the app is not the only boundary)
-- **Sessions**: kiosk sessions are durable DB rows with an `Idempotency-Key` on creation, cookie-based, expiring (410 after expiry, safe denial of PHI)
-- **OCR**: Tesseract.js in-server (en/hi/bn/te/ta/mr), per-page timeout, honest `FAILED` + retry
-- **Structured extraction**: deterministic rules engine producing evidence items with WHAT / SOURCE (OCR span, page) / METHOD / CONFIDENCE / VERIFICATION. Contradictions (e.g. patient "no medicines" vs document "Metformin 500 mg") are **surfaced with both sources — never auto-resolved**
-- **Verification**: AI/OCR evidence is always `UNVERIFIED` until a physician verifies or rejects it; confidence ≠ verification
-- **Provenance**: every clinical fact carries `PATIENT | VOICE | TOUCH | OCR | AI | DOCTOR | SYSTEM`
-- **Interview semantics**: `KNOWN / UNKNOWN / DECLINED / DENIED / NOT_ASKED` are distinct stored states — a missing answer is never converted to "No"
-- **Safety signals**: urgent-language detection surfaces "safety signal detected — requires physician assessment" (never a diagnosis), multilingual
-- **AYUSH / Dashavidha Pariksha**: 8 classical dimensions, physician-recorded (provenance `DOCTOR`), unassessed dimensions stay `NOT_ASSESSED` — never fabricated; kept visibly separate from Modern-Medicine evidence
-- **RAG assistant ("Medi")**: one consistent female assistant identity. Deterministic retrieval over a curated dual corpus (Ayurveda + Modern, PostgreSQL full-text search with relevance gating). Answers carry real citations; no-result, garbage, and prompt-injection inputs produce honest no-matches — no fabricated citations. KB content is isolated from patient data in both directions
-- **Voice**: optional mic→transcribe and text→speak (Sarvam provider). When the provider is unconfigured or hardware is missing, the UI fails honestly ("voice unavailable", retry) — never fake success
-- **Kiosk heartbeat**: devices report liveness; the hospital console derives real device states and the SESSION INTERRUPTED condition, with an ops triage action
-- **Audit log**: append-only record of staff clinical actions
+## ABDM / ABHA / FHIR
 
-### Data model (17 tables)
+ABHA is optional. Self-declared ABHA information is clearly marked unverified and is privacy-minimised. The FHIR endpoint is an **ABDM-ready preview**, not a claim of live ABDM connection, certification or conformance testing.
 
-`patient_sessions`, `complaints`, `documents`, `ocr_results`, `document_extractions`, `clinical_evidence`, `safety_signals`, `dashavidha_observations`, `consultations`, `doctor_notes`, `chat_messages`, `knowledge_documents`, `knowledge_chunks`, `staff`, `staff_sessions`, `kiosk_heartbeats`, `audit_log`
+## Database
 
-## Security
+The canonical runtime database is Supabase-hosted PostgreSQL through `DATABASE_URL` using a least-privileged application role. Row-level security is forced on sensitive tables and scoped through server-set transaction GUCs. `DATABASE_ADMIN_URL` is reserved for controlled migrations/preflight.
 
-- **Patient isolation via RLS**: a session can only read/write its own rows (enforced by DB policies, regression-tested in `npm run test:rls`)
-- **Role enforcement server-side**: `GET /api/hospital/overview` requires the `HOSPITAL` role (401 anonymous / 403 other roles / 200 hospital); physician-only routes (case bundle, queue, evidence verification, Dashavidha, doctor notes, safety-signal review) reject non-`DOCTOR` staff with 403
-- **Consent gate at the API**: no clinical write (complaints, interview, documents, OCR, completion) is accepted without persisted, versioned, timestamped `ACCEPTED` consent — 403 otherwise
-- **File validation**: supported types only, magic-byte MIME check, 20 MB cap, ownership-verified access
-- **Staff auth**: scrypt password hashing, hashed session tokens in `HttpOnly` cookies, expiry, logout, **in-memory login rate limit (8 attempts / 5 min per email)** — single-instance only; for multi-instance production, move rate limiting to a shared store (e.g. Redis)
-- **Audit log**: INSERT-only; no UPDATE/DELETE paths
+## Local setup
 
-## Development
+1. Copy `.env.example` to `.env.local` and fill secrets locally. Never commit it.
+2. Install dependencies with `npm ci` (or `npm install` when regenerating a lockfile).
+3. Run `npm run db:preflight` against the target Supabase database.
+4. Apply `db/schema.sql` / migrations using an owner connection.
+5. Run `npm run quality`, `npm run typecheck`, `npm run lint`, `npm test`, `npm run build`.
+6. With a configured database and app server, run RLS, accessibility, responsive and E2E release gates.
 
-```bash
-# 1. Dependencies
-npm ci
-
-# 2. Database (requires local PostgreSQL + sudo)
-bash scripts/db-bootstrap.sh        # roles, DB, schema (idempotent), staff seed
-DATABASE_URL="postgresql://medikiosk_owner:owner_local_dev@127.0.0.1:5432/medikiosk" \
-  node scripts/seed-knowledge.mjs   # knowledge base: 13 documents / 17 chunks
-
-# 3. App (env var for the app role connection)
-DATABASE_URL="postgresql://medikiosk_app:medikiosk_local_dev@127.0.0.1:5432/medikiosk" npm run dev
-```
-
-Production: `npm run build && npx next start -p 3000`
-
-### Environment variables
-
-| Variable | Purpose |
-|---|---|
-| `DATABASE_URL` | PostgreSQL connection (app role for the server; owner role for bootstrap/CLI scripts) |
-| `SARVAM_API_KEY` | Voice (TTS/STT) provider — optional; absent = honest voice-unavailable states |
-
-### Test commands
-
-```bash
-npm run lint            # ESLint
-npx tsc --noEmit        # type check
-npx vitest run          # unit/integration suite (32+ files)
-npm run test:rls        # RLS / ownership regression against a live DB
-npm run qa:responsive   # patient responsive QA: 6 languages x 5 widths (live server)
-npm run build           # production build
-```
-
-### Demo workflow
-
-1. Open `/patient` → choose a language → accept consent → describe a complaint (severity) → pick a body region on the diagram → add up to 2 extra complaints → answer the adaptive interview → optionally upload a prescription/lab PDF (OCR + structured evidence) → **Submit to doctor**.
-2. Sign in at `/doctor` with the demo doctor account → the case appears in the queue → open it → review evidence, resolve contradictions, record Dashavidha observations, verify/reject evidence, run the consultation.
-3. Sign in at `/hospital` with the demo hospital account → funnel, queue, document pipeline, and kiosk device network (send heartbeats via `POST /api/kiosk/heartbeat` to see a device appear).
-
-Synthetic demo cases created with `demo: true` are visibly marked ("demo case" / "demo") in the Doctor and Hospital consoles.
+See **CHECKPUSH.md** before pushing to GitHub.

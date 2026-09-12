@@ -1,104 +1,16 @@
 import { NextResponse } from "next/server";
-import { createDocumentRecord, isSupportedMimeType, validateFileSize, DocumentType } from "@/lib/documents";
-import { databaseConfigured } from "@/lib/db/pool";
-import { getActiveKioskSession } from "@/lib/db/session-scope";
-import { hasAcceptedConsent, consentRequiredResponse } from "@/lib/patient-consent";
-import { scopedDocumentRepository } from "@/lib/db/scoped-document-repository";
-
-export const runtime = "nodejs";
-
-function detectMimeType(buffer: ArrayBuffer): string | null {
-  const bytes = new Uint8Array(buffer);
-  if (bytes.length === 0) return null;
-  if (bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46) {
-    return "application/pdf";
-  }
-  if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) {
-    return "image/png";
-  }
-  if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) {
-    return "image/jpeg";
-  }
-  if (bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46) {
-    return "image/webp";
-  }
-  // No recognizable signature: the content does not match any supported
-  // format, so the client-declared type must not be trusted.
-  return null;
-}
-
-export async function POST(request: Request) {
-  try {
-    if (!databaseConfigured()) {
-      return NextResponse.json({ error: "Session storage is not configured", code: "DB_NOT_CONFIGURED" }, { status: 503 });
-    }
-    const session = await getActiveKioskSession();
-    if (!session) {
-      return NextResponse.json({ error: "No active session" }, { status: 404 });
-    }
-    if (!hasAcceptedConsent(session)) return consentRequiredResponse();
-
-    const formData = await request.formData();
-    const file = formData.get("file");
-    const documentType = formData.get("documentType");
-
-    if (!file || !(file instanceof File)) {
-      return NextResponse.json({ error: "File is required" }, { status: 400 });
-    }
-
-    const parsedType = documentType == null ? undefined : DocumentType.safeParse(documentType);
-    if (documentType != null && !parsedType?.success) {
-      return NextResponse.json({ error: "Invalid document type" }, { status: 400 });
-    }
-
-    if (!validateFileSize(file.size)) {
-      return NextResponse.json({ error: "File is too large. Maximum size is 20MB." }, { status: 400 });
-    }
-
-    if (file.size === 0) {
-      return NextResponse.json({ error: "File is empty" }, { status: 400 });
-    }
-
-    const buffer = await file.arrayBuffer();
-    const detectedMimeType = detectMimeType(buffer);
-
-    if (!detectedMimeType || !isSupportedMimeType(detectedMimeType)) {
-      return NextResponse.json(
-        { error: "Unsupported file type: file content does not match a supported format (PDF, PNG, JPEG, WebP)" },
-        { status: 400 },
-      );
-    }
-
-    const record = createDocumentRecord(session.id, file, parsedType?.data);
-    const document = await scopedDocumentRepository(session.id).save({ ...record, mimeType: detectedMimeType }, buffer);
-
-    return NextResponse.json(
-      {
-        ...document,
-        mimeType: detectedMimeType,
-      },
-      { status: 201 }
-    );
-  } catch (error) {
-    console.error("Document upload failed:", error);
-    return NextResponse.json({ error: "Upload failed" }, { status: 500 });
-  }
-}
-
-export async function GET() {
-  try {
-    if (!databaseConfigured()) {
-      return NextResponse.json({ error: "Session storage is not configured", code: "DB_NOT_CONFIGURED" }, { status: 503 });
-    }
-    const session = await getActiveKioskSession();
-    if (!session) {
-      return NextResponse.json({ error: "No active session" }, { status: 404 });
-    }
-
-    const documents = await scopedDocumentRepository(session.id).findBySessionId(session.id);
-    return NextResponse.json({ documents });
-  } catch (error) {
-    console.error("Document fetch failed:", error);
-    return NextResponse.json({ error: "Unable to fetch documents" }, { status: 500 });
-  }
+import { createHash } from "node:crypto";
+import { getActiveKioskSession,patientWritable } from "@/lib/db/session-scope";
+import { withKioskTx } from "@/lib/db/pool";
+import { detectMime,MAX_FILE_SIZE } from "@/lib/documents";
+import { touchPatientSession } from "@/lib/db/cases";
+export const runtime="nodejs";
+const selectFields=`id,original_filename AS "originalFilename",mime_type AS "mimeType",ocr_status AS "ocrStatus",extraction_status AS "extractionStatus",verification_status AS "verificationStatus",created_at AS "createdAt"`;
+export async function GET(){const s=await getActiveKioskSession();if(!s)return NextResponse.json({error:"No active session"},{status:404});const docs=await withKioskTx(s.id,c=>c.query(`SELECT ${selectFields} FROM documents WHERE session_id=$1 ORDER BY created_at`,[s.id]).then(r=>r.rows));return NextResponse.json({documents:docs},{headers:{"Cache-Control":"no-store, private"}});}
+export async function POST(request:Request){
+ const s=await getActiveKioskSession();if(!s)return NextResponse.json({error:"No active session"},{status:404});if(s.consentStatus!=="ACCEPTED")return NextResponse.json({error:"Consent required"},{status:403});if(!patientWritable(s))return NextResponse.json({error:"Submitted case is read-only"},{status:409});
+ const fd=await request.formData();const file=fd.get("file");if(!(file instanceof File))return NextResponse.json({error:"File is required"},{status:400});if(file.size===0||file.size>MAX_FILE_SIZE)return NextResponse.json({error:file.size===0?"File is empty":"Maximum file size is 20 MB"},{status:400});
+ const raw=new Uint8Array(await file.arrayBuffer());const mime=detectMime(raw);if(!mime)return NextResponse.json({error:"Unsupported or mismatched file content"},{status:400});const name=(file.name||"document").replace(/[\r\n]/g," ").slice(0,180);const contentHash=createHash("sha256").update(raw).digest("hex");
+ const result=await withKioskTx(s.id,async c=>{const existing=await c.query(`SELECT ${selectFields} FROM documents WHERE session_id=$1 AND content_sha256=$2 LIMIT 1`,[s.id,contentHash]);if(existing.rows[0]){await touchPatientSession(c,s.id);return{doc:existing.rows[0],idempotent:true};}const inserted=await c.query(`INSERT INTO documents(session_id,document_type,processing_status,original_filename,mime_type,file_size,content,content_sha256,provenance,ocr_status,extraction_status,verification_status) VALUES($1,'OTHER','READY_FOR_OCR',$2,$3,$4,$5,$6,'PATIENT','NOT_STARTED','NOT_STARTED','UNVERIFIED') ON CONFLICT (session_id,content_sha256) WHERE content_sha256 IS NOT NULL DO NOTHING RETURNING ${selectFields}`,[s.id,name,mime,file.size,Buffer.from(raw),contentHash]);if(inserted.rows[0]){await touchPatientSession(c,s.id);return{doc:inserted.rows[0],idempotent:false};}const raced=await c.query(`SELECT ${selectFields} FROM documents WHERE session_id=$1 AND content_sha256=$2 LIMIT 1`,[s.id,contentHash]);await touchPatientSession(c,s.id);return{doc:raced.rows[0],idempotent:true};});
+ return NextResponse.json({...result.doc,idempotent:result.idempotent},{status:result.idempotent?200:201,headers:{"Cache-Control":"no-store, private"}});
 }
