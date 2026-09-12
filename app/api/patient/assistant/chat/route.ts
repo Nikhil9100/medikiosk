@@ -117,3 +117,36 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unable to process message" }, { status: 500 });
   }
 }
+
+export async function DELETE() {
+  if (!databaseConfigured()) {
+    return NextResponse.json({ error: "Assistant storage not configured" }, { status: 503 });
+  }
+
+  const s = await getActiveKioskSession();
+  if (!s) {
+    return NextResponse.json({ ok: true, cleared: 0 }, { headers: { "Cache-Control": "no-store, private" } });
+  }
+
+  if (!patientWritable(s)) {
+    return NextResponse.json({ error: "Case has already been submitted" }, { status: 409 });
+  }
+
+  try {
+    const cleared = await withKioskTx(s.id, async (c) => {
+      const res = await c.query(
+        `DELETE FROM chat_messages 
+         WHERE session_id = $1`,
+        [s.id]
+      );
+      return res.rowCount ?? 0;
+    });
+
+    return NextResponse.json(
+      { ok: true, cleared },
+      { headers: { "Cache-Control": "no-store, private" } }
+    );
+  } catch {
+    return NextResponse.json({ error: "Unable to clear conversation" }, { status: 500 });
+  }
+}

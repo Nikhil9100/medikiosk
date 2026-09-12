@@ -35,12 +35,15 @@ export default function Assistant() {
   const [listening, setListening] = useState(false);
   const [speaking, setSpeaking] = useState<string | null>(null);
   const [note, setNote] = useState("");
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [restartModalOpen, setRestartModalOpen] = useState(false);
 
   const rec = useRef<MediaRecorder | null>(null);
   const stream = useRef<MediaStream | null>(null);
   const abort = useRef<AbortController | null>(null);
   const audio = useRef<HTMLAudioElement | null>(null);
   const discard = useRef(false);
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
   const assistantName = localizedAssistantName(workflow.language);
 
@@ -77,7 +80,7 @@ export default function Assistant() {
       discard.current = true;
       abort.current?.abort();
       if (rec.current && rec.current.state !== "inactive") rec.current.stop();
-      stream.current?.getTracks().forEach((t) => t.stop());
+      stream.current?.getTracks().forEach((trk) => trk.stop());
       audio.current?.pause();
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -189,6 +192,30 @@ export default function Assistant() {
     }
   }
 
+  async function handleRestartChat() {
+    setRestartModalOpen(false);
+    audio.current?.pause();
+    setSpeaking(null);
+    setBusy(true);
+    try {
+      const r = await fetch("/api/patient/assistant/chat", { method: "DELETE" });
+      if (r.ok) {
+        setMessages([]);
+        setDraft("");
+        setDraftMutationId(crypto.randomUUID());
+        await clearDraft("medi-chat-draft");
+        setNote(t("anayaRestartSuccess") || "Conversation restarted.");
+        setTimeout(() => setNote(""), 3500);
+      } else {
+        throw new Error();
+      }
+    } catch {
+      setNote("Unable to restart conversation. Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function toggleMic() {
     if (listening) {
       rec.current?.stop();
@@ -221,7 +248,7 @@ export default function Assistant() {
       };
 
       m.onstop = async () => {
-        s.getTracks().forEach((x) => x.stop());
+        s.getTracks().forEach((trk) => trk.stop());
         rec.current = null;
         stream.current = null;
         setListening(false);
@@ -263,64 +290,252 @@ export default function Assistant() {
     }
   }
 
+  // Step context helper
+  const step = workflow.currentStep;
+  const showStepContext = step === "anatomy" || step === "interview" || step === "documents" || step === "complete" || step === "symptoms" || step === "complaint";
+
   return (
     <section className="assistant-page reference-assistant-page" aria-labelledby="anaya-title">
       <header className="assistant-header reference-assistant-header">
-        <button className="secondary" onClick={() => router.back()}>
-          ← {t("back")}
-        </button>
-        <span className="assistant-avatar reference-female-avatar" aria-hidden="true">
-          👩‍⚕️
-        </span>
-        <div>
-          <p className="eyebrow" style={{ margin: "0 0 3px" }}>
-            {assistantName} · Female voice health assistant
-          </p>
-          <h1 id="anaya-title" style={{ margin: 0 }}>
-            {t("assistantTitle")}
-          </h1>
-          <p style={{ margin: 0, color: "#557069" }}>
-            Voice and chat support · general information only · not a diagnosis
-          </p>
+        <div className="assistant-header-main">
+          <button className="secondary" onClick={() => router.back()} aria-label="Go back">
+            ← {t("back")}
+          </button>
+          <span className="assistant-avatar reference-female-avatar" aria-hidden="true">
+            👩‍⚕️
+          </span>
+          <div className="assistant-header-meta">
+            <p className="eyebrow" style={{ margin: "0 0 3px" }}>
+              {assistantName} · Female voice health assistant
+            </p>
+            <h1 id="anaya-title" style={{ margin: 0 }}>
+              {t("assistantTitle")}
+            </h1>
+            <p style={{ margin: 0, color: "#557069", fontSize: "0.85rem" }}>
+              Voice and chat support · general information only · not a diagnosis
+            </p>
+          </div>
+        </div>
+
+        <div className="anaya-header-actions">
+          <button
+            type="button"
+            className="secondary anaya-menu-trigger"
+            onClick={() => setMenuOpen(true)}
+            aria-haspopup="dialog"
+            aria-expanded={menuOpen}
+          >
+            ☰ {t("anayaMainMenu")}
+          </button>
+          {messages.length > 0 && (
+            <button
+              type="button"
+              className="secondary anaya-restart-trigger"
+              onClick={() => setRestartModalOpen(true)}
+              title={t("anayaRestartTitle")}
+            >
+              🔄 {t("anayaMenuRestartChat")}
+            </button>
+          )}
         </div>
       </header>
 
       <ol className="assistant-thread" aria-live="polite">
-        {messages.length === 0 && (
-          <li className="assistant-welcome-card">
-            <span className="medi-mini-avatar">👩‍⚕️</span>
-            <div>
-              <b>{t("assistantWelcomeGreeting") || `Namaste! I’m ${assistantName}, your health assistant.`}</b>
-              <p>
-                {t("assistantWelcomeDesc") ||
-                  "I can help you describe symptoms and explain general health information. I cannot diagnose or prescribe."}
-              </p>
-            </div>
-          </li>
-        )}
-
-        {messages.map((m) => (
-          <li key={m.id} className={`msg ${m.role === "ASSISTANT" ? "assistant" : "patient"}`}>
-            <div className="bubble">
-              <p style={{ margin: 0 }}>{m.content}</p>
-              {m.safety?.[0] && <p className="urgent-box">{m.safety[0].summary}</p>}
-              {m.citations?.map((c, i) => (
-                <p key={i} className="citation">
-                  <b>{c.corpus === "AYURVEDA" ? "Ayurveda" : "Modern Medicine"}</b> · {c.title}
+        {messages.length === 0 ? (
+          <li className="anaya-starter-container">
+            <div className="assistant-welcome-card reference-welcome-hero">
+              <span className="medi-mini-avatar" aria-hidden="true">👩‍⚕️</span>
+              <div>
+                <b>{t("assistantWelcomeGreeting") || `Namaste! I’m ${assistantName}, your health assistant.`}</b>
+                <p>
+                  {t("anayaWelcomeSubtitle") || "Choose a topic below, speak with the mic, or type your question."}
                 </p>
-              ))}
-              {m.role === "ASSISTANT" && (
+                <small className="helper" style={{ display: "block", marginTop: 4, color: "#617d74" }}>
+                  {t("assistantDisclaimer")}
+                </small>
+              </div>
+            </div>
+
+            {showStepContext && (
+              <div className="anaya-step-banner">
+                <span className="anaya-step-icon" aria-hidden="true">
+                  {step === "anatomy" ? "📍" : step === "interview" ? "📝" : step === "documents" ? "📄" : "✅"}
+                </span>
+                <div className="anaya-step-content">
+                  <p className="anaya-step-label">
+                    {step === "anatomy" && "Current Step: Severity & Area"}
+                    {step === "interview" && "Current Step: Guided Health Questions"}
+                    {step === "documents" && "Current Step: Medical Documents"}
+                    {step === "complete" && "Current Step: Ready for Doctor"}
+                  </p>
+                  <button
+                    type="button"
+                    className="anaya-step-chip"
+                    onClick={() => {
+                      if (step === "anatomy") void send(t("anayaStepPromptAnatomy"));
+                      else if (step === "interview") void send(t("anayaStepPromptInterview"));
+                      else if (step === "documents") void send(t("anayaStepPromptDocuments"));
+                      else if (step === "complete") void send(t("anayaStepPromptComplete"));
+                    }}
+                  >
+                    💡 {step === "anatomy" && t("anayaStepPromptAnatomy")}
+                    {step === "interview" && t("anayaStepPromptInterview")}
+                    {step === "documents" && t("anayaStepPromptDocuments")}
+                    {step === "complete" && t("anayaStepPromptComplete")}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <div className="anaya-starter-section">
+              <h2 className="anaya-starter-heading">{t("anayaWelcomeTitle")}</h2>
+              <div className="anaya-starter-grid">
                 <button
-                  className="secondary"
-                  style={{ marginTop: 10 }}
-                  onClick={() => void speakReply(m)}
+                  type="button"
+                  className="anaya-starter-card"
+                  onClick={() => void send(t("anayaStarterSymptomsPrompt"))}
                 >
-                  {speaking === m.id ? `■ ${t("stop")}` : `🔊 ${t("speak")}`}
+                  <span className="anaya-card-icon" aria-hidden="true">🩺</span>
+                  <div className="anaya-card-text">
+                    <strong>{t("anayaStarterSymptomsTitle")}</strong>
+                    <p>{t("anayaStarterSymptomsDesc")}</p>
+                  </div>
                 </button>
-              )}
+
+                <button
+                  type="button"
+                  className="anaya-starter-card"
+                  onClick={() => void send(t("anayaStarterDoctorPrepPrompt"))}
+                >
+                  <span className="anaya-card-icon" aria-hidden="true">📋</span>
+                  <div className="anaya-card-text">
+                    <strong>{t("anayaStarterDoctorPrepTitle")}</strong>
+                    <p>{t("anayaStarterDoctorPrepDesc")}</p>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  className="anaya-starter-card"
+                  onClick={() => void send(t("anayaStarterDocumentsPrompt"))}
+                >
+                  <span className="anaya-card-icon" aria-hidden="true">📄</span>
+                  <div className="anaya-card-text">
+                    <strong>{t("anayaStarterDocumentsTitle")}</strong>
+                    <p>{t("anayaStarterDocumentsDesc")}</p>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  className="anaya-starter-card"
+                  onClick={() => void send(t("anayaStarterWhereItHurtsPrompt"))}
+                >
+                  <span className="anaya-card-icon" aria-hidden="true">📍</span>
+                  <div className="anaya-card-text">
+                    <strong>{t("anayaStarterWhereItHurtsTitle")}</strong>
+                    <p>{t("anayaStarterWhereItHurtsDesc")}</p>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  className="anaya-starter-card"
+                  onClick={() => void send(t("anayaStarterGeneralHealthPrompt"))}
+                >
+                  <span className="anaya-card-icon" aria-hidden="true">🌿</span>
+                  <div className="anaya-card-text">
+                    <strong>{t("anayaStarterGeneralHealthTitle")}</strong>
+                    <p>{t("anayaStarterGeneralHealthDesc")}</p>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  className="anaya-starter-card"
+                  onClick={() => {
+                    setDraft(t("anayaStarterSomethingElsePrompt"));
+                    inputRef.current?.focus();
+                  }}
+                >
+                  <span className="anaya-card-icon" aria-hidden="true">💬</span>
+                  <div className="anaya-card-text">
+                    <strong>{t("anayaStarterSomethingElseTitle")}</strong>
+                    <p>{t("anayaStarterSomethingElseDesc")}</p>
+                  </div>
+                </button>
+              </div>
             </div>
           </li>
-        ))}
+        ) : (
+          messages.map((m, idx) => {
+            const isLastAssistant = m.role === "ASSISTANT" && idx === messages.length - 1;
+            return (
+              <li key={m.id} className={`msg ${m.role === "ASSISTANT" ? "assistant" : "patient"}`}>
+                <div className="bubble">
+                  <p style={{ margin: 0 }}>{m.content}</p>
+                  {m.safety?.[0] && <p className="urgent-box">{m.safety[0].summary}</p>}
+                  {m.citations?.map((c, i) => (
+                    <p key={i} className="citation">
+                      <b>{c.corpus === "AYURVEDA" ? "Ayurveda" : "Modern Medicine"}</b> · {c.title}
+                    </p>
+                  ))}
+                  {m.role === "ASSISTANT" && (
+                    <div className="anaya-msg-actions">
+                      <button
+                        className="secondary anaya-speak-btn"
+                        onClick={() => void speakReply(m)}
+                        aria-label={speaking === m.id ? t("stop") : t("speak")}
+                      >
+                        {speaking === m.id ? `■ ${t("stop")}` : `🔊 ${t("speak")}`}
+                      </button>
+                    </div>
+                  )}
+
+                  {isLastAssistant && (
+                    <div className="anaya-quick-chips" aria-label="Suggested follow-up actions">
+                      <button
+                        type="button"
+                        className="anaya-quick-chip"
+                        onClick={() => void send(t("anayaChipTellMore"))}
+                      >
+                        {t("anayaChipTellMore")}
+                      </button>
+                      <button
+                        type="button"
+                        className="anaya-quick-chip"
+                        onClick={() => void send(t("anayaChipWhenStarted"))}
+                      >
+                        {t("anayaChipWhenStarted")}
+                      </button>
+                      <button
+                        type="button"
+                        className="anaya-quick-chip"
+                        onClick={() => void send(t("anayaChipHowSevere"))}
+                      >
+                        {t("anayaChipHowSevere")}
+                      </button>
+                      <button
+                        type="button"
+                        className="anaya-quick-chip nav-chip"
+                        onClick={() => router.push("/patient/anatomy")}
+                      >
+                        {t("anayaChipOpenAnatomy")}
+                      </button>
+                      <button
+                        type="button"
+                        className="anaya-quick-chip menu-chip"
+                        onClick={() => setMenuOpen(true)}
+                      >
+                        {t("anayaChipMainMenu")}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </li>
+            );
+          })
+        )}
       </ol>
 
       <form
@@ -339,6 +554,7 @@ export default function Assistant() {
           <span className="sr-only">{listening ? t("stop") : t("listen")}</span>
         </button>
         <input
+          ref={inputRef}
           value={draft}
           maxLength={2000}
           onChange={(e) => setDraft(e.target.value)}
@@ -354,6 +570,156 @@ export default function Assistant() {
         <p role="status" className="system-banner warning">
           {note}
         </p>
+      )}
+
+      {/* Main Menu Drawer / Modal */}
+      {menuOpen && (
+        <div className="anaya-drawer-backdrop" onClick={() => setMenuOpen(false)}>
+          <div
+            className="anaya-drawer"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="anaya-menu-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="anaya-drawer-header">
+              <h2 id="anaya-menu-title" style={{ margin: 0, fontSize: "1.25rem", color: "#113d35" }}>
+                {t("anayaMainMenu")}
+              </h2>
+              <button
+                type="button"
+                className="secondary anaya-close-btn"
+                onClick={() => setMenuOpen(false)}
+                aria-label={t("anayaCloseMenu")}
+              >
+                ✕
+              </button>
+            </div>
+            <div className="anaya-menu-list">
+              <button
+                type="button"
+                className="anaya-menu-item"
+                onClick={() => {
+                  setMenuOpen(false);
+                  void send(t("anayaStarterSymptomsPrompt"));
+                }}
+              >
+                <span className="anaya-menu-icon" aria-hidden="true">🩺</span>
+                <span>{t("anayaMenuDescribeSymptoms")}</span>
+              </button>
+
+              <button
+                type="button"
+                className="anaya-menu-item"
+                onClick={() => {
+                  setMenuOpen(false);
+                  void send(t("anayaStarterDoctorPrepPrompt"));
+                }}
+              >
+                <span className="anaya-menu-icon" aria-hidden="true">📋</span>
+                <span>{t("anayaMenuDoctorPrep")}</span>
+              </button>
+
+              <button
+                type="button"
+                className="anaya-menu-item"
+                onClick={() => {
+                  setMenuOpen(false);
+                  router.push("/patient/anatomy");
+                }}
+              >
+                <span className="anaya-menu-icon" aria-hidden="true">📍</span>
+                <span>{t("anayaMenuWhereItHurts")}</span>
+              </button>
+
+              <button
+                type="button"
+                className="anaya-menu-item"
+                onClick={() => {
+                  setMenuOpen(false);
+                  router.push("/patient/documents");
+                }}
+              >
+                <span className="anaya-menu-icon" aria-hidden="true">📄</span>
+                <span>{t("anayaMenuDocumentHelp")}</span>
+              </button>
+
+              <button
+                type="button"
+                className="anaya-menu-item"
+                onClick={() => {
+                  setMenuOpen(false);
+                  void send(t("anayaStarterGeneralHealthPrompt"));
+                }}
+              >
+                <span className="anaya-menu-icon" aria-hidden="true">🌿</span>
+                <span>{t("anayaMenuGeneralHealth")}</span>
+              </button>
+
+              <button
+                type="button"
+                className="anaya-menu-item"
+                onClick={() => {
+                  setMenuOpen(false);
+                  void send("How do I use voice input on this kiosk?");
+                }}
+              >
+                <span className="anaya-menu-icon" aria-hidden="true">🎙️</span>
+                <span>{t("anayaMenuVoiceHelp")}</span>
+              </button>
+
+              <button
+                type="button"
+                className="anaya-menu-item restart-item"
+                onClick={() => {
+                  setMenuOpen(false);
+                  setRestartModalOpen(true);
+                }}
+              >
+                <span className="anaya-menu-icon" aria-hidden="true">🔄</span>
+                <span>{t("anayaMenuRestartChat")}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Restart Chat Confirmation Modal */}
+      {restartModalOpen && (
+        <div className="anaya-modal-backdrop" onClick={() => setRestartModalOpen(false)}>
+          <div
+            className="anaya-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="anaya-restart-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="anaya-modal-icon" aria-hidden="true">🔄</div>
+            <h3 id="anaya-restart-title" style={{ margin: "0 0 8px", color: "#113d35", fontSize: "1.3rem" }}>
+              {t("anayaRestartTitle")}
+            </h3>
+            <p style={{ margin: "0 0 20px", color: "#475953", fontSize: "0.92rem", lineHeight: 1.5 }}>
+              {t("anayaRestartDesc")}
+            </p>
+            <div className="anaya-modal-actions">
+              <button
+                type="button"
+                className="secondary"
+                onClick={() => setRestartModalOpen(false)}
+              >
+                {t("anayaRestartCancel")}
+              </button>
+              <button
+                type="button"
+                className="primary anaya-btn-danger"
+                onClick={() => void handleRestartChat()}
+                disabled={busy}
+              >
+                {busy ? t("processing") : t("anayaRestartConfirm")}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </section>
   );
