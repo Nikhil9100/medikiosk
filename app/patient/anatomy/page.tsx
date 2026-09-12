@@ -24,6 +24,56 @@ const severityOptions: [Severity, TranslationKey, string, string][] = [
   ["VERY_SEVERE", "verySevere", "Very severe", "9–10"],
 ];
 
+const subregionsByRegion: Record<string, { key: TranslationKey; fallback: string }[]> = {
+  head: [
+    { key: "subregionFace", fallback: "Face" },
+    { key: "subregionScalp", fallback: "Scalp / Top of head" },
+    { key: "subregionNeck", fallback: "Neck" },
+    { key: "subregionEye", fallback: "Eye area" },
+    { key: "subregionEar", fallback: "Ear area" },
+    { key: "subregionThroat", fallback: "Throat / Mouth" },
+  ],
+  chest: [
+    { key: "subregionCenterChest", fallback: "Center chest" },
+    { key: "subregionLeftChest", fallback: "Left chest" },
+    { key: "subregionRightChest", fallback: "Right chest" },
+  ],
+  abdomen: [
+    { key: "subregionUpperAbdomen", fallback: "Upper abdomen (stomach)" },
+    { key: "subregionLowerAbdomen", fallback: "Lower abdomen" },
+    { key: "subregionLeftAbdomen", fallback: "Left abdomen" },
+    { key: "subregionRightAbdomen", fallback: "Right abdomen" },
+    { key: "subregionNavel", fallback: "Navel / Center" },
+    { key: "subregionPelvicArea", fallback: "Pelvic area" },
+    { key: "subregionGroin", fallback: "Groin" },
+  ],
+  back: [
+    { key: "subregionUpperBack", fallback: "Upper back" },
+    { key: "subregionMidBack", fallback: "Middle back" },
+    { key: "subregionLowerBack", fallback: "Lower back / Lumbar" },
+  ],
+  arm: [
+    { key: "subregionShoulder", fallback: "Shoulder" },
+    { key: "subregionUpperArm", fallback: "Upper arm" },
+    { key: "subregionElbow", fallback: "Elbow" },
+    { key: "subregionForearm", fallback: "Forearm" },
+    { key: "subregionWristHand", fallback: "Wrist & Hand" },
+  ],
+  leg: [
+    { key: "subregionHip", fallback: "Hip" },
+    { key: "subregionThigh", fallback: "Thigh" },
+    { key: "subregionKnee", fallback: "Knee" },
+    { key: "subregionCalf", fallback: "Calf" },
+    { key: "subregionAnkleFoot", fallback: "Ankle & Foot" },
+  ],
+  skin: [
+    { key: "subregionSkinRash", fallback: "Skin rash / irritation" },
+  ],
+  other: [
+    { key: "subregionGeneralOther", fallback: "Other / Whole body" },
+  ],
+};
+
 const hotspot: Record<BodyRegion, [number, number]> = {
   head: [80, 38],
   chest: [80, 92],
@@ -40,20 +90,45 @@ const hotspot: Record<BodyRegion, [number, number]> = {
 export default function Anatomy() {
   const router = useRouter();
   const { workflow, setWorkflow, sync, mutate, t } = usePatient();
-  const [region, setRegion] = useState<BodyRegion | null>(workflow.region);
+  const [selectedRegions, setSelectedRegions] = useState<BodyRegion[]>(
+    workflow.region ? [workflow.region] : []
+  );
+  const [selectedSubregions, setSelectedSubregions] = useState<Record<string, string[]>>({});
   const [severity, setSeverity] = useState<Severity | null>(workflow.severity);
   const [view, setView] = useState<"front" | "back">(workflow.region === "back" ? "back" : "front");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
+  const region = selectedRegions.length > 0 ? selectedRegions[selectedRegions.length - 1] : null;
+
   function toggleRegion(key: BodyRegion) {
-    if (region === key) {
-      setRegion(null);
+    if (selectedRegions.includes(key)) {
+      setSelectedRegions((prev) => prev.filter((r) => r !== key));
+      setSelectedSubregions((prev) => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
     } else {
-      setRegion(key);
+      setSelectedRegions((prev) => [...prev, key]);
       if (key === "back") setView("back");
       else if (key === "chest" || key === "abdomen") setView("front");
     }
+  }
+
+  function toggleSubregion(regionKey: BodyRegion, subKey: string) {
+    setSelectedSubregions((prev) => {
+      const current = prev[regionKey] || [];
+      const updated = current.includes(subKey)
+        ? current.filter((s) => s !== subKey)
+        : [...current, subKey];
+      return { ...prev, [regionKey]: updated };
+    });
+  }
+
+  function clearAllSelections() {
+    setSelectedRegions([]);
+    setSelectedSubregions({});
   }
 
   function handleKey(e: React.KeyboardEvent, key: BodyRegion) {
@@ -134,6 +209,44 @@ export default function Anatomy() {
 
       <h2 className="reference-subheading">{t("selectAffectedArea") || "Select affected area(s)"}</h2>
 
+      {/* Selected areas chips */}
+      {selectedRegions.length > 0 && (
+        <div className="selected-areas-bar" role="region" aria-label={t("selectedAreas") || "Selected areas"}>
+          <div className="selected-chips-list">
+            {selectedRegions.map((regKey) => {
+              const regTuple = regions.find(([k]) => k === regKey);
+              const label = regTuple ? (t(regTuple[1]) || regTuple[2]) : regKey;
+              const subs = selectedSubregions[regKey] || [];
+              return (
+                <span key={regKey} className="anatomy-selected-chip">
+                  <strong>{label}</strong>
+                  {subs.length > 0 && (
+                    <small>
+                      ({subs.map((s) => t(s as TranslationKey) || s).join(", ")})
+                    </small>
+                  )}
+                  <button
+                    type="button"
+                    className="chip-remove"
+                    aria-label={`Remove ${label}`}
+                    onClick={() => toggleRegion(regKey)}
+                  >
+                    ×
+                  </button>
+                </span>
+              );
+            })}
+          </div>
+          <button
+            type="button"
+            className="clear-all-chip-btn"
+            onClick={clearAllSelections}
+          >
+            {t("clearAll") || "Clear all"}
+          </button>
+        </div>
+      )}
+
       <div className="anatomy-reference-layout">
         <div className="body-map">
           <div className="body-map-view-toggle" role="tablist" aria-label="Body diagram orientation">
@@ -162,7 +275,7 @@ export default function Anatomy() {
             role="group"
             aria-label={`Body diagram (${view === "front" ? "Front view" : "Back view"})`}
           >
-            {/* Base silhouette outline */}
+            {/* Natural anatomical silhouette background */}
             <path
               d="M60 58 Q80 50 100 58 L111 118 L99 177 L95 300 L76 300 L72 190 L65 300 L45 300 L50 177 L39 118 Z"
               fill="#f1cdb7"
@@ -176,11 +289,11 @@ export default function Anatomy() {
               cx="80"
               cy="38"
               r="22"
-              className={`body-part ${region === "head" ? "selected" : ""}`}
+              className={`body-part ${region === "head" || selectedRegions.includes("head") ? "selected" : ""}`}
               role="button"
               tabIndex={0}
               aria-label={t("regionHead")}
-              aria-pressed={region === "head"}
+              aria-pressed={region === "head" || selectedRegions.includes("head")}
               onClick={() => toggleRegion("head")}
               onKeyDown={(e) => handleKey(e, "head")}
             />
@@ -190,22 +303,22 @@ export default function Anatomy() {
                 {/* Front: Chest */}
                 <path
                   d="M54 66 Q80 60 106 66 L110 118 L50 118 Z"
-                  className={`body-part ${region === "chest" ? "selected" : ""}`}
+                  className={`body-part ${region === "chest" || selectedRegions.includes("chest") ? "selected" : ""}`}
                   role="button"
                   tabIndex={0}
                   aria-label={t("regionChest")}
-                  aria-pressed={region === "chest"}
+                  aria-pressed={region === "chest" || selectedRegions.includes("chest")}
                   onClick={() => toggleRegion("chest")}
                   onKeyDown={(e) => handleKey(e, "chest")}
                 />
                 {/* Front: Abdomen */}
                 <path
                   d="M50 118 L110 118 L104 176 L56 176 Z"
-                  className={`body-part ${region === "abdomen" ? "selected" : ""}`}
+                  className={`body-part ${region === "abdomen" || selectedRegions.includes("abdomen") ? "selected" : ""}`}
                   role="button"
                   tabIndex={0}
                   aria-label={t("regionAbdomen")}
-                  aria-pressed={region === "abdomen"}
+                  aria-pressed={region === "abdomen" || selectedRegions.includes("abdomen")}
                   onClick={() => toggleRegion("abdomen")}
                   onKeyDown={(e) => handleKey(e, "abdomen")}
                 />
@@ -214,11 +327,11 @@ export default function Anatomy() {
               /* Back: Upper & Lower Back */
               <path
                 d="M54 66 Q80 60 106 66 L110 176 L50 176 Z"
-                className={`body-part ${region === "back" ? "selected" : ""}`}
+                className={`body-part ${region === "back" || selectedRegions.includes("back") ? "selected" : ""}`}
                 role="button"
                 tabIndex={0}
                 aria-label={t("regionBack")}
-                aria-pressed={region === "back"}
+                aria-pressed={region === "back" || selectedRegions.includes("back")}
                 onClick={() => toggleRegion("back")}
                 onKeyDown={(e) => handleKey(e, "back")}
               />
@@ -226,11 +339,11 @@ export default function Anatomy() {
 
             {/* Arms: Left & Right */}
             <g
-              className={`body-part ${region === "arm" ? "selected" : ""}`}
+              className={`body-part ${region === "arm" || selectedRegions.includes("arm") ? "selected" : ""}`}
               role="button"
               tabIndex={0}
               aria-label={t("regionArms")}
-              aria-pressed={region === "arm"}
+              aria-pressed={region === "arm" || selectedRegions.includes("arm")}
               onClick={() => toggleRegion("arm")}
               onKeyDown={(e) => handleKey(e, "arm")}
             >
@@ -240,11 +353,11 @@ export default function Anatomy() {
 
             {/* Legs: Left & Right */}
             <g
-              className={`body-part ${region === "leg" ? "selected" : ""}`}
+              className={`body-part ${region === "leg" || selectedRegions.includes("leg") ? "selected" : ""}`}
               role="button"
               tabIndex={0}
               aria-label={t("regionLegs")}
-              aria-pressed={region === "leg"}
+              aria-pressed={region === "leg" || selectedRegions.includes("leg")}
               onClick={() => toggleRegion("leg")}
               onKeyDown={(e) => handleKey(e, "leg")}
             >
@@ -266,18 +379,46 @@ export default function Anatomy() {
         </div>
 
         <div className="body-region-list" role="group" aria-label="Body region selection list">
-          {regions.map(([key, labelKey, fallback]) => (
-            <button
-              type="button"
-              key={key}
-              className="body-region-choice"
-              aria-pressed={region === key}
-              onClick={() => toggleRegion(key)}
-            >
-              <span>{region === key ? "✓" : "○"}</span>
-              {t(labelKey) || fallback}
-            </button>
-          ))}
+          {regions.map(([key, labelKey, fallback]) => {
+            const isSelected = selectedRegions.includes(key);
+            const subList = subregionsByRegion[key] || [];
+            const activeSubs = selectedSubregions[key] || [];
+
+            return (
+              <div key={key} className="body-region-item-wrap">
+                <button
+                  type="button"
+                  className="body-region-choice"
+                  aria-pressed={isSelected}
+                  onClick={() => toggleRegion(key)}
+                >
+                  <span>{isSelected ? "✓" : "○"}</span>
+                  {t(labelKey) || fallback}
+                </button>
+
+                {/* Subregions drawer for selected region */}
+                {isSelected && subList.length > 0 && (
+                  <div className="subregion-pills-list" role="group" aria-label={`Subregions for ${t(labelKey) || fallback}`}>
+                    {subList.map(({ key: subKey, fallback: subFallback }) => {
+                      const isSubSelected = activeSubs.includes(subKey);
+                      return (
+                        <button
+                          type="button"
+                          key={subKey}
+                          className={`subregion-pill ${isSubSelected ? "active" : ""}`}
+                          aria-pressed={isSubSelected}
+                          onClick={() => toggleSubregion(key, subKey)}
+                        >
+                          {isSubSelected ? "✓ " : "+ "}
+                          {t(subKey) || subFallback}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
 

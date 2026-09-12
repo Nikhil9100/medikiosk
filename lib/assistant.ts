@@ -76,14 +76,14 @@ export async function answerPatient(
   await c.query(
     `INSERT INTO chat_messages(session_id, role, content, client_mutation_id) 
      VALUES($1, 'PATIENT', $2, $3)
-     ON CONFLICT (session_id, role, client_mutation_id) DO NOTHING`,
+     ON CONFLICT (session_id, role, client_mutation_id) WHERE client_mutation_id IS NOT NULL DO NOTHING`,
     [sessionId, message, clientMutationId]
   );
 
   await c.query(
     `INSERT INTO chat_messages(session_id, role, content, intent, citations, provider, client_mutation_id) 
      VALUES($1, 'ASSISTANT', $2, $3, $4, 'deterministic-kb', $5)
-     ON CONFLICT (session_id, role, client_mutation_id) DO NOTHING`,
+     ON CONFLICT (session_id, role, client_mutation_id) WHERE client_mutation_id IS NOT NULL DO NOTHING`,
     [sessionId, reply, safety.length ? "SAFETY" : "INFORMATION", JSON.stringify(citations), clientMutationId]
   );
 
