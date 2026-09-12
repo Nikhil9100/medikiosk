@@ -75,19 +75,6 @@ const subregionsByRegion: Record<string, { key: TranslationKey; fallback: string
   ],
 };
 
-const hotspot: Record<BodyRegion, [number, number]> = {
-  head: [80, 38],
-  chest: [80, 92],
-  abdomen: [80, 145],
-  back: [80, 118],
-  arm: [34, 126],
-  hand: [22, 168],
-  leg: [64, 235],
-  foot: [60, 290],
-  skin: [80, 120],
-  other: [80, 175],
-};
-
 export default function Anatomy() {
   const router = useRouter();
   const { workflow, setWorkflow, sync, mutate, t } = usePatient();
@@ -173,7 +160,6 @@ export default function Anatomy() {
       };
 
       rec.onresult = (e: any) => {
-        // Reset silence timer on any speech event
         if (silenceTimeoutRef.current) {
           clearTimeout(silenceTimeoutRef.current);
         }
@@ -329,11 +315,12 @@ export default function Anatomy() {
     setBusy(false);
   }
 
-  const point = region ? hotspot[region] : null;
-  const showHotspot =
-    point &&
-    ((view === "front" && region !== "back") ||
-      (view === "back" && region !== "chest" && region !== "abdomen"));
+  const isHeadSelected = region === "head" || selectedRegions.includes("head");
+  const isChestSelected = region === "chest" || selectedRegions.includes("chest");
+  const isAbdomenSelected = region === "abdomen" || selectedRegions.includes("abdomen");
+  const isBackSelected = region === "back" || selectedRegions.includes("back");
+  const isArmSelected = region === "arm" || selectedRegions.includes("arm");
+  const isLegSelected = region === "leg" || selectedRegions.includes("leg");
 
   return (
     <section className="flow-card reference-card anatomy-reference-card">
@@ -507,25 +494,27 @@ export default function Anatomy() {
             role="group"
             aria-label={`Body diagram (${view === "front" ? "Front view" : "Back view"})`}
           >
-            {/* Natural anatomical silhouette background */}
+            {/* Soft ground floor shadow */}
+            <ellipse cx="80" cy="310" rx="46" ry="4.5" fill="rgba(0,0,0,0.05)" />
+
+            {/* Proportional natural anatomical underlay silhouette */}
             <path
-              d="M60 58 Q80 50 100 58 L111 118 L99 177 L95 300 L76 300 L72 190 L65 300 L45 300 L50 177 L39 118 Z"
-              fill="#f1cdb7"
-              stroke="#d7a98d"
+              d="M80 14 C70 14 67 21 67 31 C67 40 71 47 73 52 C73 54 71 58 71 66 L49 72 C41 74 38 80 37 90 L31 126 C30 134 26 148 24 162 C23 168 20 174 20 180 C20 186 24 188 27 186 C31 184 33 178 34 172 C37 158 41 144 43 134 L48 100 L54 164 C52 176 53 194 54 212 C55 220 54 226 55 232 C56 244 52 256 53 268 C54 280 57 288 58 296 L53 302 C52 304 54 306 58 306 L71 306 C74 306 74 303 72 298 C70 290 69 282 69 270 C69 258 73 246 73 234 C73 226 71 220 72 212 C73 194 75 178 76 168 C78 164 82 164 84 168 C85 178 87 194 88 212 C89 220 87 226 87 234 C87 246 91 258 91 270 C91 282 90 290 88 298 C86 303 86 306 89 306 L102 306 C106 306 108 304 107 302 L102 296 C103 288 106 280 107 268 C108 256 104 244 105 232 C106 226 105 220 106 212 C107 194 108 176 106 164 L112 100 L117 134 C119 144 123 158 126 172 C127 178 129 184 133 186 C136 188 140 186 140 180 C140 174 137 168 136 162 C134 148 130 134 129 126 L123 90 C122 80 119 74 112 72 L89 66 C89 58 87 54 87 52 C89 47 93 40 93 31 C93 21 90 14 80 14 Z"
+              fill="#f4eee9"
+              stroke="#e0d6cd"
               strokeWidth="2"
-              opacity="0.3"
+              opacity="0.5"
+              pointerEvents="none"
             />
 
             {/* Head & Neck */}
-            <circle
-              cx="80"
-              cy="38"
-              r="22"
-              className={`body-part ${region === "head" || selectedRegions.includes("head") ? "selected" : ""} ${proposedRegions.includes("head") ? "proposed" : ""}`}
+            <path
+              d="M80 14 C70 14 67 21 67 31 C67 40 71 47 73 52 C73 54 71 58 71 66 L89 66 C89 58 87 54 87 52 C89 47 93 40 93 31 C93 21 90 14 80 14 Z"
+              className={`body-part ${isHeadSelected ? "selected" : ""} ${proposedRegions.includes("head") ? "proposed" : ""}`}
               role="button"
               tabIndex={0}
               aria-label={t("regionHead")}
-              aria-pressed={region === "head" || selectedRegions.includes("head")}
+              aria-pressed={isHeadSelected}
               onClick={() => toggleRegion("head")}
               onKeyDown={(e) => handleKey(e, "head")}
             />
@@ -534,78 +523,126 @@ export default function Anatomy() {
               <>
                 {/* Front: Chest */}
                 <path
-                  d="M54 66 Q80 60 106 66 L110 118 L50 118 Z"
-                  className={`body-part ${region === "chest" || selectedRegions.includes("chest") ? "selected" : ""} ${proposedRegions.includes("chest") ? "proposed" : ""}`}
+                  d="M71 66 L49 72 C45 74 44 80 46 90 L50 114 L110 114 L114 90 C116 80 115 74 111 72 L89 66 Z"
+                  className={`body-part ${isChestSelected ? "selected" : ""} ${proposedRegions.includes("chest") ? "proposed" : ""}`}
                   role="button"
                   tabIndex={0}
                   aria-label={t("regionChest")}
-                  aria-pressed={region === "chest" || selectedRegions.includes("chest")}
+                  aria-pressed={isChestSelected}
                   onClick={() => toggleRegion("chest")}
                   onKeyDown={(e) => handleKey(e, "chest")}
                 />
-                {/* Front: Abdomen */}
+                {/* Front: Abdomen & Pelvis */}
                 <path
-                  d="M50 118 L110 118 L104 176 L56 176 Z"
-                  className={`body-part ${region === "abdomen" || selectedRegions.includes("abdomen") ? "selected" : ""} ${proposedRegions.includes("abdomen") ? "proposed" : ""}`}
+                  d="M50 114 C48 124 51 132 53 140 C55 148 50 156 54 164 C56 168 62 168 76 168 C78 164 82 164 84 168 C98 168 104 168 106 164 C110 156 105 148 107 140 C109 132 112 124 110 114 Z"
+                  className={`body-part ${isAbdomenSelected ? "selected" : ""} ${proposedRegions.includes("abdomen") ? "proposed" : ""}`}
                   role="button"
                   tabIndex={0}
                   aria-label={t("regionAbdomen")}
-                  aria-pressed={region === "abdomen" || selectedRegions.includes("abdomen")}
+                  aria-pressed={isAbdomenSelected}
                   onClick={() => toggleRegion("abdomen")}
                   onKeyDown={(e) => handleKey(e, "abdomen")}
                 />
               </>
             ) : (
-              /* Back: Upper & Lower Back */
+              /* Back: Posterior Torso */
               <path
-                d="M54 66 Q80 60 106 66 L110 176 L50 176 Z"
-                className={`body-part ${region === "back" || selectedRegions.includes("back") ? "selected" : ""} ${proposedRegions.includes("back") ? "proposed" : ""}`}
+                d="M71 66 L49 72 C45 74 44 80 46 90 L50 114 C48 124 51 132 53 140 C55 148 50 156 54 164 C56 168 62 168 76 168 C78 164 82 164 84 168 C98 168 104 168 106 164 C110 156 105 148 107 140 C109 132 112 124 110 114 L114 90 C116 80 115 74 111 72 L89 66 Z"
+                className={`body-part ${isBackSelected ? "selected" : ""} ${proposedRegions.includes("back") ? "proposed" : ""}`}
                 role="button"
                 tabIndex={0}
                 aria-label={t("regionBack")}
-                aria-pressed={region === "back" || selectedRegions.includes("back")}
+                aria-pressed={isBackSelected}
                 onClick={() => toggleRegion("back")}
                 onKeyDown={(e) => handleKey(e, "back")}
               />
             )}
 
-            {/* Arms: Left & Right */}
+            {/* Arms & Hands (Left & Right) */}
             <g
-              className={`body-part ${region === "arm" || selectedRegions.includes("arm") ? "selected" : ""} ${proposedRegions.includes("arm") ? "proposed" : ""}`}
+              className={`body-part ${isArmSelected ? "selected" : ""} ${proposedRegions.includes("arm") ? "proposed" : ""}`}
               role="button"
               tabIndex={0}
               aria-label={t("regionArms")}
-              aria-pressed={region === "arm" || selectedRegions.includes("arm")}
+              aria-pressed={isArmSelected}
               onClick={() => toggleRegion("arm")}
               onKeyDown={(e) => handleKey(e, "arm")}
             >
-              <path d="M54 68 L24 130 L14 174 L28 178 L42 136 L54 88 Z" />
-              <path d="M106 68 L136 130 L146 174 L132 178 L118 136 L106 88 Z" />
+              {/* Left Arm */}
+              <path d="M48 72 C41 74 38 80 37 90 L31 126 C30 134 26 148 24 162 C23 168 20 174 20 180 C20 186 24 188 27 186 C31 184 33 178 34 172 C37 158 41 144 43 134 L48 100 C49 92 48 82 48 72 Z" />
+              {/* Right Arm */}
+              <path d="M112 72 C119 74 122 80 123 90 L129 126 C130 134 134 148 136 162 C137 168 140 174 140 180 C140 186 136 188 133 186 C129 184 127 178 126 172 C123 158 119 144 117 134 L112 100 C111 92 112 82 112 72 Z" />
             </g>
 
-            {/* Legs: Left & Right */}
+            {/* Legs & Feet (Left & Right) */}
             <g
-              className={`body-part ${region === "leg" || selectedRegions.includes("leg") ? "selected" : ""} ${proposedRegions.includes("leg") ? "proposed" : ""}`}
+              className={`body-part ${isLegSelected ? "selected" : ""} ${proposedRegions.includes("leg") ? "proposed" : ""}`}
               role="button"
               tabIndex={0}
               aria-label={t("regionLegs")}
-              aria-pressed={region === "leg" || selectedRegions.includes("leg")}
+              aria-pressed={isLegSelected}
               onClick={() => toggleRegion("leg")}
               onKeyDown={(e) => handleKey(e, "leg")}
             >
-              <path d="M56 176 L74 176 L72 296 L52 296 Z" />
-              <path d="M86 176 L104 176 L108 296 L88 296 Z" />
+              {/* Left Leg */}
+              <path d="M54 164 C52 176 53 194 54 212 C55 220 54 226 55 232 C56 244 52 256 53 268 C54 280 57 288 58 296 L53 302 C52 304 54 306 58 306 L71 306 C74 306 74 303 72 298 C70 290 69 282 69 270 C69 258 73 246 73 234 C73 226 71 220 72 212 C73 194 75 178 76 168 Z" />
+              {/* Right Leg */}
+              <path d="M106 164 C108 176 107 194 106 212 C105 220 106 226 105 232 C104 244 108 256 107 268 C106 280 103 288 102 296 L107 302 C108 304 106 306 102 306 L89 306 C86 306 86 303 88 298 C90 290 91 282 91 270 C91 258 87 246 87 234 C87 226 89 220 88 212 C87 194 85 178 84 168 Z" />
             </g>
 
-            {/* Hotspot marker */}
-            {showHotspot && (
-              <circle
-                className="body-map-hotspot"
-                cx={point[0]}
-                cy={point[1]}
-                r="11"
-                pointerEvents="none"
-              />
+            {/* Region Checkmark Badges for all Selected Areas */}
+            {isHeadSelected && (
+              <g className="region-check-badge" transform="translate(80, 36)" pointerEvents="none">
+                <circle r="8.5" fill="#0c8264" stroke="#ffffff" strokeWidth="1.8" />
+                <path d="M-3 0.5 L-0.8 2.8 L3.2 -2" fill="none" stroke="#ffffff" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+              </g>
+            )}
+
+            {view === "front" && isChestSelected && (
+              <g className="region-check-badge" transform="translate(80, 92)" pointerEvents="none">
+                <circle r="8.5" fill="#0c8264" stroke="#ffffff" strokeWidth="1.8" />
+                <path d="M-3 0.5 L-0.8 2.8 L3.2 -2" fill="none" stroke="#ffffff" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+              </g>
+            )}
+
+            {view === "front" && isAbdomenSelected && (
+              <g className="region-check-badge" transform="translate(80, 140)" pointerEvents="none">
+                <circle r="8.5" fill="#0c8264" stroke="#ffffff" strokeWidth="1.8" />
+                <path d="M-3 0.5 L-0.8 2.8 L3.2 -2" fill="none" stroke="#ffffff" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+              </g>
+            )}
+
+            {view === "back" && isBackSelected && (
+              <g className="region-check-badge" transform="translate(80, 116)" pointerEvents="none">
+                <circle r="8.5" fill="#0c8264" stroke="#ffffff" strokeWidth="1.8" />
+                <path d="M-3 0.5 L-0.8 2.8 L3.2 -2" fill="none" stroke="#ffffff" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+              </g>
+            )}
+
+            {isArmSelected && (
+              <>
+                <g className="region-check-badge" transform="translate(28, 142)" pointerEvents="none">
+                  <circle r="8.5" fill="#0c8264" stroke="#ffffff" strokeWidth="1.8" />
+                  <path d="M-3 0.5 L-0.8 2.8 L3.2 -2" fill="none" stroke="#ffffff" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                </g>
+                <g className="region-check-badge" transform="translate(132, 142)" pointerEvents="none">
+                  <circle r="8.5" fill="#0c8264" stroke="#ffffff" strokeWidth="1.8" />
+                  <path d="M-3 0.5 L-0.8 2.8 L3.2 -2" fill="none" stroke="#ffffff" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                </g>
+              </>
+            )}
+
+            {isLegSelected && (
+              <>
+                <g className="region-check-badge" transform="translate(63, 238)" pointerEvents="none">
+                  <circle r="8.5" fill="#0c8264" stroke="#ffffff" strokeWidth="1.8" />
+                  <path d="M-3 0.5 L-0.8 2.8 L3.2 -2" fill="none" stroke="#ffffff" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                </g>
+                <g className="region-check-badge" transform="translate(97, 238)" pointerEvents="none">
+                  <circle r="8.5" fill="#0c8264" stroke="#ffffff" strokeWidth="1.8" />
+                  <path d="M-3 0.5 L-0.8 2.8 L3.2 -2" fill="none" stroke="#ffffff" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                </g>
+              </>
             )}
           </svg>
         </div>

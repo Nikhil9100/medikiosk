@@ -31,7 +31,7 @@ test("SVG body parts have full keyboard accessibility", () => {
   // role="button", tabIndex={0}, aria-pressed, onKeyDown
   assert.match(page, /role="button"/);
   assert.match(page, /tabIndex=\{0\}/);
-  assert.match(page, /aria-pressed=\{region ===/);
+  assert.match(page, /aria-pressed=\{isHeadSelected\}/);
   assert.match(page, /onKeyDown=\{\(e\) => handleKey\(e,/);
   // Space and Enter key handling
   assert.match(page, /e\.key === "Enter" \|\| e\.key === " "/);
@@ -207,4 +207,28 @@ test("locale configuration matches all 6 languages for Web Speech API", () => {
   assert.equal(getLocaleForLanguage("te"), "te-IN");
   assert.equal(getLocaleForLanguage("ta"), "ta-IN");
   assert.equal(getLocaleForLanguage("mr"), "mr-IN");
+});
+
+test("redesigned body diagram uses proportional vector paths, grounded floor shadow, and checkmark badges without red dot", () => {
+  const page = read("app/patient/anatomy/page.tsx");
+  const css = read("app/globals.css");
+
+  // Proportional human anatomy paths
+  assert.match(page, /d="M80 14 C70 14 67 21 67 31/); // Head with distinct neck
+  assert.match(page, /d="M71 66 L49 72 C45 74/); // Chest
+  assert.match(page, /d="M50 114 C48 124 51 132/); // Abdomen & pelvis
+  assert.match(page, /d="M48 72 C41 74 38 80/); // Left arm with mitt hand
+  assert.match(page, /d="M54 164 C52 176 53 194/); // Left leg with foot
+
+  // Floor ground shadow
+  assert.match(page, /<ellipse cx="80" cy="310" rx="46" ry="4\.5"/);
+
+  // Checkmark badges for selected regions
+  assert.match(page, /className="region-check-badge"/);
+  assert.match(css, /\.region-check-badge/);
+
+  // Red dot marker is completely removed
+  assert.doesNotMatch(page, /className="body-map-hotspot"/);
+  assert.doesNotMatch(page, /hotspot\[region\]/);
+  assert.doesNotMatch(css, /\.body-map-hotspot/);
 });
