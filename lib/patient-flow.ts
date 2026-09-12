@@ -31,3 +31,18 @@ export const routeForStep: Record<PatientStep, string> = {
   anatomy: "/patient/anatomy", symptoms: "/patient/symptoms", interview: "/patient/interview",
   documents: "/patient/documents", complete: "/patient/complete"
 };
+
+export function caseToWorkflow(s: any): PatientWorkflow {
+  return {
+    sessionId: s.id,
+    caseId: s.caseId,
+    language: s.language,
+    consentStatus: s.consentStatus,
+    currentStep: s.workflowStep,
+    complaint: s.complaintText ?? "",
+    region: s.bodyRegion ?? null,
+    severity: null,
+    interviewFacts: s.interviewData ?? {},
+    documents: [],
+  };
+}

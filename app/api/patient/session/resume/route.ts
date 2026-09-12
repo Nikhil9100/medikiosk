@@ -4,7 +4,7 @@ import { z } from "zod";
 import { databaseConfigured,withKioskTx,withOwnerTx } from "@/lib/db/pool";
 import { getCase,touchPatientSession } from "@/lib/db/cases";
 import { SESSION_COOKIE } from "@/lib/db/session-scope";
-import { workflow } from "../route";
+import { caseToWorkflow } from "@/lib/patient-flow";
 export const runtime="nodejs";
 const Body=z.object({resumeSecret:z.string().min(32).max(128).regex(/^[A-Za-z0-9_-]+$/)}).strict();
 function hash(secret:string){return createHash("sha256").update(secret).digest("hex");}
@@ -18,6 +18,6 @@ export async function POST(request:Request){
   if(!found)return NextResponse.json({error:"This saved visit can no longer be resumed",code:"RESUME_NOT_AVAILABLE"},{status:410});
   const s=await withKioskTx(found.id,async c=>{await touchPatientSession(c,found.id);return getCase(c,found.id)});
   if(!s||!["NEW","IN_PROGRESS"].includes(s.caseStatus))return NextResponse.json({error:"This visit is already submitted or closed",code:"RESUME_NOT_AVAILABLE"},{status:410});
-  const res=NextResponse.json({workflow:workflow(s),resumed:true},{headers:{"Cache-Control":"no-store, private"}});setCookie(res,s.id);return res;
+  const res=NextResponse.json({workflow:caseToWorkflow(s),resumed:true},{headers:{"Cache-Control":"no-store, private"}});setCookie(res,s.id);return res;
  }catch{return NextResponse.json({error:"Unable to resume this visit"},{status:500});}
 }
