@@ -1,32 +1,53 @@
-# MediKiosk — Digital Clinical History & Pre-Consultation System
+# MediKiosk
 
-MediKiosk is an independent SIH 2026 healthcare prototype for problem statement **SIH26047**. It provides one canonical Patient → Doctor → Hospital data flow backed by Supabase-hosted PostgreSQL.
+MediKiosk is an independent, production-grade digital clinical intake and pre-consultation system. It connects patients to hospital operations by gathering structured medical histories, parsing medical documents, extracting evidence, and presenting a curated summary to the attending physician for final review.
 
-## Consoles
+## Architecture
 
-- **Patient Console** — multilingual consent-first kiosk, optional ABHA capture, complaint + anatomy + multiple symptoms, adaptive interview, document upload/OCR/extraction, safety escalation, and **Medi** (female-voice patient assistant using Sarvam `priya`).
-- **Doctor Console** — urgent-first live queue, physician-ready case bundle, provenance-aware evidence, safety review, 10-part Dashavidha Atura Pariksha, notes, consultation lifecycle and FHIR R4 export.
-- **Hospital Console** — district-hospital-style pre-consultation operations view: OPD intake funnel, urgent review load, document pipeline, doctor workload, kiosk health and auditable events. All displayed values come from the same database; no fake statistics.
+MediKiosk relies on a central Postgres architecture (currently designed for Supabase) with three core operational consoles:
 
-## Clinical boundaries
+1. **Patient Console**: A privacy-first, accessible, multilingual interface where patients securely submit their chief complaints, severity, anatomical location, and medical documents.
+2. **Doctor Console**: A clinical review workstation that consolidates the patient's structured history, safety signals, and AI-extracted evidence into a high-density, low-cognitive-load dashboard.
+3. **Hospital Console**: An operational control center for managing queue status, patient throughput, kiosk health, and staff assignments.
 
-MediKiosk is **not an autonomous doctor**. It does not independently diagnose or prescribe. OCR/AI output remains unverified evidence until a physician reviews it. Unknown information is preserved as unknown. The two knowledge corpora (Modern Medicine and Ayurveda) remain separate from patient facts.
+## Security & Privacy Model
+- **Durable Sessions**: Sessions are server-authoritative, backed by PostgreSQL `patient_sessions`, with HttpOnly/Secure short-lived cookies.
+- **Role-Level Security (RLS)**: Enforced directly at the database tier via PostgreSQL connection roles. Patient sessions cannot view each other. Hospital staff cannot view physician-level clinical PHI.
+- **Offline Recovery**: WebCrypto-encrypted local persistence ensures that network interruptions do not cause data loss, but raw PHI never leaks into unencrypted `localStorage`.
 
-## ABDM / ABHA / FHIR
+## Advanced Clinical Features
 
-ABHA is optional. Self-declared ABHA information is clearly marked unverified and is privacy-minimised. The FHIR endpoint is an **ABDM-ready preview**, not a claim of live ABDM connection, certification or conformance testing.
+- **Adaptive Interview**: Medi Assistant dynamically guides the patient through history-taking, mapping facts to clinical intent without assuming diagnosis.
+- **OCR & Evidence Extraction**: Patient-uploaded documents are parsed (using Tesseract or equivalent pipelines) and structured information is extracted (e.g., medications, procedures, labs). All facts maintain provenance (Patient vs. Document vs. AI).
+- **Contradiction System**: Discrepancies between patient statements and uploaded documents are preserved and highlighted for the physician to manually resolve.
+- **AYUSH & Dashavidha**: Optionally gathers structured indicators mapped to canonical AYUSH practices.
+- **RAG Knowledge Assistant**: Provides medical information strictly bounded by safe AI operational guidelines.
+- **Multilingual & Voice Integration**: Fully supports 6 languages with Text-To-Speech (TTS) and Speech-To-Text (STT) capabilities.
 
-## Database
+## Environment Configuration
 
-The canonical runtime database is Supabase-hosted PostgreSQL through `DATABASE_URL` using a least-privileged application role. Row-level security is forced on sensitive tables and scoped through server-set transaction GUCs. `DATABASE_ADMIN_URL` is reserved for controlled migrations/preflight.
+Production requires the following environment variables. Do not commit secrets.
 
-## Local setup
+- `DATABASE_URL`: Connection string to the operational PostgreSQL database. Must have the required application roles provisioned.
+- `DATABASE_ADMIN_URL`: Superuser string (used strictly for running schema migrations, never exposed to runtime).
+- `KIOSK_HEARTBEAT_SECRET`: High-entropy key required for kiosk heartbeat endpoints.
+- `NEXT_PUBLIC_APP_NAME`: Application display name.
+- `SARVAM_API_KEY`: Required if the Sarvam STT/TTS voice layer is activated.
+- `GEMINI_API_KEY`: Required if AI/Extraction capabilities are utilized.
+- `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`: Used if migrating to complete Supabase integration.
 
-1. Copy `.env.example` to `.env.local` and fill secrets locally. Never commit it.
-2. Install dependencies with `npm ci` (or `npm install` when regenerating a lockfile).
-3. Run `npm run db:preflight` against the target Supabase database.
-4. Apply `db/schema.sql` / migrations using an owner connection.
-5. Run `npm run quality`, `npm run typecheck`, `npm run lint`, `npm test`, `npm run build`.
-6. With a configured database and app server, run RLS, accessibility, responsive and E2E release gates.
+## Setup & Deployment
 
-See **CHECKPUSH.md** before pushing to GitHub.
+1. **Install dependencies:**
+   ```bash
+   npm ci
+   ```
+2. **Database Provisioning:**
+   Ensure your PostgreSQL instance matches the schema. Start by executing migrations or `db:reconcile` (see `package.json` for helpers).
+3. **Build & Run:**
+   ```bash
+   npm run build
+   npm start
+   ```
+
+*Disclaimer: MediKiosk is not a diagnostic tool and does not replace physician judgment. All extracted evidence must be reviewed by the consulting practitioner.*

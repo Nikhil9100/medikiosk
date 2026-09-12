@@ -1,4 +1,4 @@
-# SIH readiness scope
+# production readiness scope
 
 Implemented code-owned scope: patient kiosk, Medi assistant voice/text, doctor review, hospital operations, Supabase/PostgreSQL persistence, forced RLS design, 10-part Dashavidha, optional ABHA capture, document/OCR pipeline hooks, clinical evidence provenance, deterministic safety signals, FHIR preview, audit and accessibility/security hardening.
 

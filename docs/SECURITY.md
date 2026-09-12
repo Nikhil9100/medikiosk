@@ -30,12 +30,12 @@
 
 ## Phase 6B OCR security
 - OCR processing runs entirely server-side. No OCR provider is called from the browser.
-- Raw uploaded document bytes are stored in server-side memory (in-memory repository) for the hackathon stage. They are never written to disk or committed to version control.
+- Raw uploaded document bytes are stored in server-side memory (in-memory repository) for the development stage. They are never written to disk or committed to version control.
 - OCR results carry `OCR` provenance and remain unverified. No automatic clinical fact creation occurs.
 - The OCR API routes validate session ownership and document ownership on every request using the authenticated Supabase identity.
 - Tesseract.js is selected because it requires no external API key. No provider secrets are needed or exposed.
 - If an OCR provider is unavailable or not configured, the system returns explicit `NOT_CONFIGURED` or `UNAVAILABLE` states rather than fabricating results.
-- Document buffers are lost on server restart. This is acceptable for the hackathon stage but must be replaced by durable storage before production.
+- Document buffers are lost on server restart. This is acceptable for the development stage but must be replaced by durable storage before production.
 
 ## Phase 5 voice security
 - `SARVAM_API_KEY` is read from the server environment and never sent to the browser.
