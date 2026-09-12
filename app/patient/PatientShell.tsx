@@ -126,7 +126,7 @@ export default function PatientShell({children}:{children:React.ReactNode}){
     </header>
     {current>=0&&<nav className="patient-progress reference-progress" aria-label="Clinical intake progress">{progress.map((p,i)=><span key={p.key} className={i<current?"done":i===current?"active":""}><b>{i+1}</b><em>{p.label}</em></span>)}</nav>}
     {error&&<div className="system-banner error shell-banner" role="alert">{error}{connection!=="online"&&workflow.sessionId&&<button type="button" className="inline-retry" onClick={()=>void flush()}>Retry sync</button>}</div>}
-    <main id="patient-main" className="patient-main reference-patient-main">{boot?<div className="loading-card" role="status">Loading secure session…</div>:children}</main>
+    <main id="patient-main" className="patient-main reference-patient-main">{boot?<div className="loading-card" role="status"><h1 className="sr-only">Patient Console Loading</h1>Loading secure session…</div>:children}</main>
     <footer className="patient-footer reference-patient-footer"><div className="reference-trust-strip"><span>♿ <b>Accessible healthcare</b><small>Designed for every patient</small></span><span>◎ <b>Multilingual support</b><small>Six supported languages</small></span><span>🔒 <b>Secure & private</b><small>Encrypted recovery + access control</small></span><span>♡ <b>AI-assisted</b><small>Support, never diagnosis</small></span><span>🩺 <b>Better consultations</b><small>Doctor remains final authority</small></span></div><div className="footer-disclaimer"><span>Independent SIH health-tech solution</span><span>Not a diagnostic tool · Physician review required</span></div></footer>
    </div>
  </Ctx.Provider>;
