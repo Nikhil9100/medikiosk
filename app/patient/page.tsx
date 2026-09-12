@@ -55,7 +55,7 @@ export default function PatientWelcome() {
   return (
     <section className="flow-card reference-card welcome-reference-card">
       <div className="welcome-reference-grid">
-        <div>
+        <div className="welcome-intro-col">
           <div className="reference-icon-badge" aria-hidden="true">
             ✚
           </div>
@@ -74,49 +74,44 @@ export default function PatientWelcome() {
           <div className="language-reference-list">
             {(Object.keys(languageNames) as PatientLanguage[]).map((key) => {
               const meta = languageMeta[key];
+              const isSelected = selected === key;
               return (
                 <button
                   type="button"
                   key={key}
                   className="language-reference-option"
-                  aria-pressed={selected === key}
+                  aria-pressed={isSelected}
                   onClick={() => handleLanguageSelect(key)}
                 >
                   <span className="language-reference-radio" aria-hidden="true">
-                    {selected === key ? "●" : "○"}
+                    {isSelected ? "●" : "○"}
                   </span>
-                  <span>
+                  <span className="language-reference-label">
                     <strong>{meta.native}</strong>
                     <small>{meta.secondary}</small>
                   </span>
-                  <span aria-hidden="true">›</span>
+                  <span className="language-reference-chevron" aria-hidden="true">›</span>
                 </button>
               );
             })}
           </div>
+
+          {error && (
+            <div className="system-banner error" role="alert" style={{ marginTop: "12px" }}>
+              {error}
+            </div>
+          )}
+
+          <div className="reference-actions" style={{ marginTop: "16px" }}>
+            <button
+              className="primary reference-primary welcome-continue-btn"
+              disabled={busy}
+              onClick={() => void begin()}
+            >
+              {busy ? t("startingSecurely") : `${t("continue")} →`}
+            </button>
+          </div>
         </div>
-      </div>
-      {error && (
-        <div className="system-banner error" role="alert">
-          {error}
-        </div>
-      )}
-      <div className="reference-actions">
-        <button
-          className="primary reference-primary"
-          disabled={busy}
-          onClick={() => void begin()}
-        >
-          {busy ? t("startingSecurely") : `${t("continue")} →`}
-        </button>
-      </div>
-      <div className="reference-bottom-cards">
-        <span>
-          ♿ <b>{t("accessibleForAll")}</b>
-        </span>
-        <span>
-          ☝ <b>{t("simpleToUse")}</b>
-        </span>
       </div>
     </section>
   );
