@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 const root=new URL('../',import.meta.url);
-const read=async p=>readFile(new URL(p,root),'utf8');
+const read=async p=>readFile(`${process.cwd()}/${p}`,'utf8');
 
 test('patient welcome combines branded welcome and six-language selection',async()=>{
   const s=await read('app/patient/page.tsx');
