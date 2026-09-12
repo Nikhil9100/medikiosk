@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -36,6 +36,16 @@ function formatWaitTime(iso: string) {
   return `${Math.floor(m / 1440)}d`;
 }
 
+function getPriorityCategory(c: Case): "URGENT" | "HIGH_PRIORITY" | "ROUTINE" {
+  if (c.caseStatus === "URGENT_REVIEW" || (c.unreviewedSignals ?? 0) > 0) {
+    return "URGENT";
+  }
+  if (c.topSeverity === "SEVERE" || c.topSeverity === "VERY_SEVERE") {
+    return "HIGH_PRIORITY";
+  }
+  return "ROUTINE";
+}
+
 export default function DoctorQueue() {
   const router = useRouter();
   const [staff, setStaff] = useState<Staff | null>(null);
@@ -43,7 +53,17 @@ export default function DoctorQueue() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [q, setQ] = useState("");
+  const [debouncedQ, setDebouncedQ] = useState("");
   const [filter, setFilter] = useState("ALL");
+  const isMounted = useRef(true);
+
+  // Debounce search input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedQ(q.trim().toLowerCase());
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [q]);
 
   const load = useCallback(async () => {
     try {
@@ -57,50 +77,91 @@ export default function DoctorQueue() {
         router.replace("/doctor/login");
         return;
       }
-      setStaff(md.staff);
+      if (isMounted.current) {
+        setStaff(md.staff);
+      }
 
       const res = await fetch("/api/staff/queue", { cache: "no-store" });
       if (!res.ok) {
         throw new Error("HTTP_FAILED");
       }
       const data = await res.json();
-      const list = Array.isArray(data) ? data : data.cases ?? [];
-      setCases(list);
-      setError("");
+      const list: Case[] = Array.isArray(data) ? data : data.cases ?? [];
+
+      if (isMounted.current) {
+        // Sort cases: URGENT first, then HIGH_PRIORITY, then ROUTINE / by wait time
+        const sorted = [...list].sort((a, b) => {
+          const prioOrder = { URGENT: 0, HIGH_PRIORITY: 1, ROUTINE: 2 };
+          const pA = prioOrder[getPriorityCategory(a)];
+          const pB = prioOrder[getPriorityCategory(b)];
+          if (pA !== pB) return pA - pB;
+          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        });
+        setCases(sorted);
+        setError("");
+      }
     } catch {
-      setError("Unable to load the clinical queue.");
+      if (isMounted.current) {
+        setError("Unable to load the clinical queue. Try again.");
+      }
     } finally {
-      setLoading(false);
+      if (isMounted.current) {
+        setLoading(false);
+      }
     }
   }, [router]);
 
   useEffect(() => {
+    isMounted.current = true;
     void load();
-    const t = setInterval(() => void load(), 30000);
-    return () => clearInterval(t);
+
+    // Visibility-aware polling every 30 seconds
+    const interval = setInterval(() => {
+      if (typeof document !== "undefined" && document.visibilityState === "visible") {
+        void load();
+      }
+    }, 30000);
+
+    return () => {
+      isMounted.current = false;
+      clearInterval(interval);
+    };
   }, [load]);
+
+  // Derived metrics from real database state
+  const urgentCases = useMemo(() => cases.filter((c) => getPriorityCategory(c) === "URGENT"), [cases]);
+  const highPriorityCases = useMemo(
+    () => cases.filter((c) => getPriorityCategory(c) === "HIGH_PRIORITY"),
+    [cases]
+  );
+  const immediateAttentionCases = useMemo(
+    () => [...urgentCases, ...highPriorityCases],
+    [urgentCases, highPriorityCases]
+  );
+
+  const urgentCount = urgentCases.length;
+  const highPriorityCount = highPriorityCases.length;
+  const awaitingCount = cases.filter((c) => c.caseStatus === "AWAITING_REVIEW").length;
+  const inConsultCount = cases.filter((c) => c.caseStatus === "IN_CONSULTATION").length;
+  const myCasesCount = staff?.id ? cases.filter((c) => c.doctorId === staff.id).length : 0;
 
   const shown = useMemo(() => {
     return cases.filter((c) => {
-      if (filter === "URGENT_REVIEW" && c.caseStatus !== "URGENT_REVIEW") return false;
+      const prio = getPriorityCategory(c);
+      if (filter === "URGENT" && prio !== "URGENT") return false;
+      if (filter === "HIGH_PRIORITY" && prio !== "HIGH_PRIORITY") return false;
       if (filter === "AWAITING_REVIEW" && c.caseStatus !== "AWAITING_REVIEW") return false;
       if (filter === "IN_CONSULTATION" && c.caseStatus !== "IN_CONSULTATION") return false;
       if (filter === "MY_CASES" && (!staff?.id || c.doctorId !== staff.id)) return false;
 
-      if (!q) return true;
-      const term = q.toLowerCase();
+      if (!debouncedQ) return true;
       return (
-        c.caseId.toLowerCase().includes(term) ||
-        (c.primaryComplaint && c.primaryComplaint.toLowerCase().includes(term)) ||
-        (c.doctorName && c.doctorName.toLowerCase().includes(term))
+        c.caseId.toLowerCase().includes(debouncedQ) ||
+        (c.primaryComplaint && c.primaryComplaint.toLowerCase().includes(debouncedQ)) ||
+        (c.doctorName && c.doctorName.toLowerCase().includes(debouncedQ))
       );
     });
-  }, [cases, filter, q, staff]);
-
-  const urgentCount = cases.filter((c) => c.caseStatus === "URGENT_REVIEW").length;
-  const awaitingCount = cases.filter((c) => c.caseStatus === "AWAITING_REVIEW").length;
-  const inConsultCount = cases.filter((c) => c.caseStatus === "IN_CONSULTATION").length;
-  const myCasesCount = staff?.id ? cases.filter((c) => c.doctorId === staff.id).length : 0;
+  }, [cases, filter, debouncedQ, staff]);
 
   return (
     <div className="console-shell">
@@ -135,7 +196,7 @@ export default function DoctorQueue() {
             <p className="eyebrow">OPD pre-consultation</p>
             <h1>Clinical case queue</h1>
             <p className="helper">
-              Urgent cases are always surfaced first. Refreshes every 30 seconds.
+              Urgent and high-priority cases are prioritized for clinician assessment. Real-time queue.
             </p>
           </div>
           <div className="actions" style={{ margin: 0 }}>
@@ -154,10 +215,15 @@ export default function DoctorQueue() {
           </div>
         )}
 
+        {/* Top Attention Summary Metrics */}
         <section className="stat-grid" aria-label="Queue Summary Metrics">
           <div className={`stat ${urgentCount > 0 ? "urgent" : ""}`}>
             <small>Urgent review</small>
             <strong>{urgentCount}</strong>
+          </div>
+          <div className={`stat ${highPriorityCount > 0 ? "high-priority" : ""}`}>
+            <small>High priority</small>
+            <strong>{highPriorityCount}</strong>
           </div>
           <div className="stat">
             <small>Awaiting review</small>
@@ -177,6 +243,59 @@ export default function DoctorQueue() {
           </div>
         </section>
 
+        {/* Dedicated "Needs Immediate Attention" Section */}
+        {immediateAttentionCases.length > 0 && (
+          <section className="attention-section" aria-label="Cases needing immediate attention">
+            <div className="attention-header">
+              <h2>
+                <span>⚠️</span>
+                <span>Needs immediate clinical attention ({immediateAttentionCases.length})</span>
+              </h2>
+              <span className="helper">Flagged by safety signals or severe clinical presentation</span>
+            </div>
+            <div className="attention-grid">
+              {immediateAttentionCases.slice(0, 6).map((c) => {
+                const prio = getPriorityCategory(c);
+                const isUrgent = prio === "URGENT";
+                return (
+                  <div className={`attention-card ${!isUrgent ? "high-priority" : ""}`} key={c.sessionId}>
+                    <div className="attention-card-top">
+                      <span className={`status ${isUrgent ? "urgent" : "high-priority"}`}>
+                        {isUrgent ? "▲ Urgent" : "● High Priority"}
+                      </span>
+                      <strong style={{ fontSize: "1.05rem" }}>{c.caseId}</strong>
+                    </div>
+                    <div className="attention-card-body">
+                      <strong>{c.primaryComplaint || "Intake in progress"}</strong>
+                      <p>
+                        {c.unreviewedSignals > 0
+                          ? `▲ ${c.unreviewedSignals} unreviewed safety signal(s) detected`
+                          : `Severity: ${c.topSeverity || "Severe"} · Routine clinical review`}
+                      </p>
+                    </div>
+                    <div className="attention-card-footer">
+                      <span className="helper">Waiting {formatWaitTime(c.createdAt)}</span>
+                      <Link
+                        href={`/doctor/case/${c.sessionId}`}
+                        className="primary"
+                        style={{
+                          padding: "6px 14px",
+                          fontSize: "0.82rem",
+                          borderRadius: 8,
+                          textDecoration: "none",
+                        }}
+                      >
+                        Review Case →
+                      </Link>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        {/* Main Clinical Review Queue */}
         <section className="panel">
           <div className="console-title">
             <div>
@@ -210,7 +329,8 @@ export default function DoctorQueue() {
                 }}
               >
                 <option value="ALL">All active ({cases.length})</option>
-                <option value="URGENT_REVIEW">Urgent review ({urgentCount})</option>
+                <option value="URGENT">Urgent review ({urgentCount})</option>
+                <option value="HIGH_PRIORITY">High priority ({highPriorityCount})</option>
                 <option value="AWAITING_REVIEW">Awaiting review ({awaitingCount})</option>
                 <option value="IN_CONSULTATION">In consultation ({inConsultCount})</option>
                 <option value="MY_CASES">My active cases ({myCasesCount})</option>
@@ -235,14 +355,20 @@ export default function DoctorQueue() {
               </thead>
               <tbody>
                 {shown.map((c) => {
-                  const isUrgent = c.caseStatus === "URGENT_REVIEW" || c.unreviewedSignals > 0;
+                  const prio = getPriorityCategory(c);
+                  const isUrgent = prio === "URGENT";
+                  const isHigh = prio === "HIGH_PRIORITY";
                   const isMine = staff?.id && c.doctorId === staff.id;
 
                   return (
                     <tr key={c.sessionId}>
                       <td data-label="Priority">
-                        <span className={`status ${isUrgent ? "urgent" : "ok"}`}>
-                          {isUrgent ? "▲ Urgent" : "Routine"}
+                        <span
+                          className={`status ${
+                            isUrgent ? "urgent" : isHigh ? "high-priority" : "routine"
+                          }`}
+                        >
+                          {isUrgent ? "▲ Urgent" : isHigh ? "● High" : "Routine"}
                         </span>
                       </td>
                       <td data-label="Case">
@@ -317,10 +443,21 @@ export default function DoctorQueue() {
                   );
                 })}
 
-                {shown.length === 0 && !loading && (
+                {shown.length === 0 && !loading && !error && (
+                  <tr className="empty-row">
+                    <td colSpan={9} style={{ textAlign: "center", padding: "32px" }}>
+                      <div className="state-box" style={{ margin: 0, border: 0 }}>
+                        <h3>{"You're up to date."}</h3>
+                        <p>No patients currently require clinical action. New cases will appear here.</p>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+
+                {shown.length === 0 && error && (
                   <tr className="empty-row">
                     <td colSpan={9} style={{ textAlign: "center", padding: "28px" }}>
-                      {error ? "Unable to load cases due to a connection error." : "No matching cases."}
+                      Unable to load cases due to a connection error. Please use Retry above.
                     </td>
                   </tr>
                 )}
@@ -340,3 +477,4 @@ export default function DoctorQueue() {
     </div>
   );
 }
+

@@ -1,7 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+
+type Staff = {
+  id: string;
+  displayName: string;
+  title: string | null;
+  role: string;
+  activeConsultations: number;
+};
 
 type Overview = {
   funnel: {
@@ -27,13 +35,7 @@ type Overview = {
     activeSessionId: string | null;
     sessionInterrupted: boolean;
   }>;
-  staff: Array<{
-    id: string;
-    displayName: string;
-    title: string | null;
-    role: string;
-    activeConsultations: number;
-  }>;
+  staff: Staff[];
   cases: Array<{
     sessionId: string;
     caseId: string;
@@ -57,13 +59,13 @@ type Audit = {
 };
 
 const ACTION_DESCRIPTIONS: Record<string, string> = {
-  "case.completed": "Case completed",
+  "case.completed": "Patient visit completed",
   "case.awaiting_review": "Case moved to physician review",
   "case.urgent_review": "Urgent clinical signals detected",
-  "consultation.started": "Consultation started",
+  "consultation.started": "Doctor started consultation",
   "consultation.completed": "Consultation completed",
   "evidence.reviewed": "Evidence verified by physician",
-  "safety_signal.reviewed": "Safety signal reviewed",
+  "safety_signal.reviewed": "Safety signal reviewed by physician",
   "dashavidha.updated": "Dashavidha observation recorded",
   "identity.self_declared": "ABHA linked (self-declared)",
   "identity.skipped": "ABHA step skipped",
@@ -81,12 +83,23 @@ function formatAgo(iso: string) {
 
 export default function HospitalOps() {
   const router = useRouter();
+  const [currentStaff, setCurrentStaff] = useState<{ displayName: string; role: string; title?: string | null } | null>(null);
   const [overview, setOverview] = useState<Overview | null>(null);
   const [audit, setAudit] = useState<Audit[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [queueFilter, setQueueFilter] = useState("ALL");
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const isMounted = useRef(true);
+
+  // Debounce search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery.trim().toLowerCase());
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   const load = useCallback(async () => {
     try {
@@ -100,6 +113,9 @@ export default function HospitalOps() {
         router.replace("/hospital/login");
         return;
       }
+      if (isMounted.current) {
+        setCurrentStaff(md.staff);
+      }
 
       const [overviewRes, auditRes] = await Promise.all([
         fetch("/api/hospital/overview", { cache: "no-store" }),
@@ -111,44 +127,65 @@ export default function HospitalOps() {
       }
 
       const overviewData = await overviewRes.json();
-      setOverview(overviewData.overview);
+      if (isMounted.current) {
+        setOverview(overviewData.overview);
+        setError("");
+      }
 
-      if (auditRes.ok) {
+      if (auditRes.ok && isMounted.current) {
         const auditData = await auditRes.json();
         setAudit(auditData.audit ?? []);
       }
-      setError("");
     } catch {
-      setError("Hospital operations data is unavailable.");
+      if (isMounted.current) {
+        setError("Hospital operations data is unavailable.");
+      }
     } finally {
-      setLoading(false);
+      if (isMounted.current) {
+        setLoading(false);
+      }
     }
   }, [router]);
 
   useEffect(() => {
+    isMounted.current = true;
     void load();
-    const t = setInterval(() => void load(), 30000);
-    return () => clearInterval(t);
+
+    // Visibility-aware polling every 30 seconds
+    const interval = setInterval(() => {
+      if (typeof document !== "undefined" && document.visibilityState === "visible") {
+        void load();
+      }
+    }, 30000);
+
+    return () => {
+      isMounted.current = false;
+      clearInterval(interval);
+    };
   }, [load]);
+
+  const urgentCases = useMemo(() => {
+    if (!overview?.cases) return [];
+    return overview.cases.filter((c) => c.caseStatus === "URGENT_REVIEW" || c.unreviewedSignals > 0);
+  }, [overview?.cases]);
 
   const filteredCases = useMemo(() => {
     if (!overview?.cases) return [];
     return overview.cases.filter((c) => {
-      if (queueFilter === "URGENT" && c.caseStatus !== "URGENT_REVIEW") return false;
+      if (queueFilter === "URGENT" && c.caseStatus !== "URGENT_REVIEW" && c.unreviewedSignals === 0) return false;
       if (queueFilter === "AWAITING_REVIEW" && c.caseStatus !== "AWAITING_REVIEW") return false;
       if (queueFilter === "IN_CONSULTATION" && c.caseStatus !== "IN_CONSULTATION") return false;
       if (queueFilter === "IN_PROGRESS" && c.caseStatus !== "IN_PROGRESS") return false;
       if (queueFilter === "COMPLETED" && c.caseStatus !== "COMPLETED") return false;
 
-      if (!searchQuery) return true;
-      const term = searchQuery.toLowerCase();
+      if (!debouncedSearch) return true;
       return (
-        c.caseId.toLowerCase().includes(term) ||
-        (c.doctorName && c.doctorName.toLowerCase().includes(term)) ||
-        c.caseStatus.toLowerCase().includes(term)
+        c.caseId.toLowerCase().includes(debouncedSearch) ||
+        (c.doctorName && c.doctorName.toLowerCase().includes(debouncedSearch)) ||
+        c.caseStatus.toLowerCase().includes(debouncedSearch)
       );
     });
-  }, [overview, queueFilter, searchQuery]);
+  }, [overview, queueFilter, debouncedSearch]);
 
   if (!overview && loading) {
     return (
@@ -196,7 +233,13 @@ export default function HospitalOps() {
           <strong>MediKiosk · Hospital Operations</strong>
           <span>Operations command centre</span>
         </div>
-        <div className="actions" style={{ margin: 0 }}>
+        <div className="console-user">
+          {currentStaff && (
+            <span className="staff-badge">
+              <strong>{currentStaff.displayName}</strong>
+              <small>{currentStaff.title || "Hospital Operations"}</small>
+            </span>
+          )}
           <button type="button" className="secondary" onClick={() => void load()}>
             ↻ Refresh
           </button>
@@ -216,7 +259,7 @@ export default function HospitalOps() {
       <main className="console-main">
         <div className="console-title">
           <div>
-            <p className="eyebrow">OPD pre-consultation operations</p>
+            <p className="eyebrow">OPD patient flow</p>
             <h1>Hospital command centre</h1>
             <p className="helper">
               Operational metrics below are database-derived from real-time kiosk and clinical workflow state.
@@ -233,7 +276,7 @@ export default function HospitalOps() {
           </div>
         )}
 
-        {/* Top Funnel Metrics */}
+        {/* Top Operational Funnel Metrics */}
         <section className="stat-grid" aria-label="Hospital Funnel Overview">
           <div className="stat">
             <small>Kiosk intake</small>
@@ -261,7 +304,42 @@ export default function HospitalOps() {
           </div>
         </section>
 
-        <div className="ops-grid">
+        {/* Attention Required Operational Section */}
+        {urgentCases.length > 0 && (
+          <section className="attention-section hospital" aria-label="Urgent cases requiring operational routing" style={{ marginTop: 20 }}>
+            <div className="attention-header">
+              <h2>
+                <span>⚠️</span>
+                <span>Attention required — High risk / Urgent cases ({urgentCases.length})</span>
+              </h2>
+              <span className="helper">Cases flagged for priority clinical triage and expedited routing</span>
+            </div>
+            <div className="attention-grid">
+              {urgentCases.slice(0, 4).map((c) => (
+                <div className="attention-card" key={c.sessionId}>
+                  <div className="attention-card-top">
+                    <span className="status urgent">▲ Urgent</span>
+                    <strong>{c.caseId}</strong>
+                  </div>
+                  <div className="attention-card-body">
+                    <strong>
+                      {c.unreviewedSignals > 0 ? `▲ ${c.unreviewedSignals} unreviewed safety signal(s)` : "Urgent review required"}
+                    </strong>
+                    <p>
+                      Status: {c.caseStatus.replaceAll("_", " ")} · Assigned: {c.doctorName || "Unassigned"}
+                    </p>
+                  </div>
+                  <div className="attention-card-footer">
+                    <span className="helper">Waiting {formatAgo(c.createdAt)}</span>
+                    <span className="status ok">{c.documentCount ?? 0} files</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        <div className="ops-grid" style={{ marginTop: 20 }}>
           {/* OPD Review Queue */}
           <section className="panel">
             <div className="console-title" style={{ marginBottom: 12 }}>
@@ -297,11 +375,11 @@ export default function HospitalOps() {
                     fontSize: "0.82rem",
                   }}
                 >
-                  <option value="ALL">All ({o.cases.length})</option>
-                  <option value="URGENT">Urgent review ({o.funnel.urgent})</option>
+                  <option value="ALL">All cases ({o.cases.length})</option>
+                  <option value="URGENT">Urgent ({o.funnel.urgent})</option>
                   <option value="AWAITING_REVIEW">Awaiting review ({o.funnel.awaitingReview})</option>
                   <option value="IN_CONSULTATION">In consultation ({o.funnel.inConsultation})</option>
-                  <option value="COMPLETED">Completed</option>
+                  <option value="COMPLETED">Completed ({o.funnel.completedToday})</option>
                 </select>
               </div>
             </div>
@@ -496,3 +574,4 @@ export default function HospitalOps() {
     </div>
   );
 }
+

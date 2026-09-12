@@ -175,3 +175,74 @@ pre{max-width:100%;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;wor
  .reference-patient-header{position:static}.patient-brand .brand-mark{width:38px;height:38px}.patient-brand strong{font-size:1.05rem!important}.patient-brand span{font-size:.7rem!important}.reference-patient-main{padding:14px 10px 22px}.reference-card{border-radius:18px;padding:22px 16px;box-shadow:0 8px 24px rgba(16,67,54,.09)}.reference-card:before{height:4px}.reference-progress{justify-content:flex-start;padding:9px 8px;gap:0}.reference-progress span{min-width:76px}.reference-progress em{font-size:.59rem}.reference-progress span:not(:last-child):after{width:66%}.reference-trust-list{grid-template-columns:1fr}.reference-bottom-cards{grid-template-columns:1fr 1fr}.reference-actions{flex-direction:column-reverse;align-items:stretch}.reference-actions>*{width:100%;margin:0!important}.reference-actions .primary{min-width:0}.stacked-mobile{flex-direction:column}.privacy-points>div{grid-template-columns:38px 1fr;padding:10px}.reference-step-dots{gap:12px}.voice-capture-block{grid-template-columns:1fr 64px 1fr}.reference-mic{width:62px;height:62px}.severity-reference-grid{grid-template-columns:repeat(2,1fr)}.severity-reference.none{grid-column:1/-1}.body-region-list{grid-template-columns:1fr}.body-map{min-height:230px;padding:8px}.body-map svg{height:220px}.symptom-reference-option{min-height:48px}.compact-severity{grid-template-columns:1fr 1fr}.medi-interview-heading{align-items:flex-start}.medi-large-avatar{width:54px;height:54px;font-size:1.7rem}.selected-file-card,.document-card{align-items:flex-start;flex-wrap:wrap}.selected-file-card>button{width:100%}.document-card-actions{width:100%;justify-content:space-between}.document-dropzone{min-height:140px;margin:16px 0}.complete-reference-card{padding-top:28px}.completion-mark{width:80px;height:80px;font-size:3rem}.reference-trust-strip{grid-template-columns:1fr}.reference-trust-strip>span:last-child{grid-column:auto}.footer-disclaimer{font-size:.68rem}.assistant-header.reference-assistant-header{display:grid;grid-template-columns:auto auto 1fr}.assistant-header.reference-assistant-header .secondary{grid-column:1/-1;order:3}
 }
 @media(max-width:380px){.reference-bottom-cards{grid-template-columns:1fr}.reference-step-dots{gap:9px}.reference-step-dots span{width:25px;height:25px}.severity-reference-grid{grid-template-columns:1fr 1fr}.body-region-choice{font-size:.85rem}.voice-wave{gap:3px}.voice-wave i{width:2px}}
+
+/* ========================================================================
+   Doctor & Hospital Console Redesign — Production Hardening & Parity
+   ======================================================================== */
+.status.high-priority{background:#fff8eb;color:#8f4b00;border-color:#f7cf97}
+.status.routine{background:#f1f6f4;color:#35534b;border-color:#cddad5}
+.severity-tag{display:inline-block;padding:3px 8px;border-radius:6px;font-size:0.72rem;font-weight:700;text-transform:uppercase}
+.severity-tag.mild{background:#eef7f3;color:#17663c;border:1px solid #c2e2d0}
+.severity-tag.moderate{background:#fff8eb;color:#8f4b00;border:1px solid #f7cf97}
+.severity-tag.severe,.severity-tag.very_severe{background:#fff0ef;color:#a32218;border:1px solid #efaaa4}
+
+/* Attention required triage banners */
+.attention-section{background:#fff9f8;border:1.5px solid #f8c4be;border-radius:18px;padding:18px 20px;margin-bottom:20px;box-shadow:0 4px 16px rgba(163,34,24,0.06)}
+.attention-section.hospital{background:#fdfaf6;border-color:#ecd9c3;box-shadow:0 4px 16px rgba(143,75,0,0.05)}
+.attention-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px}
+.attention-header h2{margin:0;font-size:1.05rem;display:flex;align-items:center;gap:8px}
+.attention-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
+.attention-card{background:#fff;border:1px solid #f4c2bc;border-left:5px solid #d92d20;border-radius:12px;padding:14px;display:flex;flex-direction:column;justify-content:space-between;gap:10px;box-shadow:0 2px 8px rgba(0,0,0,0.03)}
+.attention-card.high-priority{border-color:#fae1b8;border-left:5px solid #e27d00}
+.attention-card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.attention-card-body strong{display:block;color:#183c36;font-size:0.95rem}
+.attention-card-body p{margin:4px 0 0;font-size:0.84rem;color:#526760;line-height:1.4}
+.attention-card-footer{display:flex;justify-content:space-between;align-items:center;padding-top:8px;border-top:1px solid #f4ecea;gap:10px}
+
+/* Next Action Engine */
+.next-action-banner{background:linear-gradient(135deg,#0a5847,#0f745e);color:#fff;border-radius:16px;padding:18px 22px;margin-bottom:22px;display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;box-shadow:0 8px 24px rgba(10,88,71,0.22)}
+.next-action-banner .kicker{font-size:0.72rem;text-transform:uppercase;letter-spacing:0.08em;opacity:0.85;font-weight:800}
+.next-action-banner h3{margin:4px 0 0;font-size:1.15rem;font-weight:700}
+.next-action-banner p{margin:3px 0 0;font-size:0.86rem;opacity:0.9}
+.next-action-cta{background:#fff!important;color:#074e3e!important;border:0!important;font-weight:800;font-size:0.92rem;padding:10px 20px;border-radius:10px;box-shadow:0 4px 12px rgba(0,0,0,0.12);white-space:nowrap}
+.next-action-cta:hover{background:#f1fbf7!important}
+
+/* Review Checklist */
+.checklist-panel{background:#fff;border:1px solid #dce4e7;border-radius:16px;padding:18px;margin-bottom:20px}
+.checklist-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-top:14px}
+.checklist-item{border:1px solid #e1e9e6;border-radius:11px;padding:11px 13px;background:#f9fbfb;display:flex;flex-direction:column;justify-content:space-between;gap:6px}
+.checklist-item strong{font-size:0.84rem;color:#183c36}
+.checklist-badge{align-self:flex-start;font-size:0.72rem;font-weight:800;padding:2px 8px;border-radius:999px}
+.checklist-badge.done{background:#eaf6ef;color:#17663c;border:1px solid #b7dec7}
+.checklist-badge.pending{background:#fff0ef;color:#a32218;border:1px solid #efaaa4}
+.checklist-badge.info{background:#f1f6f4;color:#45635a;border:1px solid #c9d8d2}
+
+/* Case Overview Meta Card */
+.case-meta-bar{background:#fff;border:1px solid #dce4e7;border-radius:16px;padding:18px 22px;display:flex;justify-content:space-between;align-items:center;gap:18px;flex-wrap:wrap;margin-bottom:20px;box-shadow:0 4px 14px rgba(35,56,66,0.04)}
+.case-meta-left{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.case-meta-item{display:flex;flex-direction:column}
+.case-meta-item small{font-size:0.7rem;text-transform:uppercase;color:#60737c;font-weight:800}
+.case-meta-item strong{font-size:1.05rem;color:#183c36}
+
+/* Table formatting & anti-clipping rules */
+.doctor-queue-table,.hospital-queue-table{min-width:880px;table-layout:fixed}
+.doctor-queue-table th:nth-child(1),.hospital-queue-table th:nth-child(1){width:105px}
+.doctor-queue-table th:nth-child(2),.hospital-queue-table th:nth-child(2){width:115px}
+.doctor-queue-table th:nth-child(3){width:240px}
+.doctor-queue-table th:nth-child(4){width:95px}
+.doctor-queue-table th:nth-child(5),.hospital-queue-table th:nth-child(4){width:125px}
+.doctor-queue-table th:nth-child(6),.hospital-queue-table th:nth-child(5){width:110px}
+.doctor-queue-table th:nth-child(7),.hospital-queue-table th:nth-child(6){width:90px}
+.doctor-queue-table th:nth-child(8),.hospital-queue-table th:nth-child(7){width:145px}
+.doctor-queue-table th:nth-child(9),.hospital-queue-table th:nth-child(8){width:130px}
+.hospital-queue-table th:nth-child(3){width:150px}
+
+.data-table td{white-space:normal;word-break:break-word}
+.data-table td .status{white-space:nowrap}
+.data-table td strong{white-space:nowrap}
+
+/* Empty and loading states */
+.state-box{padding:36px 20px;text-align:center;background:#fff;border-radius:14px;border:1px dashed #cfdbd7;margin:16px 0}
+.state-box h3{margin:0 0 6px;color:#183c36;font-size:1.1rem}
+.state-box p{margin:0;color:#60737c;font-size:0.88rem}
+

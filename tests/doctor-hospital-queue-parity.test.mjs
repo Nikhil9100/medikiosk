@@ -84,3 +84,30 @@ test("both doctor and hospital consoles query matching active case statuses", ()
     assert.match(overviewRoute, new RegExp(`'${status}'`));
   }
 });
+
+test("doctor console surfaces dedicated urgent attention section and debounced search", () => {
+  const docPage = read("app/doctor/page.tsx");
+  assert.match(docPage, /Needs immediate clinical attention/);
+  assert.match(docPage, /getPriorityCategory/);
+  assert.match(docPage, /debouncedQ/);
+  assert.match(docPage, /document\.visibilityState/);
+  assert.match(docPage, /You're up to date/);
+});
+
+test("hospital console surfaces attention required triage and plain-language audit trail", () => {
+  const hospPage = read("app/hospital/page.tsx");
+  assert.match(hospPage, /Attention required/);
+  assert.match(hospPage, /Patient visit completed/);
+  assert.match(hospPage, /Doctor started consultation/);
+  assert.match(hospPage, /debouncedSearch/);
+});
+
+test("doctor case workspace renders checklist, next action engine and physician assessment", () => {
+  const casePage = read("app/doctor/case/[sessionId]/page.tsx");
+  assert.match(casePage, /What has been reviewed\?/);
+  assert.match(casePage, /Next Action Engine|next-action-banner/);
+  assert.match(casePage, /Physician assessment & notes/);
+  assert.match(casePage, /Patient overview & history/);
+  assert.match(casePage, /Return to Queue/);
+});
+
