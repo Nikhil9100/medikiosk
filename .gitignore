@@ -9,3 +9,7 @@ test-results/
 !.env.example
 *.log
 .DS_Store
+.vercel/
+.agents/
+skills-lock.json
+*.tsbuildinfo

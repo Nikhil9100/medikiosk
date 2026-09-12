@@ -2,7 +2,7 @@
 import { createContext,useCallback,useContext,useEffect,useMemo,useState } from "react";
 import { usePathname,useRouter } from "next/navigation";
 import { defaultWorkflow,routeForStep,type BodyRegion,type PatientLanguage,type PatientStep,type PatientWorkflow } from "@/lib/patient-flow";
-import { t as translate,type TranslationKey,languageNames } from "@/lib/i18n";
+import { t as translate,type TranslationKey,languageNames,localizedAssistantName } from "@/lib/i18n";
 import { clearFormDraft,clearOfflineState,enqueueJsonMutation,getResumeCredentials,listPendingMutations,loadFormDraft,loadOfflineWorkflow,loadResumeCredentials,pendingMutationCount,replayQueuedMutations,saveFormDraft,saveOfflineWorkflow } from "@/lib/offline-resilience";
 
 type ConnectionState="online"|"offline"|"syncing"|"attention";
@@ -17,10 +17,16 @@ type Context={
  connection:ConnectionState;pendingCount:number;queuedBodies:(path:string)=>Promise<Record<string,unknown>[]>;
 };
 const Ctx=createContext<Context|null>(null);
-const progress=[
- {key:"language",label:"Language"},{key:"consent",label:"Consent"},{key:"identity",label:"ABHA"},
- {key:"complaint",label:"Concern"},{key:"anatomy",label:"Severity & area"},{key:"symptoms",label:"Symptoms"},
- {key:"interview",label:"Medi interview"},{key:"documents",label:"Documents"},{key:"complete",label:"Complete"}
+const progress = [
+  { key: "language", labelKey: "stepLanguage", fallback: "Language" },
+  { key: "consent", labelKey: "stepConsent", fallback: "Consent" },
+  { key: "identity", labelKey: "stepIdentity", fallback: "ABHA" },
+  { key: "complaint", labelKey: "stepComplaint", fallback: "Concern" },
+  { key: "anatomy", labelKey: "stepAnatomy", fallback: "Severity & area" },
+  { key: "symptoms", labelKey: "stepSymptoms", fallback: "Symptoms" },
+  { key: "interview", labelKey: "stepInterview", fallback: "Interview" },
+  { key: "documents", labelKey: "stepDocuments", fallback: "Documents" },
+  { key: "complete", labelKey: "stepComplete", fallback: "Complete" },
 ] as const;
 export const usePatient=()=>{const v=useContext(Ctx);if(!v)throw new Error("Patient context missing");return v;};
 
@@ -121,13 +127,13 @@ export default function PatientShell({children}:{children:React.ReactNode}){
    <a className="skip-link" href="#patient-main">Skip to main content</a>
    <div className="patient-app reference-patient-app">
     <header className="patient-topbar reference-patient-header">
-      <div className="patient-brand"><span className="brand-mark" aria-hidden="true">✚</span><div><strong>MediKiosk</strong><span>Patient Console · Guided clinical intake</span></div></div>
-      <div className="patient-top-actions"><span className={`connection-chip ${connection}`} role="status">{connection==="online"?"● Saved":connection==="syncing"?"↻ Syncing":connection==="offline"?`◌ Offline · ${pendingCount} pending`:`! Sync attention`}</span><button type="button" onClick={()=>router.push("/patient/assistant")} className="top-action medi-launcher" aria-label={translate(workflow.language,"assistant")}><span aria-hidden="true">👩‍⚕️</span> Medi Assistant</button><label className="language-chip"><span className="sr-only">Language</span><select value={workflow.language} onChange={e=>{const l=e.target.value as PatientLanguage;setLanguage(l);void sync({language:l});}}>{Object.entries(languageNames).map(([k,v])=><option key={k} value={k}>{v}</option>)}</select></label></div>
+      <div className="patient-brand"><span className="brand-mark" aria-hidden="true">✚</span><div><strong>MediKiosk</strong><span>{translate(workflow.language,"patientVisit")} · {translate(workflow.language,"tagline")}</span></div></div>
+      <div className="patient-top-actions"><span className={`connection-chip ${connection}`} role="status">{connection==="online"?translate(workflow.language,"connectionOnline"):connection==="syncing"?translate(workflow.language,"connectionSyncing"):connection==="offline"?`${translate(workflow.language,"connectionOffline")} · ${pendingCount}`:translate(workflow.language,"connectionAttention")}</span><button type="button" onClick={()=>router.push("/patient/assistant")} className="top-action medi-launcher" aria-label={translate(workflow.language,"assistant")}><span aria-hidden="true">👩‍⚕️</span> {localizedAssistantName(workflow.language)}</button><label className="language-chip"><span className="sr-only">{translate(workflow.language,"languageTitle")}</span><select value={workflow.language} onChange={e=>{const l=e.target.value as PatientLanguage;setLanguage(l);void sync({language:l});}}>{Object.entries(languageNames).map(([k,v])=><option key={k} value={k}>{v}</option>)}</select></label></div>
     </header>
-    {current>=0&&<nav className="patient-progress reference-progress" aria-label="Clinical intake progress">{progress.map((p,i)=><span key={p.key} className={i<current?"done":i===current?"active":""}><b>{i+1}</b><em>{p.label}</em></span>)}</nav>}
+    {current>=0&&<nav className="patient-progress reference-progress" aria-label="Clinical intake progress">{progress.map((p,i)=><span key={p.key} className={i<current?"done":i===current?"active":""}><b>{i+1}</b><em>{translate(workflow.language,p.labelKey)||p.fallback}</em></span>)}</nav>}
     {error&&<div className="system-banner error shell-banner" role="alert">{error}{connection!=="online"&&workflow.sessionId&&<button type="button" className="inline-retry" onClick={()=>void flush()}>Retry sync</button>}</div>}
     <main id="patient-main" className="patient-main reference-patient-main">{boot?<div className="loading-card" role="status"><h1 className="sr-only">Patient Console Loading</h1>Loading secure session…</div>:children}</main>
-    <footer className="patient-footer reference-patient-footer"><div className="reference-trust-strip"><span>♿ <b>Accessible healthcare</b><small>Designed for every patient</small></span><span>◎ <b>Multilingual support</b><small>Six supported languages</small></span><span>🔒 <b>Secure & private</b><small>Encrypted recovery + access control</small></span><span>♡ <b>AI-assisted</b><small>Support, never diagnosis</small></span><span>🩺 <b>Better consultations</b><small>Doctor remains final authority</small></span></div><div className="footer-disclaimer"><span>Independent SIH health-tech solution</span><span>Not a diagnostic tool · Physician review required</span></div></footer>
+    <footer className="patient-footer reference-patient-footer"><nav className="patient-footer-nav" aria-label="Footer navigation"><div className="footer-brand"><strong>MediKiosk</strong><span>{translate(workflow.language,"patientVisit")}</span></div><div className="footer-links"><a href="/patient/consent">{translate(workflow.language,"footerPrivacy")}</a><a href="/patient/consent">{translate(workflow.language,"footerTerms")}</a><a href="/patient/assistant">{localizedAssistantName(workflow.language)} {translate(workflow.language,"footerHelp")}</a><a href="/patient/language">{translate(workflow.language,"footerLanguage")}</a></div></nav><div className="footer-disclaimer"><span>{translate(workflow.language,"nonDiagnosticDisclaimer") || "Not a diagnostic tool · Physician review required"}</span><span>{translate(workflow.language,"emergencyNotice")}</span></div></footer>
    </div>
  </Ctx.Provider>;
 }

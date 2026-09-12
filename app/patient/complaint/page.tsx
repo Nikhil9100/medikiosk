@@ -1,11 +1,223 @@
-"use client";import { useEffect,useRef,useState } from "react";import { useRouter } from "next/navigation";import { usePatient } from "../PatientShell";
-export default function Complaint(){const r=useRouter();const {workflow,setWorkflow,sync,mutate,t,saveDraft,loadDraft,clearDraft}=usePatient();const [text,setText]=useState(workflow.complaint);const [recording,setRecording]=useState(false);const [voice,setVoice]=useState("");const [saving,setSaving]=useState(false);const rec=useRef<MediaRecorder|null>(null);const stream=useRef<MediaStream|null>(null);const timeout=useRef<ReturnType<typeof setTimeout>|null>(null);const abort=useRef<AbortController|null>(null);const discard=useRef(false);
-function cleanup(){if(timeout.current)clearTimeout(timeout.current);timeout.current=null;stream.current?.getTracks().forEach(x=>x.stop());stream.current=null;rec.current=null;setRecording(false)}
-useEffect(()=>{void loadDraft<{text:string}>("complaint-draft").then(d=>{if(d&&!workflow.complaint)setText(d.text??"");});return()=>{discard.current=true;abort.current?.abort();if(rec.current&&rec.current.state!=="inactive")rec.current.stop();cleanup()}},[]);// eslint-disable-line react-hooks/exhaustive-deps
-useEffect(()=>{if(text)void saveDraft("complaint-draft",{text});},[text,saveDraft]);
-async function toggle(){if(recording){rec.current?.stop();return;}setVoice("");discard.current=false;try{const s=await navigator.mediaDevices.getUserMedia({audio:true});stream.current=s;const m=new MediaRecorder(s);rec.current=m;const chunks:Blob[]=[];m.ondataavailable=e=>{if(e.data.size)chunks.push(e.data)};m.onstop=async()=>{cleanup();if(discard.current)return;const blob=new Blob(chunks,{type:m.mimeType||"audio/webm"});if(!blob.size)return;try{setVoice(t("processing"));abort.current=new AbortController();const fd=new FormData();fd.append("audio",blob,"complaint.webm");fd.append("language",workflow.language);const res=await fetch("/api/voice/transcribe",{method:"POST",body:fd,signal:abort.current.signal});if(!res.ok)throw new Error();const d=await res.json() as {transcript:string};setText(d.transcript);setVoice("");}catch(e){if((e as Error).name!=="AbortError")setVoice("Voice needs a connection. Your typed draft remains encrypted and saved on this device.");}};m.start();setRecording(true);timeout.current=setTimeout(()=>{if(m.state!=="inactive")m.stop()},30000);}catch{cleanup();setVoice(t("voiceError"));}}
-async function next(){const value=text.trim();if(!value||saving)return;setSaving(true);const mutationId=crypto.randomUUID();const res=await mutate("/api/patient/complaints","POST",{complaintText:value,severity:null,primary:true},mutationId);if(!res.ok){setVoice("Could not save this complaint. Please retry.");setSaving(false);return;}const ok=await sync({complaintText:value,workflowStep:"anatomy"});if(ok){setWorkflow(w=>({...w,complaint:value,currentStep:"anatomy"}));await clearDraft("complaint-draft");r.push("/patient/anatomy");return;}setSaving(false);}
-return <section className="flow-card reference-card complaint-reference-card"><div className="reference-step-dots" aria-hidden="true"><span>1</span><span>2</span><span>3</span><span className="active">4</span><span>5</span></div><p className="eyebrow">4 · Chief complaint</p><h1>What brings you here today?</h1><p className="lead">Tell us what is bothering you. You can type or speak in your own words.</p><div className="field reference-textarea"><textarea id="chief" maxLength={1000} value={text} placeholder="For example: I have stomach pain for the last 3 days and feel bloated after eating…" onChange={e=>setText(e.target.value)}/><span className="character-counter">{text.length}/1000</span></div>
-<div className="voice-capture-block"><div className="voice-wave" aria-hidden="true"><i/><i/><i/><i/><i/></div><button className={`reference-mic ${recording?"live":""}`} type="button" onClick={()=>void toggle()} aria-label={recording?"Stop recording":"Speak your health concern"}>{recording?"■":"🎙"}</button><div className="voice-wave mirror" aria-hidden="true"><i/><i/><i/><i/><i/></div><strong>{recording?"Listening…":"Tap to speak"}</strong></div>
-{voice&&<p role="status" className="helper centered-helper">{voice}</p>}<div className="medi-helper-card"><span className="medi-mini-avatar">👩‍⚕️</span><p><b>Medi is here to help</b><small>You can describe symptoms naturally. A doctor will review your information.</small></p></div>
-<div className="reference-actions"><button className="primary reference-primary" disabled={!text.trim()||saving} onClick={()=>void next()}>{saving?t("processing"):"Continue"} →</button></div></section>}
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { usePatient } from "../PatientShell";
+
+export default function Complaint() {
+  const router = useRouter();
+  const {
+    workflow,
+    setWorkflow,
+    sync,
+    mutate,
+    t,
+    saveDraft,
+    loadDraft,
+    clearDraft,
+  } = usePatient();
+
+  const [text, setText] = useState(workflow.complaint);
+  const [recording, setRecording] = useState(false);
+  const [voice, setVoice] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const rec = useRef<MediaRecorder | null>(null);
+  const stream = useRef<MediaStream | null>(null);
+  const timeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const abort = useRef<AbortController | null>(null);
+  const discard = useRef(false);
+
+  function cleanup() {
+    if (timeout.current) clearTimeout(timeout.current);
+    timeout.current = null;
+    stream.current?.getTracks().forEach((x) => x.stop());
+    stream.current = null;
+    rec.current = null;
+    setRecording(false);
+  }
+
+  useEffect(() => {
+    void loadDraft<{ text: string }>("complaint-draft").then((d) => {
+      if (d && !workflow.complaint) setText(d.text ?? "");
+    });
+    return () => {
+      discard.current = true;
+      abort.current?.abort();
+      if (rec.current && rec.current.state !== "inactive") rec.current.stop();
+      cleanup();
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (text) void saveDraft("complaint-draft", { text });
+  }, [text, saveDraft]);
+
+  async function toggle() {
+    if (recording) {
+      rec.current?.stop();
+      return;
+    }
+    setVoice("");
+    discard.current = false;
+    try {
+      const s = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream.current = s;
+      const m = new MediaRecorder(s);
+      rec.current = m;
+      const chunks: Blob[] = [];
+
+      m.ondataavailable = (e) => {
+        if (e.data.size) chunks.push(e.data);
+      };
+
+      m.onstop = async () => {
+        cleanup();
+        if (discard.current) return;
+        const blob = new Blob(chunks, { type: m.mimeType || "audio/webm" });
+        if (!blob.size) return;
+
+        try {
+          setVoice(t("processing"));
+          abort.current = new AbortController();
+          const fd = new FormData();
+          fd.append("audio", blob, "complaint.webm");
+          fd.append("language", workflow.language);
+
+          const res = await fetch("/api/voice/transcribe", {
+            method: "POST",
+            body: fd,
+            signal: abort.current.signal,
+          });
+          if (!res.ok) throw new Error();
+          const d = (await res.json()) as { transcript: string };
+          setText(d.transcript);
+          setVoice("");
+        } catch (e) {
+          if ((e as Error).name !== "AbortError") {
+            setVoice(
+              t("voiceUnavailableTyping") ||
+                "Voice needs a connection. Your typed draft remains encrypted and saved on this device."
+            );
+          }
+        }
+      };
+
+      m.start();
+      setRecording(true);
+      timeout.current = setTimeout(() => {
+        if (m.state !== "inactive") m.stop();
+      }, 30000);
+    } catch {
+      cleanup();
+      setVoice(t("voiceError"));
+    }
+  }
+
+  async function next() {
+    const value = text.trim();
+    if (!value || saving) return;
+    setSaving(true);
+
+    const mutationId = crypto.randomUUID();
+    const res = await mutate(
+      "/api/patient/complaints",
+      "POST",
+      { complaintText: value, severity: null, primary: true },
+      mutationId
+    );
+
+    if (!res.ok) {
+      setVoice(t("networkError") || "Could not save this complaint. Please retry.");
+      setSaving(false);
+      return;
+    }
+
+    const ok = await sync({ complaintText: value, workflowStep: "anatomy" });
+    if (ok) {
+      setWorkflow((w) => ({ ...w, complaint: value, currentStep: "anatomy" }));
+      await clearDraft("complaint-draft");
+      router.push("/patient/anatomy");
+      return;
+    }
+    setSaving(false);
+  }
+
+  return (
+    <section className="flow-card reference-card complaint-reference-card">
+      <div className="reference-step-dots" aria-hidden="true">
+        <span>1</span>
+        <span>2</span>
+        <span>3</span>
+        <span className="active">4</span>
+        <span>5</span>
+      </div>
+
+      <p className="eyebrow">{t("complaintEyebrow")}</p>
+      <h1>{t("complaintHeading")}</h1>
+      <p className="lead">{t("complaintLead")}</p>
+
+      <div className="field reference-textarea">
+        <textarea
+          id="chief"
+          maxLength={1000}
+          value={text}
+          placeholder={t("complaintPlaceholder")}
+          onChange={(e) => setText(e.target.value)}
+        />
+        <span className="character-counter">{text.length}/1000</span>
+      </div>
+
+      <div className="voice-capture-block">
+        <div className="voice-wave" aria-hidden="true">
+          <i />
+          <i />
+          <i />
+          <i />
+          <i />
+        </div>
+        <button
+          className={`reference-mic ${recording ? "live" : ""}`}
+          type="button"
+          onClick={() => void toggle()}
+          aria-label={recording ? t("stopRecording") : t("speakConcern")}
+        >
+          {recording ? "■" : "🎙"}
+        </button>
+        <div className="voice-wave mirror" aria-hidden="true">
+          <i />
+          <i />
+          <i />
+          <i />
+          <i />
+        </div>
+        <strong>{recording ? t("listening") : t("tapToSpeak")}</strong>
+      </div>
+
+      {voice && (
+        <p role="status" className="helper centered-helper">
+          {voice}
+        </p>
+      )}
+
+      <div className="medi-helper-card">
+        <span className="medi-mini-avatar">👩‍⚕️</span>
+        <p>
+          {/* Medi is here to help */}
+          <b>{t("anayaHelperTitle") || "Anaya is here to help"}</b>
+          <small>{t("anayaHelperDesc")}</small>
+        </p>
+      </div>
+
+      <div className="reference-actions">
+        <button
+          className="primary reference-primary"
+          disabled={!text.trim() || saving}
+          onClick={() => void next()}
+        >
+          {saving ? t("processing") : `${t("continue")} →`}
+        </button>
+      </div>
+    </section>
+  );
+}
