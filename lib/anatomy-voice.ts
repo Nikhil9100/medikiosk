@@ -1,8 +1,9 @@
-import type { BodyRegion, PatientLanguage } from "./patient-flow";
+import type { BodyRegion, PatientLanguage, Severity } from "./patient-flow";
 
 export interface VoiceParsedAnatomy {
   matchedRegions: BodyRegion[];
   matchedSubregions: Record<string, string[]>;
+  matchedSeverity?: Severity | "NONE";
   rawTranscript: string;
   isMatched: boolean;
 }
@@ -12,6 +13,57 @@ interface KeywordRule {
   subregion?: string;
   keywords: string[];
 }
+
+
+interface SeverityRule {
+  severity: Severity | "NONE";
+  keywords: string[];
+}
+
+const SEVERITY_RULES_BY_LANG: Record<PatientLanguage, SeverityRule[]> = {
+  en: [
+    { severity: "NONE", keywords: ["no pain", "zero", "none", "nothing", "0"] },
+    { severity: "VERY_SEVERE", keywords: ["very severe", "nine", "ten", "9", "10", "extreme", "terrible", "worst", "very bad"] },
+    { severity: "SEVERE", keywords: ["severe", "seven", "eight", "7", "8", "bad", "a lot"] },
+    { severity: "MODERATE", keywords: ["moderate", "four", "five", "six", "4", "5", "6", "medium"] },
+    { severity: "MILD", keywords: ["mild", "one", "two", "three", "1", "2", "3", "slight", "little"] },
+  ],
+  hi: [
+    { severity: "NONE", keywords: ["no pain", "कोई दर्द नहीं", "0", "zero"] },
+    { severity: "VERY_SEVERE", keywords: ["बहुत तेज", "अत्यधिक", "nine", "ten", "9", "10", "very severe"] },
+    { severity: "SEVERE", keywords: ["तेज", "ज्यादा", "seven", "eight", "7", "8", "severe"] },
+    { severity: "MODERATE", keywords: ["मध्यम", "ठीक ठाक", "four", "five", "six", "4", "5", "6", "moderate"] },
+    { severity: "MILD", keywords: ["हल्का", "थोड़ा", "one", "two", "three", "1", "2", "3", "mild"] },
+  ],
+  bn: [
+    { severity: "NONE", keywords: ["কোনো ব্যথা নেই", "0"] },
+    { severity: "VERY_SEVERE", keywords: ["খুব বেশি", "ভীষণ", "9", "10"] },
+    { severity: "SEVERE", keywords: ["তীব্র", "বেশি", "7", "8"] },
+    { severity: "MODERATE", keywords: ["মাঝারি", "4", "5", "6"] },
+    { severity: "MILD", keywords: ["হালকা", "অল্প", "1", "2", "3"] },
+  ],
+  te: [
+    { severity: "NONE", keywords: ["నొప్పి లేదు", "0"] },
+    { severity: "VERY_SEVERE", keywords: ["చాలా తీవ్రమైన", "9", "10"] },
+    { severity: "SEVERE", keywords: ["తీవ్రమైన", "7", "8"] },
+    { severity: "MODERATE", keywords: ["మితమైన", "4", "5", "6"] },
+    { severity: "MILD", keywords: ["తేలికపాటి", "కొద్దిగా", "1", "2", "3"] },
+  ],
+  ta: [
+    { severity: "NONE", keywords: ["வலி இல்லை", "0"] },
+    { severity: "VERY_SEVERE", keywords: ["மிகவும் கடுமையான", "9", "10"] },
+    { severity: "SEVERE", keywords: ["கடுமையான", "7", "8"] },
+    { severity: "MODERATE", keywords: ["மிதமான", "4", "5", "6"] },
+    { severity: "MILD", keywords: ["லேசான", "கொஞ்சம்", "1", "2", "3"] },
+  ],
+  mr: [
+    { severity: "NONE", keywords: ["त्रास नाही", "0"] },
+    { severity: "VERY_SEVERE", keywords: ["खूप जास्त", "9", "10"] },
+    { severity: "SEVERE", keywords: ["जास्त", "7", "8"] },
+    { severity: "MODERATE", keywords: ["मध्यम", "4", "5", "6"] },
+    { severity: "MILD", keywords: ["सौम्य", "थोडा", "1", "2", "3"] },
+  ],
+};
 
 const KEYWORD_RULES_BY_LANG: Record<PatientLanguage, KeywordRule[]> = {
   en: [
@@ -167,6 +219,22 @@ export function parseAnatomyVoice(
 
   const matchedRegionsSet = new Set<BodyRegion>();
   const matchedSubregions: Record<string, string[]> = {};
+  let matchedSeverity = undefined;
+
+  const severityRules = SEVERITY_RULES_BY_LANG[language] || SEVERITY_RULES_BY_LANG.en;
+  const allSevRules = language === "en" ? severityRules : [...severityRules, ...SEVERITY_RULES_BY_LANG.en];
+  for (const rule of allSevRules) {
+    for (const kw of rule.keywords) {
+      // Severity matching uses strict word boundaries ONLY (no substring fallback)
+      // This prevents "1" from matching inside "123", "blablabla1", etc.
+      const regex = new RegExp(`(^|\\s|[.,!?;:])${escapeRegExp(kw)}($|\\s|[.,!?;:])`, "iu");
+      if (regex.test(normalized)) {
+        matchedSeverity = rule.severity;
+        break;
+      }
+    }
+    if (matchedSeverity) break;
+  }
 
   for (const rule of allRules) {
     for (const kw of rule.keywords) {
@@ -192,8 +260,9 @@ export function parseAnatomyVoice(
   return {
     matchedRegions,
     matchedSubregions,
+    matchedSeverity,
     rawTranscript: transcript,
-    isMatched: matchedRegions.length > 0,
+    isMatched: matchedRegions.length > 0 || matchedSeverity !== undefined,
   };
 }
 

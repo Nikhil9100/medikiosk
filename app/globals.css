@@ -229,6 +229,19 @@ pre{max-width:100%;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;wor
 @media(max-width:380px){.reference-bottom-cards{grid-template-columns:1fr}.reference-step-dots{gap:9px}.reference-step-dots span{width:25px;height:25px}.severity-reference-grid{grid-template-columns:1fr 1fr}.body-region-choice{font-size:.85rem}.voice-wave{gap:3px}.voice-wave i{width:2px}}
 
 /* ========================================================================
+   Severity Section Upgrade — Face icons, proposed state, section header
+   ======================================================================== */
+.severity-section-header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin:0 0 4px}
+.severity-section-header h1{margin:0;flex:1}
+.severity-face{font-size:1.55rem;line-height:1;display:block;margin-bottom:1px}
+.severity-range{font-size:.75rem;font-weight:700;color:#748680;letter-spacing:.02em}
+.severity-reference{min-height:82px;display:grid;grid-template-rows:auto auto auto;gap:1px;place-items:center;padding:10px 6px}
+.severity-reference strong{font-size:.7rem;text-align:center}
+.severity-reference.proposed{border:2px dashed #f59e0b!important;background:#fffbeb!important;color:#92400e!important;box-shadow:0 0 0 3px rgba(245,158,11,.15)!important}
+.severity-voice-trigger{margin-left:auto}
+@media(max-width:640px){.severity-section-header{flex-direction:row;align-items:flex-start}}
+
+/* ========================================================================
    Doctor & Hospital Console Redesign — Production Hardening & Parity
    ======================================================================== */
 .status.high-priority{background:#fff8eb;color:#8f4b00;border-color:#f7cf97}

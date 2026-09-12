@@ -18,11 +18,12 @@ const regions: [BodyRegion, TranslationKey, string][] = [
   ["other", "regionOther", "Other area"],
 ];
 
-const severityOptions: [Severity, TranslationKey, string, string][] = [
-  ["MILD", "mild", "Mild", "1–3"],
-  ["MODERATE", "moderate", "Moderate", "4–6"],
-  ["SEVERE", "severe", "Severe", "7–8"],
-  ["VERY_SEVERE", "verySevere", "Very severe", "9–10"],
+// [severity, i18nKey, fallback label, numeric range, face icon]
+const severityOptions: [Severity, TranslationKey, string, string, string][] = [
+  ["MILD", "mild", "Mild", "1–3", "🙂"],
+  ["MODERATE", "moderate", "Moderate", "4–6", "😐"],
+  ["SEVERE", "severe", "Severe", "7–8", "😟"],
+  ["VERY_SEVERE", "verySevere", "Very severe", "9–10", "😣"],
 ];
 
 const subregionsByRegion: Record<string, { key: TranslationKey; fallback: string }[]> = {
@@ -90,6 +91,7 @@ export default function Anatomy() {
   // Voice proposed state (transient, NOT committed until explicit confirmation)
   const [proposedRegions, setProposedRegions] = useState<BodyRegion[]>([]);
   const [proposedSubregions, setProposedSubregions] = useState<Record<string, string[]>>({});
+  const [proposedSeverity, setProposedSeverity] = useState<Severity | "NONE" | null>(null);
   const [listening, setListening] = useState(false);
   const [voiceFeedback, setVoiceFeedback] = useState("");
   const [speechSupported, setSpeechSupported] = useState(true);
@@ -174,8 +176,13 @@ export default function Anatomy() {
 
         const parsed = parseAnatomyVoice(transcript, workflow.language);
         if (parsed.isMatched) {
-          setProposedRegions(parsed.matchedRegions);
-          setProposedSubregions(parsed.matchedSubregions);
+          if (parsed.matchedRegions.length > 0) {
+            setProposedRegions(parsed.matchedRegions);
+            setProposedSubregions(parsed.matchedSubregions);
+          }
+          if (parsed.matchedSeverity) {
+            setProposedSeverity(parsed.matchedSeverity);
+          }
           setVoiceFeedback("");
         } else if (e.results[0]?.isFinal) {
           setVoiceFeedback(t("voiceNoMatch") || "We didn't catch that — try again or tap the body area.");
@@ -215,30 +222,39 @@ export default function Anatomy() {
   }
 
   function confirmProposed() {
-    if (proposedRegions.length === 0) return;
-    setSelectedRegions((prev) => Array.from(new Set([...prev, ...proposedRegions])));
-    setSelectedSubregions((prev) => {
-      const next = { ...prev };
-      for (const [rk, subs] of Object.entries(proposedSubregions)) {
-        next[rk] = Array.from(new Set([...(next[rk] || []), ...subs]));
-      }
-      return next;
-    });
+    if (proposedRegions.length === 0 && proposedSeverity === null) return;
 
-    if (proposedRegions.includes("back")) {
-      setView("back");
-    } else if (proposedRegions.includes("chest") || proposedRegions.includes("abdomen")) {
-      setView("front");
+    if (proposedRegions.length > 0) {
+      setSelectedRegions((prev) => Array.from(new Set([...prev, ...proposedRegions])));
+      setSelectedSubregions((prev) => {
+        const next = { ...prev };
+        for (const [rk, subs] of Object.entries(proposedSubregions)) {
+          next[rk] = Array.from(new Set([...(next[rk] || []), ...subs]));
+        }
+        return next;
+      });
+      if (proposedRegions.includes("back")) {
+        setView("back");
+      } else if (proposedRegions.includes("chest") || proposedRegions.includes("abdomen")) {
+        setView("front");
+      }
+    }
+
+    if (proposedSeverity !== null) {
+      // "NONE" means "no pain" - maps to severity null
+      setSeverity(proposedSeverity === "NONE" ? null : proposedSeverity);
     }
 
     setProposedRegions([]);
     setProposedSubregions({});
+    setProposedSeverity(null);
     setVoiceFeedback("");
   }
 
   function discardProposed() {
     setProposedRegions([]);
     setProposedSubregions({});
+    setProposedSeverity(null);
     setVoiceFeedback("");
   }
 
@@ -333,55 +349,63 @@ export default function Anatomy() {
       </div>
 
       <p className="eyebrow">{t("anatomyEyebrow")}</p>
-      <h1>{t("rateDiscomfort") || "Rate your pain or discomfort"}</h1>
-
-      <div className="severity-reference-grid">
-        <button
-          type="button"
-          className="severity-reference none"
-          aria-pressed={severity === null}
-          onClick={() => setSeverity(null)}
-        >
-          <strong>{t("noPain") || "No pain"}</strong>
-          <span>0</span>
-        </button>
-        {severityOptions.map(([value, key, fallback, range]) => (
-          <button
-            type="button"
-            key={value}
-            className={`severity-reference ${value.toLowerCase().replaceAll("_", "-")}`}
-            aria-pressed={severity === value}
-            onClick={() => setSeverity(value)}
-          >
-            <strong>{t(key) || fallback}</strong>
-            <span>{range}</span>
-          </button>
-        ))}
-      </div>
-
-      <div className="reference-subheading-row">
-        <h2 className="reference-subheading">{t("selectAffectedArea") || "Select affected area(s)"}</h2>
+      <div className="severity-section-header">
+        <h1>{t("rateDiscomfort") || "Rate your pain or discomfort"}</h1>
         {speechSupported && (
           <button
             type="button"
-            className={`anatomy-voice-trigger ${listening ? "live" : ""}`}
+            className={`anatomy-voice-trigger severity-voice-trigger ${listening ? "live" : ""}`}
             onClick={toggleVoice}
-            aria-label={listening ? (t("stopRecording") || "Stop recording") : (t("speakAffectedArea") || "Speak affected area")}
+            aria-label={
+              listening
+                ? (t("stopRecording") || "Stop recording")
+                : (t("speakSeverityOrArea") || "Speak pain level or area")
+            }
             aria-pressed={listening}
           >
             <span className="anatomy-mic-icon" aria-hidden="true">{listening ? "■" : "🎙"}</span>
-            <span className="anatomy-mic-label">{listening ? (t("listening") || "Listening…") : (t("speakAffectedArea") || "Speak area")}</span>
+            <span className="anatomy-mic-label">
+              {listening ? (t("listening") || "Listening…") : (t("speakSeverityShort") || "Speak level")}
+            </span>
           </button>
         )}
       </div>
 
-      {/* Voice status announcement & feedback */}
+      <div className="severity-reference-grid" role="group" aria-label={t("rateDiscomfort") || "Rate your pain or discomfort"}>
+        <button
+          type="button"
+          className={`severity-reference none${proposedSeverity === "NONE" ? " proposed" : ""}`}
+          aria-pressed={severity === null}
+          aria-label={`${t("noPain") || "No pain"} — 0`}
+          onClick={() => { setSeverity(null); setProposedSeverity(null); }}
+        >
+          <span className="severity-face" aria-hidden="true">😌</span>
+          <strong>{t("noPain") || "No pain"}</strong>
+          <span className="severity-range">0</span>
+        </button>
+        {severityOptions.map(([value, key, fallback, range, face]) => (
+          <button
+            type="button"
+            key={value}
+            className={`severity-reference ${value.toLowerCase().replaceAll("_", "-")}${proposedSeverity === value ? " proposed" : ""}`}
+            aria-pressed={severity === value}
+            aria-label={`${t(key) || fallback} — ${range}`}
+            onClick={() => { setSeverity(value); setProposedSeverity(null); }}
+          >
+            <span className="severity-face" aria-hidden="true">{face}</span>
+            <strong>{t(key) || fallback}</strong>
+            <span className="severity-range">{range}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Voice listening hint for severity */}
       {listening && (
         <div className="voice-status-notice listening" role="status" aria-live="polite">
           <div className="voice-wave-mini" aria-hidden="true">
             <i /><i /><i /><i /><i />
           </div>
-          <span>{t("voiceListeningArea") || "Listening… speak affected area (e.g. chest, stomach, back)"}</span>
+          <span>{t("voiceListeningSeverityAndArea") || "Listening… say your pain level (e.g. 'mild', 'seven') or area (e.g. 'chest', 'back')"}</span>
         </div>
       )}
 
@@ -391,19 +415,29 @@ export default function Anatomy() {
         </div>
       )}
 
-      {/* Mandatory voice confirmation strip (Propose -> Confirm workflow) */}
-      {proposedRegions.length > 0 && (
+      {/* Mandatory voice confirmation strip — shown when either severity or region is proposed */}
+      {(proposedRegions.length > 0 || proposedSeverity !== null) && (
         <div className="voice-confirmation-strip" role="region" aria-live="polite">
           <div className="voice-confirmation-content">
             <span className="voice-heard-badge" aria-hidden="true">🎙</span>
             <p className="voice-heard-text">
               <b>{t("voiceHeardPrefix") || "We heard:"}</b>{" "}
               <span className="voice-heard-regions">
-                {proposedRegions
-                  .map((rk) => {
+                {[
+                  proposedSeverity !== null
+                    ? (proposedSeverity === "NONE"
+                        ? (t("noPain") || "No pain")
+                        : (() => {
+                            const tup = severityOptions.find(([v]) => v === proposedSeverity);
+                            return tup ? (t(tup[1]) || tup[2]) : proposedSeverity;
+                          })())
+                    : null,
+                  ...proposedRegions.map((rk) => {
                     const tup = regions.find(([k]) => k === rk);
                     return tup ? (t(tup[1]) || tup[2]) : rk;
-                  })
+                  }),
+                ]
+                  .filter(Boolean)
                   .join(", ")}
               </span>
               . {t("voiceHeardQuestion") || "Is this correct?"}
@@ -427,6 +461,10 @@ export default function Anatomy() {
           </div>
         </div>
       )}
+
+      <div className="reference-subheading-row">
+        <h2 className="reference-subheading">{t("selectAffectedArea") || "Select affected area(s)"}</h2>
+      </div>
 
       {/* Selected areas chips */}
       {selectedRegions.length > 0 && (

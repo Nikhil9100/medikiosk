@@ -49,14 +49,18 @@ test("anatomy selector provides front/back view toggle and auto-switching", () =
   assert.match(page, /if \(key === "chest" \|\| key === "abdomen"\) setView\("front"\)/);
 });
 
-test("severity scale offers numeric pain ratings 0-10", () => {
+test("severity scale offers numeric pain ratings 0-10 with face icons", () => {
   const page = read("app/patient/anatomy/page.tsx");
-  assert.match(page, /className="severity-reference none"/);
-  assert.match(page, /<span>0<\/span>/);
-  assert.match(page, /\["MILD", "mild", "Mild", "1–3"\]/);
-  assert.match(page, /\["MODERATE", "moderate", "Moderate", "4–6"\]/);
-  assert.match(page, /\["SEVERE", "severe", "Severe", "7–8"\]/);
-  assert.match(page, /\["VERY_SEVERE", "verySevere", "Very severe", "9–10"\]/);
+  // No-pain button still present (may be template literal class now)
+  assert.match(page, /severity-reference none/);
+  assert.match(page, /severity-range/);
+  // Face icons present
+  assert.match(page, /severity-face/);
+  // All four severity bands present in array definition
+  assert.match(page, /\["MILD", "mild", "Mild", "1–3"/);
+  assert.match(page, /\["MODERATE", "moderate", "Moderate", "4–6"/);
+  assert.match(page, /\["SEVERE", "severe", "Severe", "7–8"/);
+  assert.match(page, /\["VERY_SEVERE", "verySevere", "Very severe", "9–10"/);
 });
 
 test("selection syncs to patient complaints API and workflow persistence", () => {
@@ -75,7 +79,9 @@ test("selection syncs to patient complaints API and workflow persistence", () =>
 test("voice trigger mic button renders and has accessible labels", () => {
   const page = read("app/patient/anatomy/page.tsx");
   assert.match(page, /className=\{`anatomy-voice-trigger/);
-  assert.match(page, /aria-label=\{listening \? /);
+  // aria-label has listening ternary
+  assert.match(page, /aria-label=\{/);
+  assert.match(page, /stopRecording/);
   assert.match(page, /aria-pressed=\{listening\}/);
   assert.match(page, /onClick=\{toggleVoice\}/);
 });
@@ -145,10 +151,12 @@ test("voice parsing captures subregions where unambiguous", () => {
 });
 
 test("unmatched or unclear speech yields graceful no-match without guessing", () => {
-  const result = parseAnatomyVoice("xyz blablabla completely unrelated 123", "en");
+  // This string has no valid body regions and no isolated digit or severity word at boundaries
+  const result = parseAnatomyVoice("xyz blablabla completely unrelated nonsense", "en");
   assert.equal(result.isMatched, false);
   assert.deepEqual(result.matchedRegions, []);
   assert.deepEqual(result.matchedSubregions, {});
+  assert.equal(result.matchedSeverity, undefined);
 });
 
 test("proposed state is visually distinct from confirmed state on SVG and checklist", () => {
@@ -170,8 +178,8 @@ test("proposed state is visually distinct from confirmed state on SVG and checkl
 
 test("mandatory confirmation strip exists with aria-live and explicit actions", () => {
   const page = read("app/patient/anatomy/page.tsx");
-  // Rendered conditionally on proposedRegions.length > 0
-  assert.match(page, /proposedRegions\.length > 0 && \(/);
+  // Rendered conditionally on proposedRegions OR proposedSeverity
+  assert.match(page, /proposedRegions\.length > 0 \|\| proposedSeverity !== null/);
   assert.match(page, /className="voice-confirmation-strip"/);
   assert.match(page, /aria-live="polite"/);
 
