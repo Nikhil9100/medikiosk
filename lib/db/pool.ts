@@ -5,7 +5,7 @@ let pool: Pool | null = null;
 export function databaseConfigured(){ return Boolean(process.env.DATABASE_URL); }
 function getPool(){
   if(!process.env.DATABASE_URL) throw new Error("DATABASE_URL is not configured");
-  if(!pool) pool=new Pool({connectionString:process.env.DATABASE_URL,max:5,idleTimeoutMillis:20000,connectionTimeoutMillis:5000,ssl:process.env.NODE_ENV==="production"?{rejectUnauthorized:false}:undefined});
+  if(!pool) pool=new Pool({connectionString:process.env.DATABASE_URL,max:5,idleTimeoutMillis:20000,connectionTimeoutMillis:5000,ssl:{rejectUnauthorized:false}});
   return pool;
 }
 export async function withTx<T>(scope:{sessionId?:string;ownerId?:string;staffId?:string;kioskId?:string;role?:"staff"|"kiosk"}, fn:(c:PoolClient)=>Promise<T>){
