@@ -149,13 +149,15 @@ pre{max-width:100%;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;wor
 .reference-patient-main{width:min(100%,1120px);padding-top:28px;padding-bottom:34px}.reference-card{max-width:790px;border:1px solid #ccdfd8;border-radius:26px;box-shadow:0 18px 45px rgba(16,67,54,.1);position:relative;overflow:hidden}.reference-card:before{content:"";position:absolute;inset:0 0 auto 0;height:5px;background:linear-gradient(90deg,#0a7359,#1b9c78,#7bbf9c)}
 .reference-card h1{color:#10233f;letter-spacing:-.025em}.reference-card .lead{color:#62756f}.reference-card h2{color:#142e48}.reference-icon-badge{width:64px;height:64px;border-radius:20px;background:var(--patient-green-soft);border:1px solid #c9e9dd;color:var(--patient-green);display:grid;place-items:center;font-size:2rem;font-weight:900;box-shadow:inset 0 0 0 7px rgba(255,255,255,.4)}.reference-icon-badge.shield,.reference-icon-badge.id-card{margin:0 auto}.reference-primary{background:linear-gradient(180deg,#0a8b69,#077457);border-color:#06654d;box-shadow:0 8px 16px rgba(8,120,93,.18)}.reference-primary:hover{background:#06664f}.reference-actions{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:24px}.reference-actions .primary{margin-left:auto;min-width:170px}.section-kicker{font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;font-weight:900;color:#284c42;margin-bottom:9px}.soft-title{font-size:.65em;font-weight:600;color:#667b74}
 .welcome-reference-card{max-width:960px;margin:0 auto;padding:clamp(24px,4vw,38px)}
-.welcome-reference-grid{display:grid;grid-template-columns:minmax(0,1.12fr) minmax(310px,.88fr);gap:clamp(24px,3.5vw,42px);align-items:stretch}
-.welcome-intro-col{display:flex;flex-direction:column;justify-content:space-between}
-.welcome-intro-col .reference-icon-badge{width:52px;height:52px;border-radius:14px;font-size:1.6rem;margin-bottom:14px}
-.welcome-intro-col .eyebrow{margin:0 0 6px;font-size:.8rem;letter-spacing:.08em}
-.welcome-intro-col h1{font-size:clamp(1.65rem,2.8vw,2.2rem);line-height:1.18;color:#102538;margin:0 0 12px;font-weight:800;letter-spacing:-.025em}
-.welcome-intro-col .lead{font-size:.94rem;line-height:1.6;color:#526760;margin:0 0 24px}
-.reference-trust-list{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:auto}
+.welcome-reference-grid{display:grid;grid-template-columns:minmax(0,1.12fr) minmax(310px,.88fr);gap:clamp(24px,3.5vw,42px);align-items:center}
+.welcome-intro-col{display:flex;flex-direction:column;justify-content:center;gap:20px}
+.welcome-brand-header{display:flex;flex-direction:column;gap:10px}
+.welcome-intro-col .reference-icon-badge{width:48px;height:48px;border-radius:14px;font-size:1.5rem;margin:0}
+.welcome-intro-col .eyebrow{margin:0;font-size:.8rem;letter-spacing:.08em}
+.welcome-text-group{display:flex;flex-direction:column;gap:10px}
+.welcome-intro-col h1{font-size:clamp(1.65rem,2.8vw,2.2rem);line-height:1.2;color:#102538;margin:0;font-weight:800;letter-spacing:-.025em}
+.welcome-intro-col .lead{font-size:.94rem;line-height:1.6;color:#526760;margin:0}
+.reference-trust-list{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px}
 .reference-trust-list span{background:#f4faf7;border:1px solid #d8ede4;border-radius:12px;padding:11px 13px;color:#244c40;font-size:.84rem;font-weight:600;display:flex;align-items:center;gap:7px}
 .language-reference-panel{background:#f8fcfa;border:1.5px solid #d5e8e0;border-radius:20px;padding:20px 18px;display:flex;flex-direction:column;justify-content:space-between;box-shadow:0 4px 18px rgba(10,88,71,.04)}
 .language-reference-panel .section-kicker{font-size:.78rem;text-transform:uppercase;letter-spacing:.08em;font-weight:800;color:#1a493e;margin-bottom:12px}

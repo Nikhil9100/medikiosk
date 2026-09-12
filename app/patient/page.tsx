@@ -56,12 +56,16 @@ export default function PatientWelcome() {
     <section className="flow-card reference-card welcome-reference-card">
       <div className="welcome-reference-grid">
         <div className="welcome-intro-col">
-          <div className="reference-icon-badge" aria-hidden="true">
-            ✚
+          <div className="welcome-brand-header">
+            <div className="reference-icon-badge" aria-hidden="true">
+              ✚
+            </div>
+            <p className="eyebrow">{t("welcomeEyebrow") || "Welcome to MediKiosk"}</p>
           </div>
-          <p className="eyebrow">{t("welcomeEyebrow") || "Welcome to MediKiosk"}</p>
-          <h1>{t("welcomeTitle")}</h1>
-          <p className="lead">{t("welcomeLead")}</p>
+          <div className="welcome-text-group">
+            <h1>{t("welcomeTitle")}</h1>
+            <p className="lead">{t("welcomeLead")}</p>
+          </div>
           <div className="reference-trust-list" aria-label="MediKiosk benefits">
             <span>✓ {t("welcomeBenefit1") || "Private & secure"}</span>
             <span>✓ {t("welcomeBenefit2") || "Voice or touch"}</span>
