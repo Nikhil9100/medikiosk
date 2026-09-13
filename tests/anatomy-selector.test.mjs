@@ -5,16 +5,15 @@ import { parseAnatomyVoice, getLocaleForLanguage } from "../lib/anatomy-voice.ts
 
 const read = (p) => fs.readFileSync(`${process.cwd()}/${p}`, "utf8");
 
-test("anatomy selector supports dual-method selection (SVG diagram + text list)", () => {
+test("anatomy selector supports dual-method selection (interactive body model + text list)", () => {
   const page = read("app/patient/anatomy/page.tsx");
-  // Visual body map with SVG
+  // Visual body map with precision holographic selector
   assert.match(page, /<div className="body-map">/);
-  assert.match(page, /<svg[^>]*viewBox="0 0 160 320"/);
+  assert.match(page, /<LazarusLocationSelector/);
   // Textual region choices list
   assert.match(page, /<div className="body-region-list"/);
   assert.match(page, /className=\{`body-region-choice/);
-  // Both call toggleRegion
-  assert.match(page, /onClick=\{\(\) => toggleRegion\("head"\)\}/);
+  // Calls toggleRegion
   assert.match(page, /onClick=\{\(\) => toggleRegion\(key\)\}/);
 });
 
@@ -26,24 +25,18 @@ test("anatomy selector maps all canonical body regions", () => {
   }
 });
 
-test("SVG body parts have full keyboard accessibility", () => {
+test("precision body model and checklist have full accessibility", () => {
   const page = read("app/patient/anatomy/page.tsx");
-  // role="button", tabIndex={0}, aria-pressed, onKeyDown
-  assert.match(page, /role="button"/);
-  assert.match(page, /tabIndex=\{0\}/);
-  assert.match(page, /aria-pressed=\{isHeadSelected\}/);
-  assert.match(page, /onKeyDown=\{\(e\) => handleKey\(e,/);
-  // Space and Enter key handling
-  assert.match(page, /e\.key === "Enter" \|\| e\.key === " "/);
+  // Checklist buttons have role, aria-pressed, and onClick
+  assert.match(page, /aria-pressed=\{isSelected\}/);
+  assert.match(page, /onClick=\{\(\) => toggleRegion\(key\)\}/);
+  assert.match(page, /<LazarusLocationSelector/);
 });
 
 test("anatomy selector provides front/back view toggle and auto-switching", () => {
   const page = read("app/patient/anatomy/page.tsx");
-  assert.match(page, /className="body-map-view-toggle"/);
-  assert.match(page, /role="tablist"/);
-  assert.match(page, /role="tab"/);
-  assert.match(page, /onClick=\{\(\) => setView\("front"\)\}/);
-  assert.match(page, /onClick=\{\(\) => setView\("back"\)\}/);
+  assert.match(page, /front=\{view === "front"\}/);
+  assert.match(page, /onFrontChange=\{\(f\) => setView\(f \? "front" : "back"\)\}/);
   // Auto-switch view when selecting back or chest/abdomen
   assert.match(page, /if \(key === "back"\) setView\("back"\)/);
   assert.match(page, /if \(key === "chest" \|\| key === "abdomen"\) setView\("front"\)/);
@@ -159,19 +152,15 @@ test("unmatched or unclear speech yields graceful no-match without guessing", ()
   assert.equal(result.matchedSeverity, undefined);
 });
 
-test("proposed state is visually distinct from confirmed state on SVG and checklist", () => {
+test("proposed state is visually distinct from confirmed state on checklist", () => {
   const page = read("app/patient/anatomy/page.tsx");
   const css = read("app/globals.css");
 
   // Page classes
-  assert.match(page, /proposedRegions\.includes\("head"\) \? "proposed" : ""/);
   assert.match(page, /isProposed \? "proposed" : ""/);
   assert.match(page, /className="proposed-badge"/);
 
-  // CSS dashed amber styling for proposed SVG
-  assert.match(css, /\.body-part\.proposed/);
-  assert.match(css, /stroke-dasharray/);
-  assert.match(css, /#d97706/);
+  // CSS styling for proposed items
   assert.match(css, /\.body-region-choice\.proposed/);
   assert.match(css, /\.proposed-badge/);
 });
@@ -217,23 +206,13 @@ test("locale configuration matches all 6 languages for Web Speech API", () => {
   assert.equal(getLocaleForLanguage("mr"), "mr-IN");
 });
 
-test("redesigned body diagram uses proportional vector paths, grounded floor shadow, and checkmark badges without red dot", () => {
+test("interactive precision body model replaces legacy SVG diagram without red dot", () => {
   const page = read("app/patient/anatomy/page.tsx");
   const css = read("app/globals.css");
 
-  // Proportional human anatomy paths
-  assert.match(page, /d="M80 14 C70 14 67 21 67 31/); // Head with distinct neck
-  assert.match(page, /d="M71 66 L49 72 C45 74/); // Chest
-  assert.match(page, /d="M50 114 C48 124 51 132/); // Abdomen & pelvis
-  assert.match(page, /d="M48 72 C41 74 38 80/); // Left arm with mitt hand
-  assert.match(page, /d="M54 164 C52 176 53 194/); // Left leg with foot
-
-  // Floor ground shadow
-  assert.match(page, /<ellipse cx="80" cy="310" rx="46" ry="4\.5"/);
-
-  // Checkmark badges for selected regions
-  assert.match(page, /className="region-check-badge"/);
-  assert.match(css, /\.region-check-badge/);
+  // Interactive precision body model integration
+  assert.match(page, /<LazarusLocationSelector/);
+  assert.match(page, /front=\{view === "front"\}/);
 
   // Red dot marker is completely removed
   assert.doesNotMatch(page, /className="body-map-hotspot"/);

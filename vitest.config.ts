@@ -18,5 +18,6 @@ export default defineConfig({
     env: {
       NODE_ENV: "development",
     },
+    include: ["**/*.test.{ts,tsx}"],
   },
 });

@@ -15,7 +15,9 @@ export interface LazarusLocationSelectorWrapperProps {
     subregion: PatientBodySubregion | null,
     rawLazarusPart: string,
   ) => void;
-  onClose: () => void;
+  front?: boolean;
+  onFrontChange?: (front: boolean) => void;
+  onClose?: () => void;
   labels: {
     pinpointTitle: string;
     zoomInstruction: string;
@@ -23,8 +25,8 @@ export interface LazarusLocationSelectorWrapperProps {
     zoomOut: string;
     flipToBack: string;
     flipToFront: string;
-    cancel: string;
-    confirm: string;
+    cancel?: string;
+    confirm?: string;
     selectedLocation: string;
     noAreaSelected: string;
   };
@@ -124,17 +126,32 @@ export function determineLazarusBodyPart(
 
 export function LazarusLocationSelectorWrapper({
   onSelectionChange,
+  front: controlledFront,
+  onFrontChange,
   onClose,
   labels,
 }: LazarusLocationSelectorWrapperProps) {
-  const [front, setFront] = useState<boolean>(true);
+  const [internalFront, setInternalFront] = useState<boolean>(true);
+  const front = controlledFront !== undefined ? controlledFront : internalFront;
+
+  const setFront = useCallback(
+    (nextFront: boolean) => {
+      if (onFrontChange) {
+        onFrontChange(nextFront);
+      } else {
+        setInternalFront(nextFront);
+      }
+    },
+    [onFrontChange],
+  );
+
   const [isZoomed, setIsZoomed] = useState<boolean>(false);
   const [selectorX, setSelectorX] = useState<number>(39);
   const [selectorY, setSelectorY] = useState<number>(34);
   const [selectorWidth] = useState<number>(22);
   const [selectorHeight] = useState<number>(15);
   const [currentPart, setCurrentPart] = useState<string>(() =>
-    determineLazarusBodyPart(39, 34, 22, 15, true),
+    determineLazarusBodyPart(39, 34, 22, 15, front),
   );
   const containerRef = useRef<HTMLDivElement>(null);
   const isDraggingRef = useRef<boolean>(false);
@@ -194,33 +211,42 @@ export function LazarusLocationSelectorWrapper({
     <div className="lazarus-container" aria-label={labels.pinpointTitle}>
       {/* Top Toolbar */}
       <div className="lazarus-header flex space-between align-center">
-        <button
-          type="button"
-          className="lazarus-button lazarus-button--cancel"
-          onClick={onClose}
-          aria-label={labels.cancel}
-        >
-          ✕ {labels.cancel}
-        </button>
-
-        <div className="lazarus-view-toggles flex gap-2">
+        {onClose && labels.cancel && (
           <button
             type="button"
+            className="lazarus-button lazarus-button--cancel"
+            onClick={onClose}
+            aria-label={labels.cancel}
+          >
+            ✕ {labels.cancel}
+          </button>
+        )}
+
+        <div
+          className="lazarus-view-toggles flex gap-2"
+          role="tablist"
+          aria-label="Body diagram orientation"
+          style={{ margin: onClose ? undefined : "0 auto" }}
+        >
+          <button
+            type="button"
+            role="tab"
             className={`body-view-toggle__button ${front ? "body-view-toggle__button--active" : ""}`}
             onClick={() => {
               if (!front) toggleFrontBack();
             }}
-            aria-pressed={front}
+            aria-selected={front}
           >
             {labels.flipToFront}
           </button>
           <button
             type="button"
+            role="tab"
             className={`body-view-toggle__button ${!front ? "body-view-toggle__button--active" : ""}`}
             onClick={() => {
               if (front) toggleFrontBack();
             }}
-            aria-pressed={!front}
+            aria-selected={!front}
           >
             {labels.flipToBack}
           </button>
@@ -299,13 +325,15 @@ export function LazarusLocationSelectorWrapper({
           >
             {isZoomed ? labels.zoomOut : labels.zoomIn}
           </button>
-          <button
-            type="button"
-            className="primary-button text-sm py-1.5 px-4"
-            onClick={onClose}
-          >
-            {labels.confirm}
-          </button>
+          {onClose && labels.confirm && (
+            <button
+              type="button"
+              className="primary-button text-sm py-1.5 px-4"
+              onClick={onClose}
+            >
+              {labels.confirm}
+            </button>
+          )}
         </div>
       </div>
     </div>

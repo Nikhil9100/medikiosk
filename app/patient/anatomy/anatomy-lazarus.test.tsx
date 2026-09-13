@@ -49,53 +49,28 @@ describe("PatientAnatomyPage with Lazarus Integration", () => {
     return { ...utils, setWorkflow, sync, mutate };
   }
 
-  it("renders both Standard view and Pinpoint view toggles", () => {
+  it("renders precision holographic body model directly without standard view toggles", () => {
     renderPage();
-    expect(screen.getByText(t("standardDiagram"))).toBeInTheDocument();
-    expect(screen.getByText(`🔍 ${t("pinpointSelector")}`)).toBeInTheDocument();
+    expect(screen.getByLabelText(t("pinpointSelector"))).toBeInTheDocument();
+    expect(screen.queryByText(t("standardDiagram"))).not.toBeInTheDocument();
+    expect(screen.getByText(t("zoomInstruction"))).toBeInTheDocument();
   });
 
-  it("defaults to standard 2D diagram mode with Front/Back toggle", () => {
+  it("renders Front/Back view toggles with tablist accessibility", () => {
     renderPage();
     expect(screen.getByRole("tab", { name: t("frontView") || "Front" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: t("backView") || "Back" })).toBeInTheDocument();
     expect(screen.getByRole("tablist", { name: "Body diagram orientation" })).toBeInTheDocument();
   });
 
-  it("switches to Lazarus pinpoint view when the toggle is clicked", async () => {
+  it("maintains accessible text checklist alongside pinpoint body model", () => {
     renderPage();
-    const pinpointButton = screen.getByText(`🔍 ${t("pinpointSelector")}`);
-    fireEvent.click(pinpointButton);
-
-    expect(await screen.findByLabelText(t("pinpointSelector"))).toBeInTheDocument();
-    expect(screen.getByText(t("zoomInstruction"))).toBeInTheDocument();
-  });
-
-  it("maintains accessible text checklist in both modes", async () => {
-    renderPage();
-    expect(screen.getByRole("group", { name: "Body region selection list" })).toBeInTheDocument();
-
-    // Switch to pinpoint
-    fireEvent.click(screen.getByText(`🔍 ${t("pinpointSelector")}`));
-    expect(await screen.findByLabelText(t("pinpointSelector"))).toBeInTheDocument();
-
-    // Checklist is still present and accessible
     const checklist = screen.getByRole("group", { name: "Body region selection list" });
+    expect(checklist).toBeInTheDocument();
     expect(within(checklist).getByRole("button", { name: /Chest/i })).toBeInTheDocument();
   });
 
-  it("returns to standard diagram when return button is clicked", async () => {
-    renderPage();
-    fireEvent.click(screen.getByText(`🔍 ${t("pinpointSelector")}`));
-    expect(await screen.findByLabelText(t("pinpointSelector"))).toBeInTheDocument();
-
-    const returnBtn = screen.getByLabelText(t("cancelPinpoint"));
-    fireEvent.click(returnBtn);
-
-    expect(screen.getByRole("tablist", { name: "Body diagram orientation" })).toBeInTheDocument();
-  });
-
-  it("clicking checklist item in either mode selects the region", () => {
+  it("clicking checklist item selects the region", () => {
     renderPage();
     const checklist = screen.getByRole("group", { name: "Body region selection list" });
     const chestButton = within(checklist).getByRole("button", { name: /Chest/i });
@@ -106,7 +81,6 @@ describe("PatientAnatomyPage with Lazarus Integration", () => {
 
   it("uses gender-neutral holographic figure and removes male/female selectors", async () => {
     renderPage();
-    fireEvent.click(screen.getByText(`🔍 ${t("pinpointSelector")}`));
     expect(await screen.findByLabelText(t("pinpointSelector"))).toBeInTheDocument();
 
     // Verify neither Male nor Female toggle buttons exist
@@ -118,7 +92,7 @@ describe("PatientAnatomyPage with Lazarus Integration", () => {
     expect(bodyImg).toHaveAttribute("src", "/lazarus/neutralFront.png");
 
     // Toggle to Back view
-    const backBtn = screen.getByRole("button", { name: t("backView") || "Back" });
+    const backBtn = screen.getByRole("tab", { name: t("backView") || "Back" });
     fireEvent.click(backBtn);
 
     const backImg = screen.getByAltText("Body diagram back view");
