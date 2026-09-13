@@ -560,6 +560,7 @@ export default function Anatomy() {
               flipToFront: t("frontView") || "Front",
               cancel: t("cancelPinpoint"),
               confirm: t("confirmSelection"),
+              neutral: t("neutralFigure"),
               male: t("maleFigure"),
               female: t("femaleFigure"),
               selectedLocation: t("selectedLocationLabel"),
