@@ -43,7 +43,7 @@ function localPatch(w:PatientWorkflow,patch:Record<string,unknown>):PatientWorkf
 }
 
 export default function PatientShell({children}:{children:React.ReactNode}){
- const [workflow,setWorkflow]=useState<PatientWorkflow>(defaultWorkflow);const [boot,setBoot]=useState(true);const [error,setError]=useState("");const [connection,setConnection]=useState<ConnectionState>("online");const [pendingCount,setPendingCount]=useState(0);const [emergencyModalOpen,setEmergencyModalOpen]=useState(false);const router=useRouter();const pathname=usePathname();
+ const [workflow,setWorkflow]=useState<PatientWorkflow>(defaultWorkflow);const [boot,setBoot]=useState(true);const [error,setError]=useState("");const [connection,setConnection]=useState<ConnectionState>("online");const [pendingCount,setPendingCount]=useState(0);const [emergencyModalOpen,setEmergencyModalOpen]=useState(false);const [offlineModalOpen,setOfflineModalOpen]=useState(false);const router=useRouter();const pathname=usePathname();
  const triggerEmergency=useCallback(()=>setEmergencyModalOpen(true),[]);
  const updatePending=useCallback(async()=>setPendingCount(await pendingMutationCount()),[]);
  const persistWorkflow=useCallback(async(w:PatientWorkflow)=>{if(!w.sessionId)return;if(w.currentStep==="complete"){await clearOfflineState();return;}await saveOfflineWorkflow(w);},[]);
@@ -141,7 +141,13 @@ export default function PatientShell({children}:{children:React.ReactNode}){
  },[flush,pathname,resumeSavedSession,router,setAndPersist]);
 
  useEffect(()=>{void bootstrap();},[bootstrap]);
- useEffect(()=>{const onOnline=()=>{void flush();};const onOffline=()=>setConnection("offline");window.addEventListener("online",onOnline);window.addEventListener("offline",onOffline);return()=>{window.removeEventListener("online",onOnline);window.removeEventListener("offline",onOffline);};},[flush]);
+ useEffect(()=>{
+  const onOnline=()=>{void flush();};
+  const onOffline=()=>{setConnection("offline");setOfflineModalOpen(true);};
+  window.addEventListener("online",onOnline);
+  window.addEventListener("offline",onOffline);
+  return()=>{window.removeEventListener("online",onOnline);window.removeEventListener("offline",onOffline);};
+ },[flush]);
  useEffect(()=>{if(workflow.sessionId)void persistWorkflow(workflow);},[persistWorkflow,workflow]);
 
  const setLanguage=(language:PatientLanguage)=>setWorkflow(w=>({...w,language}));
@@ -156,7 +162,21 @@ export default function PatientShell({children}:{children:React.ReactNode}){
    <div className="patient-app reference-patient-app">
     <header className="patient-topbar reference-patient-header">
       <div className="patient-brand"><span className="brand-mark" aria-hidden="true">✚</span><div><strong>MediKiosk</strong><span>{translate(workflow.language,"patientVisit")} · {translate(workflow.language,"tagline")}</span></div></div>
-      <div className="patient-top-actions"><button type="button" className="emergency-trigger-btn" onClick={()=>setEmergencyModalOpen(true)} aria-label="Emergency Help"><span aria-hidden="true">⚠️</span><span>{translate(workflow.language,"emergencyTriggerBtn") || "Get Help"}</span></button><span className={`connection-chip ${connection}`} role="status">{connection==="online"?translate(workflow.language,"connectionOnline"):connection==="syncing"?translate(workflow.language,"connectionSyncing"):connection==="offline"?`${translate(workflow.language,"connectionOffline")} · ${pendingCount}`:translate(workflow.language,"connectionAttention")}</span><button type="button" onClick={()=>router.push("/patient/assistant")} className="top-action medi-launcher" aria-label={translate(workflow.language,"assistant")}><span aria-hidden="true">👩‍⚕️</span> {localizedAssistantName(workflow.language)}</button><label className="language-chip"><span className="sr-only">{translate(workflow.language,"languageTitle")}</span><select value={workflow.language} onChange={e=>{const l=e.target.value as PatientLanguage;setLanguage(l);void sync({language:l});}}>{Object.entries(languageNames).map(([k,v])=><option key={k} value={k}>{v}</option>)}</select></label></div>
+      <div className="patient-top-actions">
+        <button type="button" className="emergency-trigger-btn" onClick={()=>setEmergencyModalOpen(true)} aria-label="Emergency Help"><span aria-hidden="true">⚠️</span><span>{translate(workflow.language,"emergencyTriggerBtn") || "Get Help"}</span></button>
+        <button
+          type="button"
+          className={`connection-chip ${connection}`}
+          role="status"
+          onClick={()=>{if(connection!=="online")setOfflineModalOpen(true);}}
+          aria-label="Connection Status"
+          style={{background:"transparent",border:"none",padding:0,cursor:connection!=="online"?"pointer":"default"}}
+        >
+          <span className={`connection-chip ${connection}`}>{connection==="online"?translate(workflow.language,"connectionOnline"):connection==="syncing"?translate(workflow.language,"connectionSyncing"):connection==="offline"?`${translate(workflow.language,"connectionOffline")} · ${pendingCount}`:translate(workflow.language,"connectionAttention")}</span>
+        </button>
+        <button type="button" onClick={()=>router.push("/patient/assistant")} className="top-action medi-launcher" aria-label={translate(workflow.language,"assistant")}><span aria-hidden="true">👩‍⚕️</span> {localizedAssistantName(workflow.language)}</button>
+        <label className="language-chip"><span className="sr-only">{translate(workflow.language,"languageTitle")}</span><select value={workflow.language} onChange={e=>{const l=e.target.value as PatientLanguage;setLanguage(l);void sync({language:l});}}>{Object.entries(languageNames).map(([k,v])=><option key={k} value={k}>{v}</option>)}</select></label>
+      </div>
     </header>
     {current>=0&&<nav className="patient-progress reference-progress" aria-label="Clinical intake progress">{progress.map((p,i)=><span key={p.key} className={i<current?"done":i===current?"active":""}><b>{i+1}</b><em>{translate(workflow.language,p.labelKey)||p.fallback}</em></span>)}</nav>}
     {current>=0&&<div className="patient-progress-mobile" aria-label="Clinical intake progress"><div className="mobile-progress-row"><span className="mobile-progress-step">Step {current+1} of {progress.length}</span><span className="mobile-progress-title">{translate(workflow.language,progress[current]?.labelKey)||progress[current]?.fallback}</span></div><div className="mobile-progress-track" role="progressbar" aria-valuenow={current+1} aria-valuemin={1} aria-valuemax={progress.length}><div className="mobile-progress-fill" style={{width:`${Math.round(((current+1)/progress.length)*100)}%`}}/></div></div>}
@@ -164,6 +184,8 @@ export default function PatientShell({children}:{children:React.ReactNode}){
     <main id="patient-main" className="patient-main reference-patient-main">{boot?<div className="loading-card" role="status"><h1 className="sr-only">Patient Console Loading</h1>Loading secure session…</div>:children}</main>
     <footer className="patient-footer reference-patient-footer"><nav className="patient-footer-nav" aria-label="Footer navigation"><div className="footer-brand"><strong>MediKiosk</strong><span className="footer-brand-sep" aria-hidden="true">·</span><span>{translate(workflow.language,"patientVisit")}</span></div><div className="footer-links"><a href="/patient/consent">{translate(workflow.language,"footerPrivacy")}</a><a href="/patient/consent">{translate(workflow.language,"footerTerms")}</a><a href="/patient/assistant">{localizedAssistantName(workflow.language)} {translate(workflow.language,"footerHelp")}</a><a href="/patient/language">{translate(workflow.language,"footerLanguage")}</a></div></nav><div className="footer-disclaimer"><span>{translate(workflow.language,"nonDiagnosticDisclaimer") || "Not a diagnostic tool · Physician review required"}</span><span>{translate(workflow.language,"emergencyNotice")}</span></div></footer>
     {emergencyModalOpen&&<div className="emergency-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="emergency-modal-title"><div className="emergency-modal-card"><div className="emergency-badge-icon" aria-hidden="true">⚠️</div><h2 id="emergency-modal-title">{translate(workflow.language,"emergencyModalTitle") || "Please get help now"}</h2><p>{translate(workflow.language,"emergencyModalDesc") || "If you are experiencing severe chest pain, trouble breathing, sudden weakness, or heavy bleeding, you need immediate medical attention."}</p><button type="button" className="emergency-staff-action" onClick={()=>{alert(translate(workflow.language,"emergencyStaffAlerted") || "Hospital staff has been alerted. Please approach the nearest triage desk or nurse immediately.");setEmergencyModalOpen(false);}}>🚨 {translate(workflow.language,"emergencyGetHelpBtn") || "GET HELP FROM STAFF"}</button><button type="button" className="emergency-dismiss-action" onClick={()=>setEmergencyModalOpen(false)}>{translate(workflow.language,"emergencyDismissBtn") || "I am safe · Continue answering"}</button></div></div>}
+    {offlineModalOpen&&<div className="offline-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="offline-modal-title"><div className="offline-modal-card"><div className="offline-badge-icon" aria-hidden="true">📡</div><h2 id="offline-modal-title">{translate(workflow.language,"offlineModalTitle") || "Internet connection lost"}</h2><p>{translate(workflow.language,"offlineModalDesc") || "Your progress is safe. All your answers are securely encrypted on this device. You can keep answering, and your data will automatically sync as soon as the connection returns."}</p><div className="offline-modal-actions"><button type="button" className="offline-retry-action" onClick={async()=>{const ok=await flush();if(ok)setOfflineModalOpen(false);}}>↻ {translate(workflow.language,"offlineCheckConnection") || "Check connection now"}</button><button type="button" className="offline-continue-action" onClick={()=>setOfflineModalOpen(false)}>{translate(workflow.language,"offlineContinueAnswering") || "Continue answering offline"}</button></div></div></div>}
+    {connection==="offline"&&!offlineModalOpen&&<div className="offline-floating-toast" role="status" onClick={()=>setOfflineModalOpen(true)} aria-label="Offline status details"><span>📡</span><span>{translate(workflow.language,"offlineBannerNotice") || "Offline mode · Encrypted draft saved on device"}</span><small style={{textDecoration:"underline",marginLeft:"4px"}}>Details</small></div>}
    </div>
  </Ctx.Provider>;
 }

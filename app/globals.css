@@ -668,3 +668,106 @@ pre{max-width:100%;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;wor
     display: block !important;
   }
 }
+
+/* 9. Offline Connection Loss Notification Window */
+.offline-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(18, 32, 28, 0.65);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  z-index: 2000;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  animation: anaya-fade-in 0.2s ease-out;
+}
+.offline-modal-card {
+  background: #ffffff;
+  border: 1.5px solid #e2bc77;
+  border-radius: 20px;
+  width: min(100%, 460px);
+  padding: 28px 24px;
+  text-align: center;
+  box-shadow: 0 20px 50px rgba(11, 44, 36, 0.25);
+}
+.offline-badge-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: #fdf8eb;
+  border: 2px solid #f6dfa9;
+  color: #b45309;
+  font-size: 2rem;
+  display: grid;
+  place-items: center;
+  margin: 0 auto 16px;
+}
+.offline-modal-card h2 {
+  font-size: 1.35rem;
+  color: #78350f;
+  margin: 0 0 10px;
+}
+.offline-modal-card p {
+  color: #4b5563;
+  font-size: 0.92rem;
+  line-height: 1.55;
+  margin: 0 0 22px;
+}
+.offline-modal-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.offline-retry-action {
+  background: var(--green) !important;
+  color: #ffffff !important;
+  border: none !important;
+  font-size: 0.95rem !important;
+  font-weight: 700 !important;
+  padding: 13px 20px !important;
+  border-radius: 12px !important;
+  width: 100% !important;
+  box-shadow: 0 4px 12px rgba(11, 93, 75, 0.2) !important;
+}
+.offline-retry-action:hover {
+  background: var(--green2) !important;
+}
+.offline-continue-action {
+  background: #f3f7f5;
+  border: 1px solid #c9dcd4;
+  color: #23463c;
+  padding: 11px 18px;
+  border-radius: 10px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  width: 100%;
+}
+.offline-continue-action:hover {
+  background: #e8f1ed;
+}
+
+/* Floating Offline Status Toast */
+.offline-floating-toast {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #fff8eb;
+  border: 1.5px solid #f59e0b;
+  color: #92400e;
+  padding: 10px 18px;
+  border-radius: 999px;
+  box-shadow: 0 8px 24px rgba(180, 83, 9, 0.18);
+  font-size: 0.84rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  z-index: 1500;
+  cursor: pointer;
+  animation: anaya-fade-in 0.25s ease-out;
+}
+.offline-floating-toast:hover {
+  background: #fef3c7;
+}
