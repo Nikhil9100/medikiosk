@@ -346,14 +346,12 @@ export default function Assistant() {
             👩‍⚕️
           </span>
           <div className="assistant-header-meta">
-            <p className="eyebrow" style={{ margin: "0 0 3px" }}>
-              {assistantName} · {t("anayaHeaderEyebrow") || "Female voice health assistant"}
-            </p>
-            <h1 id="anaya-title" style={{ margin: 0 }}>
-              {t("assistantTitle") || "Health Assistant"}
+            <h1 id="anaya-title" style={{ margin: 0, fontSize: "1.25rem", fontWeight: 700, color: "#0f3e34", display: "flex", alignItems: "center", gap: "8px" }}>
+              <span>{assistantName}</span>
+              <span className="assistant-status-dot" style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "#10b981" }} title="Online" aria-hidden="true" />
             </h1>
-            <p style={{ margin: 0, color: "#557069", fontSize: "0.85rem" }}>
-              {t("anayaHeaderSub") || "Voice and chat support · general information only · not a diagnosis"}
+            <p style={{ margin: "2px 0 0", color: "#557069", fontSize: "0.82rem" }} title={t("anayaHeaderEyebrow") || "Female voice health assistant"}>
+              {t("anayaHeaderSub") || "Voice and chat support · general information only"}
             </p>
           </div>
         </div>
@@ -387,12 +385,14 @@ export default function Assistant() {
             <div className="assistant-welcome-card reference-welcome-hero">
               <span className="medi-mini-avatar" aria-hidden="true">👩‍⚕️</span>
               <div>
-                <b>{t("assistantWelcomeGreeting") || `Namaste! I’m ${assistantName}, your health assistant.`}</b>
-                <p>
-                  {t("anayaWelcomeSubtitle") || "Choose a topic below, speak with the mic, or type your question."}
+                <b style={{ fontSize: "1.02rem", color: "#0f3e34", display: "block", marginBottom: 3 }}>
+                  {t("assistantWelcomeGreeting") || "Namaste! How can I help with your visit today?"}
+                </b>
+                <p style={{ margin: "0 0 6px", fontSize: "0.86rem", color: "#4f6962" }}>
+                  {t("anayaWelcomeSubtitle") || "Speak with the mic or type any question below."}
                 </p>
-                <small className="helper" style={{ display: "block", marginTop: 4, color: "#617d74" }}>
-                  {t("assistantDisclaimer")}
+                <small className="helper" style={{ display: "inline-flex", alignItems: "center", gap: 5, color: "#5d7870", fontSize: "0.78rem" }}>
+                  <span>ℹ️</span> {t("assistantDisclaimer")}
                 </small>
               </div>
             </div>
@@ -429,7 +429,9 @@ export default function Assistant() {
             )}
 
             <div className="anaya-starter-section">
-              <h2 className="anaya-starter-heading">{t("anayaWelcomeTitle")}</h2>
+              <h2 className="anaya-starter-heading" style={{ fontSize: "0.95rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", color: "#2d5e52", margin: "4px 0 2px" }}>
+                {t("anayaWelcomeTitle")}
+              </h2>
               <div className="anaya-starter-grid">
                 <button
                   type="button"
