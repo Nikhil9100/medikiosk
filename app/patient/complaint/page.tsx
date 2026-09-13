@@ -15,6 +15,7 @@ export default function Complaint() {
     saveDraft,
     loadDraft,
     clearDraft,
+    triggerEmergency,
   } = usePatient();
 
   const [text, setText] = useState(workflow.complaint);
@@ -168,6 +169,41 @@ export default function Complaint() {
         <span className="character-counter">{text.length}/1000</span>
       </div>
 
+      <div className="quick-chips-group" role="group" aria-label="Common concerns">
+        {[
+          ["Chest pain", "❤️ Chest pain"],
+          ["Fever", "🌡️ Fever"],
+          ["Cough", "💨 Cough"],
+          ["Stomach pain", "🫃 Stomach pain"],
+          ["Headache", "🧠 Headache"],
+          ["Body ache", "🦴 Body ache"],
+          ["Injury", "🩹 Injury"],
+        ].map(([val, label]) => (
+          <button
+            type="button"
+            key={val}
+            className={`quick-chip-pill ${text.toLowerCase().includes(val.toLowerCase()) ? "active" : ""}`}
+            onClick={() => {
+              setText((prev) => (prev.trim() ? `${prev.trim()}, ${val}` : val));
+            }}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* High-priority Emergency check for red-flag complaints */}
+      {/(chest pain|heart attack|trouble breathing|can't breathe|difficulty breathing|unconscious|heavy bleeding|paralysis)/i.test(text) && (
+        <div className="system-banner error" role="alert" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap", marginTop: "14px" }}>
+          <div>
+            <strong>⚠️ {t("emergencyModalTitle") || "Please get help now"}</strong>: {t("emergencyModalDesc") || "These symptoms may require immediate medical attention."}
+          </div>
+          <button type="button" className="emergency-trigger-btn" onClick={triggerEmergency}>
+            🚨 {t("emergencyGetHelpBtn") || "Get Help from Staff"}
+          </button>
+        </div>
+      )}
+
       <div className="voice-capture-block">
         <div className="voice-wave" aria-hidden="true">
           <i />
@@ -209,7 +245,7 @@ export default function Complaint() {
         </p>
       </div>
 
-      <div className="reference-actions">
+      <div className="reference-actions mobile-action-dock">
         <button
           className="primary reference-primary"
           disabled={!text.trim() || saving}

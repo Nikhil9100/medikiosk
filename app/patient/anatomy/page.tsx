@@ -741,7 +741,7 @@ export default function Anatomy() {
         </div>
       )}
 
-      <div className="reference-actions">
+      <div className="reference-actions mobile-action-dock">
         <button className="secondary" onClick={() => router.back()}>
           ← {t("back")}
         </button>

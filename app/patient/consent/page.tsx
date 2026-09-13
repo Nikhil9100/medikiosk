@@ -80,7 +80,7 @@ export default function Consent() {
         </div>
       )}
 
-      <div className="reference-actions stacked-mobile">
+      <div className="reference-actions stacked-mobile mobile-action-dock">
         <button
           className="primary reference-primary"
           disabled={busy}

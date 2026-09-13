@@ -140,7 +140,7 @@ export default function Identity() {
         </div>
       )}
 
-      <div className="reference-actions stacked-mobile">
+      <div className="reference-actions stacked-mobile mobile-action-dock">
         <button
           className="primary reference-primary"
           disabled={busy}

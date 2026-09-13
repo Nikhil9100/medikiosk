@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { MAX_FILE_SIZE } from "@/lib/documents";
+import type { TranslationKey } from "@/lib/i18n";
 import { usePatient } from "../PatientShell";
 
 type Doc = {
@@ -17,7 +18,7 @@ type Doc = {
 
 export default function Documents() {
   const router = useRouter();
-  const { t, ensureSynced, finishOfflineCase, connection, pendingCount } = usePatient();
+  const { workflow, t, ensureSynced, finishOfflineCase, connection, pendingCount } = usePatient();
   const [docs, setDocs] = useState<Doc[]>([]);
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState("");
@@ -291,7 +292,46 @@ export default function Documents() {
         </div>
       )}
 
-      <div className="reference-actions">
+      {/* P0.3: Pre-Submission Review Summary Panel */}
+      <div className="review-summary-panel" role="region" aria-label="Review your information before sending">
+        <div className="review-summary-header">
+          <h2><span>📋</span> {t("reviewHeading") || "Review your information"}</h2>
+          <span className="helper">{t("reviewSubheading") || "Everything recorded for the doctor"}</span>
+        </div>
+        <div className="review-summary-grid">
+          <div className="review-summary-tile">
+            <span>{t("complaintReviewLabel") || "Main Concern"}</span>
+            <strong>{workflow.complaint || t("noneRecorded") || "General checkup"}</strong>
+          </div>
+          <div className="review-summary-tile">
+            <span>{t("severityReviewLabel") || "Pain / Severity"}</span>
+            <strong>
+              {workflow.severity
+                ? t(workflow.severity.toLowerCase() as TranslationKey) || workflow.severity
+                : (t("noPain") || "None (0)")}
+            </strong>
+          </div>
+          <div className="review-summary-tile">
+            <span>{t("areaReviewLabel") || "Affected Area"}</span>
+            <strong>
+              {workflow.region
+                ? t(`region${workflow.region.charAt(0).toUpperCase() + workflow.region.slice(1)}` as TranslationKey) || workflow.region
+                : (t("notSpecified") || "Not specified")}
+            </strong>
+          </div>
+          <div className="review-summary-tile">
+            <span>{t("documentsReviewLabel") || "Uploaded Reports"}</span>
+            <strong>{docs.length} report{docs.length === 1 ? "" : "s"}</strong>
+          </div>
+        </div>
+        <div className="review-summary-actions">
+          <button type="button" className="secondary" onClick={() => router.push("/patient/complaint")}>
+            ✎ {t("editInformation") || "Edit Information"}
+          </button>
+        </div>
+      </div>
+
+      <div className="reference-actions mobile-action-dock">
         <button type="button" className="secondary" onClick={() => router.back()}>
           ← {t("back")}
         </button>
@@ -301,7 +341,9 @@ export default function Documents() {
           disabled={!!busy || connection === "offline"}
           onClick={() => void submit()}
         >
-          {busy === "submit" ? t("processing") : `${t("submitToDoctor") || "Submit to doctor"} →`}
+          {busy === "submit"
+            ? t("processing")
+            : `${t("everythingCorrectSubmit") || "Everything looks correct · Submit to doctor"} →`}
         </button>
       </div>
     </section>

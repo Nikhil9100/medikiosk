@@ -331,6 +331,11 @@ export default function Interview() {
         </>
       )}
 
+      <div className="contextual-helper-box">
+        <strong>💡 {t("whyAskingTitle") || "Why are we asking this?"}</strong>
+        <span>{t("whyAskingDesc") || "This helps your doctor understand the cause and timeline of your symptoms before you enter the consultation room."}</span>
+      </div>
+
       {error && (
         <div className="system-banner error" role="alert">
           {error}

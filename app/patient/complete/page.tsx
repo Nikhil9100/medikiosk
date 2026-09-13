@@ -38,7 +38,12 @@ export default function Complete() {
         </div>
       </div>
 
-      <div className="reference-actions stacked-mobile">
+      <div className="contextual-helper-box" style={{ textAlign: "center", marginTop: "18px" }}>
+        <strong>🏥 Need assistance?</strong>
+        <span>Please approach the hospital reception desk or alert any on-duty nurse.</span>
+      </div>
+
+      <div className="reference-actions stacked-mobile mobile-action-dock">
         <button
           type="button"
           className="primary reference-primary"

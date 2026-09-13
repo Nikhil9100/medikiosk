@@ -358,3 +358,313 @@ pre{max-width:100%;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;wor
 .anaya-btn-danger{background:#b42318;color:#ffffff;border-color:#9e1f15}
 .anaya-btn-danger:hover{background:#941b12}
 
+/* ========================================================================
+   Patient Console Beautification & Mobile/Laptop Ergonomics
+   ======================================================================== */
+
+/* 1. Mobile Adaptive Progress Tracker */
+.patient-progress-mobile {
+  display: none;
+  background: #ffffff;
+  border-bottom: 1px solid var(--line);
+  padding: 10px 16px;
+}
+.mobile-progress-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.mobile-progress-step {
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: var(--green);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.mobile-progress-title {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #27453b;
+}
+.mobile-progress-track {
+  width: 100%;
+  height: 6px;
+  background: #e5edea;
+  border-radius: 999px;
+  overflow: hidden;
+}
+.mobile-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #0c8264, #077558);
+  border-radius: 999px;
+  transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* 2. Sticky Mobile Action Dock */
+.mobile-action-dock {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 28px;
+}
+@media(max-width: 640px) {
+  .mobile-action-dock {
+    position: sticky;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-top: 1px solid #dbe6e2;
+    padding: 12px 16px max(14px, env(safe-area-inset-bottom));
+    margin: 24px -16px -22px;
+    z-index: 40;
+    box-shadow: 0 -4px 18px rgba(11, 93, 75, 0.08);
+  }
+}
+
+/* 3. High-Priority Emergency Interception */
+.emergency-trigger-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #fff5f5;
+  border: 1px solid #fed7d7;
+  color: #c53030;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  padding: 5px 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.emergency-trigger-btn:hover {
+  background: #fed7d7;
+}
+.emergency-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(18, 28, 25, 0.65);
+  backdrop-filter: blur(4px);
+  z-index: 2000;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  animation: anaya-fade-in 0.2s ease-out;
+}
+.emergency-modal-card {
+  background: #ffffff;
+  border: 2px solid #e53e3e;
+  border-radius: 20px;
+  width: min(100%, 480px);
+  padding: 28px 22px;
+  text-align: center;
+  box-shadow: 0 24px 60px rgba(229, 62, 62, 0.25);
+  animation: patient-pulse 2s infinite;
+}
+.emergency-badge-icon {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: #fff5f5;
+  border: 2px solid #feb2b2;
+  color: #e53e3e;
+  font-size: 2rem;
+  display: grid;
+  place-items: center;
+  margin: 0 auto 16px;
+}
+.emergency-modal-card h2 {
+  font-size: 1.5rem;
+  color: #9b2c2c;
+  margin: 0 0 8px;
+}
+.emergency-modal-card p {
+  color: #4a5568;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  margin: 0 0 20px;
+}
+.emergency-staff-action {
+  background: #e53e3e !important;
+  color: #ffffff !important;
+  border: none !important;
+  font-size: 1.05rem !important;
+  font-weight: 800 !important;
+  padding: 14px 24px !important;
+  border-radius: 12px !important;
+  width: 100% !important;
+  box-shadow: 0 4px 14px rgba(229, 62, 62, 0.35) !important;
+  margin-bottom: 10px;
+}
+.emergency-staff-action:hover {
+  background: #c53030 !important;
+}
+.emergency-dismiss-action {
+  background: transparent;
+  border: 1px solid #cbd5e0;
+  color: #4a5568;
+  padding: 10px 18px;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  width: 100%;
+}
+.emergency-dismiss-action:hover {
+  background: #f7fafc;
+}
+
+/* 4. Quick Complaint & Symptom Selection Chips */
+.quick-chips-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+.quick-chip-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #f4faf7;
+  border: 1.5px solid #cae3da;
+  color: #075a48;
+  font-size: 0.86rem;
+  font-weight: 700;
+  padding: 8px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.16s ease;
+}
+.quick-chip-pill:hover {
+  background: #e4f5ed;
+  border-color: #0c8264;
+  transform: translateY(-1px);
+}
+.quick-chip-pill.active {
+  background: #0c8264;
+  border-color: #08614a;
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(12, 130, 100, 0.25);
+}
+
+/* 5. Pre-Submission Review Summary Panel */
+.review-summary-panel {
+  background: #f9fbfb;
+  border: 1.5px solid #d7e4e0;
+  border-radius: 18px;
+  padding: 22px;
+  margin-top: 24px;
+  box-shadow: 0 4px 16px rgba(11, 93, 75, 0.04);
+}
+.review-summary-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  border-bottom: 1px solid #e1ece8;
+  padding-bottom: 10px;
+}
+.review-summary-header h2 {
+  margin: 0;
+  font-size: 1.15rem;
+  color: #113d35;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.review-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.review-summary-tile {
+  background: #ffffff;
+  border: 1px solid #dce8e4;
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.review-summary-tile span {
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #607971;
+}
+.review-summary-tile strong {
+  font-size: 0.96rem;
+  color: #123d34;
+  margin-top: 4px;
+}
+.review-summary-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* 6. Contextual Helper & Reassurance Box ("Why am I asking?") */
+.contextual-helper-box {
+  background: #f3f8f6;
+  border-left: 4px solid #0c8264;
+  border-radius: 0 12px 12px 0;
+  padding: 12px 16px;
+  margin: 16px 0;
+  font-size: 0.86rem;
+  color: #38554d;
+  line-height: 1.45;
+}
+.contextual-helper-box strong {
+  display: block;
+  color: #0f5242;
+  margin-bottom: 2px;
+}
+
+/* 7. Kiosk & Laptop Two-Zone Enhancements */
+@media(min-width: 1024px) {
+  .kiosk-two-zone-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.35fr) minmax(300px, 0.85fr);
+    gap: 28px;
+    align-items: start;
+  }
+  .kiosk-companion-panel {
+    background: #ffffff;
+    border: 1px solid #d8e5e0;
+    border-radius: 20px;
+    padding: 24px;
+    box-shadow: 0 8px 24px rgba(11, 93, 75, 0.05);
+    position: sticky;
+    top: 90px;
+  }
+  .kiosk-companion-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    font-weight: 800;
+    color: #0b5d4b;
+    margin-bottom: 12px;
+  }
+  .kiosk-companion-text {
+    font-size: 0.9rem;
+    color: #4f6860;
+    line-height: 1.55;
+    margin: 0 0 16px;
+  }
+}
+
+/* 8. Responsive Progress Switching */
+@media(max-width: 768px) {
+  .patient-progress.reference-progress {
+    display: none !important;
+  }
+  .patient-progress-mobile {
+    display: block !important;
+  }
+}

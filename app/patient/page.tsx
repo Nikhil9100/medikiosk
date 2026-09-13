@@ -106,7 +106,7 @@ export default function PatientWelcome() {
             </div>
           )}
 
-          <div className="reference-actions" style={{ marginTop: "16px" }}>
+          <div className="reference-actions mobile-action-dock" style={{ marginTop: "16px" }}>
             <button
               className="primary reference-primary welcome-continue-btn"
               disabled={busy}
