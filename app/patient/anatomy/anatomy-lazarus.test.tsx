@@ -104,42 +104,24 @@ describe("PatientAnatomyPage with Lazarus Integration", () => {
     expect(chestButton).toHaveAttribute("aria-pressed", "true");
   });
 
-  it("defaults to Neutral holographic figure and allows toggling to Male and Female", async () => {
+  it("uses gender-neutral holographic figure and removes male/female selectors", async () => {
     renderPage();
     fireEvent.click(screen.getByText(`🔍 ${t("pinpointSelector")}`));
     expect(await screen.findByLabelText(t("pinpointSelector"))).toBeInTheDocument();
 
-    // Neutral button is present and pressed by default
-    const neutralBtn = screen.getByRole("button", { name: t("neutralFigure") });
-    const maleBtn = screen.getByRole("button", { name: t("maleFigure") });
-    const femaleBtn = screen.getByRole("button", { name: t("femaleFigure") });
+    // Verify neither Male nor Female toggle buttons exist
+    expect(screen.queryByRole("button", { name: /male/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /female/i })).not.toBeInTheDocument();
 
-    expect(neutralBtn).toBeInTheDocument();
-    expect(maleBtn).toBeInTheDocument();
-    expect(femaleBtn).toBeInTheDocument();
-
-    expect(neutralBtn).toHaveAttribute("aria-pressed", "true");
-    expect(maleBtn).toHaveAttribute("aria-pressed", "false");
-    expect(femaleBtn).toHaveAttribute("aria-pressed", "false");
-
-    // The image displayed is neutralFront.png
+    // Front view loads neutralFront.png
     const bodyImg = screen.getByAltText("Body diagram front view");
     expect(bodyImg).toHaveAttribute("src", "/lazarus/neutralFront.png");
 
-    // Click Male
-    fireEvent.click(maleBtn);
-    expect(maleBtn).toHaveAttribute("aria-pressed", "true");
-    expect(neutralBtn).toHaveAttribute("aria-pressed", "false");
-    expect(bodyImg).toHaveAttribute("src", "/lazarus/manFront.png");
+    // Toggle to Back view
+    const backBtn = screen.getByRole("button", { name: t("backView") || "Back" });
+    fireEvent.click(backBtn);
 
-    // Click Female
-    fireEvent.click(femaleBtn);
-    expect(femaleBtn).toHaveAttribute("aria-pressed", "true");
-    expect(bodyImg).toHaveAttribute("src", "/lazarus/womanFront.png");
-
-    // Click Neutral again
-    fireEvent.click(neutralBtn);
-    expect(neutralBtn).toHaveAttribute("aria-pressed", "true");
-    expect(bodyImg).toHaveAttribute("src", "/lazarus/neutralFront.png");
+    const backImg = screen.getByAltText("Body diagram back view");
+    expect(backImg).toHaveAttribute("src", "/lazarus/neutralBack.png");
   });
 });

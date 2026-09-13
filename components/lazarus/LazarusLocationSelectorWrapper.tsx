@@ -25,19 +25,14 @@ export interface LazarusLocationSelectorWrapperProps {
     flipToFront: string;
     cancel: string;
     confirm: string;
-    neutral: string;
-    male: string;
-    female: string;
     selectedLocation: string;
     noAreaSelected: string;
   };
 }
 
-export type LazarusFigureGender = "neutral" | "male" | "female";
-
 /**
  * Executes the exact Lazarus coordinate-to-bodypart determination algorithm
- * from lazarus-location-selector v1.5.2 (View1.js).
+ * from lazarus-location-selector v1.5.2 (View1.js) using gender-neutral proportions.
  */
 export function determineLazarusBodyPart(
   percentX: number,
@@ -45,7 +40,7 @@ export function determineLazarusBodyPart(
   cropWidth: number,
   cropHeight: number,
   front: boolean,
-  gender: LazarusFigureGender | boolean = "neutral",
+  _gender?: unknown,
 ): LazarusBodyPart {
   const centerX = percentX + cropWidth / 2;
   const centerY = percentY + cropHeight / 2;
@@ -64,8 +59,7 @@ export function determineLazarusBodyPart(
   const outsideLegXLine = 15;
   const insideHandXLine = 20;
   const outsideFootXLine = 20;
-  const isFemale = gender === "female" || gender === true;
-  const shoulderXLine = isFemale ? 7 : 10;
+  const shoulderXLine = 10;
 
   // Gaps between body parts
   if (centerX < midLine + 6 && centerX > midLine - 6 && centerY < 100 && centerY > 80) return "";
@@ -133,7 +127,6 @@ export function LazarusLocationSelectorWrapper({
   onClose,
   labels,
 }: LazarusLocationSelectorWrapperProps) {
-  const [sex, setSex] = useState<LazarusFigureGender>("neutral");
   const [front, setFront] = useState<boolean>(true);
   const [isZoomed, setIsZoomed] = useState<boolean>(false);
   const [selectorX, setSelectorX] = useState<number>(39);
@@ -141,27 +134,16 @@ export function LazarusLocationSelectorWrapper({
   const [selectorWidth] = useState<number>(22);
   const [selectorHeight] = useState<number>(15);
   const [currentPart, setCurrentPart] = useState<string>(() =>
-    determineLazarusBodyPart(39, 34, 22, 15, true, "neutral"),
+    determineLazarusBodyPart(39, 34, 22, 15, true),
   );
   const containerRef = useRef<HTMLDivElement>(null);
   const isDraggingRef = useRef<boolean>(false);
 
-  const imageSrc =
-    sex === "neutral"
-      ? front
-        ? "/lazarus/neutralFront.png"
-        : "/lazarus/neutralBack.png"
-      : sex === "female"
-        ? front
-          ? "/lazarus/womanFront.png"
-          : "/lazarus/womanBack.png"
-        : front
-          ? "/lazarus/manFront.png"
-          : "/lazarus/manBack.png";
+  const imageSrc = front ? "/lazarus/neutralFront.png" : "/lazarus/neutralBack.png";
 
   const updateLocation = useCallback(
-    (x: number, y: number, isFront: boolean, currentSex: LazarusFigureGender) => {
-      const part = determineLazarusBodyPart(x, y, selectorWidth, selectorHeight, isFront, currentSex);
+    (x: number, y: number, isFront: boolean) => {
+      const part = determineLazarusBodyPart(x, y, selectorWidth, selectorHeight, isFront);
       setCurrentPart(part);
       const mapped = mapLazarusToCanonical(part);
       onSelectionChange(mapped.region, mapped.subregion, part);
@@ -181,7 +163,7 @@ export function LazarusLocationSelectorWrapper({
     setSelectorX(newX);
     setSelectorY(newY);
     isDraggingRef.current = true;
-    updateLocation(newX, newY, front, sex);
+    updateLocation(newX, newY, front);
   };
 
   const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -195,7 +177,7 @@ export function LazarusLocationSelectorWrapper({
 
     setSelectorX(newX);
     setSelectorY(newY);
-    updateLocation(newX, newY, front, sex);
+    updateLocation(newX, newY, front);
   };
 
   const handlePointerUp = () => {
@@ -205,14 +187,8 @@ export function LazarusLocationSelectorWrapper({
   const toggleFrontBack = () => {
     const nextFront = !front;
     setFront(nextFront);
-    updateLocation(selectorX, selectorY, nextFront, sex);
+    updateLocation(selectorX, selectorY, nextFront);
   };
-
-  const toggleSex = (newSex: LazarusFigureGender) => {
-    setSex(newSex);
-    updateLocation(selectorX, selectorY, front, newSex);
-  };
-
 
   return (
     <div className="lazarus-container" aria-label={labels.pinpointTitle}>
@@ -247,33 +223,6 @@ export function LazarusLocationSelectorWrapper({
             aria-pressed={!front}
           >
             {labels.flipToBack}
-          </button>
-        </div>
-
-        <div className="lazarus-sex-toggles flex gap-2">
-          <button
-            type="button"
-            className={`body-view-toggle__button ${sex === "neutral" ? "body-view-toggle__button--active" : ""}`}
-            onClick={() => toggleSex("neutral")}
-            aria-pressed={sex === "neutral"}
-          >
-            {labels.neutral}
-          </button>
-          <button
-            type="button"
-            className={`body-view-toggle__button ${sex === "male" ? "body-view-toggle__button--active" : ""}`}
-            onClick={() => toggleSex("male")}
-            aria-pressed={sex === "male"}
-          >
-            {labels.male}
-          </button>
-          <button
-            type="button"
-            className={`body-view-toggle__button ${sex === "female" ? "body-view-toggle__button--active" : ""}`}
-            onClick={() => toggleSex("female")}
-            aria-pressed={sex === "female"}
-          >
-            {labels.female}
           </button>
         </div>
       </div>
