@@ -6,6 +6,8 @@ import type { BodyRegion, Severity } from "@/lib/patient-flow";
 import type { TranslationKey } from "@/lib/i18n";
 import { parseAnatomyVoice, getLocaleForLanguage } from "@/lib/anatomy-voice";
 import { usePatient } from "../PatientShell";
+import type { PatientBodyRegion, PatientBodySubregion } from "@/lib/patient-flow";
+import { LazarusLocationSelectorWrapper as LazarusLocationSelector } from "@/components/lazarus/LazarusLocationSelectorWrapper";
 
 const regions: [BodyRegion, TranslationKey, string][] = [
   ["head", "regionHead", "Head & Neck"],
@@ -85,6 +87,7 @@ export default function Anatomy() {
   const [selectedSubregions, setSelectedSubregions] = useState<Record<string, string[]>>({});
   const [severity, setSeverity] = useState<Severity | null>(workflow.severity);
   const [view, setView] = useState<"front" | "back">(workflow.region === "back" ? "back" : "front");
+  const [mode, setMode] = useState<"diagram" | "lazarus">("diagram");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -298,6 +301,23 @@ export default function Anatomy() {
     discardProposed();
   }
 
+  function handleLazarusSelection(
+    newRegion: PatientBodyRegion | null,
+    newSubregion: PatientBodySubregion | null,
+  ) {
+    if (newRegion) {
+      setSelectedRegions([newRegion]);
+      if (newSubregion) {
+        setSelectedSubregions({ [newRegion]: [newSubregion] });
+      } else {
+        setSelectedSubregions({});
+      }
+    } else {
+      setSelectedRegions([]);
+      setSelectedSubregions({});
+    }
+  }
+
   function handleKey(e: React.KeyboardEvent, key: BodyRegion) {
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
@@ -504,8 +524,50 @@ export default function Anatomy() {
         </div>
       )}
 
+      {/* View Mode Toolbar: Standard 2D Diagram vs Precision Pinpoint */}
+      <div className="body-view-toggle" role="group" aria-label={t("standardDiagram") || "Body selection mode"}>
+        <button
+          type="button"
+          className={`body-view-toggle__button ${mode === "diagram" ? "body-view-toggle__button--active" : ""}`}
+          aria-pressed={mode === "diagram"}
+          onClick={() => setMode("diagram")}
+        >
+          {t("standardDiagram")}
+        </button>
+        <button
+          type="button"
+          className={`body-view-toggle__button ${mode === "lazarus" ? "body-view-toggle__button--active" : ""}`}
+          aria-pressed={mode === "lazarus"}
+          onClick={() => setMode("lazarus")}
+        >
+          🔍 {t("pinpointSelector")}
+        </button>
+      </div>
+
       <div className="anatomy-reference-layout">
-        <div className="body-map">
+        {mode === "lazarus" ? (
+          <LazarusLocationSelector
+            activeRegion={region}
+            activeSubregion={region && selectedSubregions[region] ? (selectedSubregions[region][0] as PatientBodySubregion) : null}
+            onSelectionChange={handleLazarusSelection}
+            onClose={() => setMode("diagram")}
+            labels={{
+              pinpointTitle: t("pinpointSelector"),
+              zoomInstruction: t("zoomInstruction"),
+              zoomIn: t("zoomIn"),
+              zoomOut: t("zoomOut"),
+              flipToBack: t("backView") || "Back",
+              flipToFront: t("frontView") || "Front",
+              cancel: t("cancelPinpoint"),
+              confirm: t("confirmSelection"),
+              male: t("maleFigure"),
+              female: t("femaleFigure"),
+              selectedLocation: t("selectedLocationLabel"),
+              noAreaSelected: t("noAreaSelected"),
+            }}
+          />
+        ) : (
+          <div className="body-map">
           <div className="body-map-view-toggle" role="tablist" aria-label="Body diagram orientation">
             <button
               type="button"
@@ -684,6 +746,7 @@ export default function Anatomy() {
             )}
           </svg>
         </div>
+        )}
 
         <div className="body-region-list" role="group" aria-label="Body region selection list">
           {regions.map(([key, labelKey, fallback]) => {

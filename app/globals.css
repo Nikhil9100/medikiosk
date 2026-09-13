@@ -358,3 +358,129 @@ pre{max-width:100%;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;wor
 .anaya-btn-danger{background:#b42318;color:#ffffff;border-color:#9e1f15}
 .anaya-btn-danger:hover{background:#941b12}
 
+/* ── Lazarus Location Selector: Pinpoint & Zoom ────────────────────────────── */
+.lazarus-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  gap: 0.75rem;
+}
+
+.lazarus-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.lazarus-button {
+  min-height: 44px;
+  padding: 0.45rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--foreground);
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.lazarus-button--cancel {
+  border-color: #cbd5e1;
+  color: #475569;
+}
+
+.lazarus-button--cancel:hover {
+  background: #f1f5f9;
+}
+
+.lazarus-stage {
+  position: relative;
+  width: 100%;
+  height: 380px;
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  background: #f8fafc;
+  overflow: hidden;
+  cursor: crosshair;
+  user-select: none;
+}
+
+.lazarus-stage--zoomed {
+  border-color: var(--indigo);
+  box-shadow: 0 0 0 1px var(--indigo);
+}
+
+.lazarus-viewport {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lazarus-image {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+}
+
+.lazarus-target-box {
+  position: absolute;
+  border: 2px solid var(--indigo);
+  background: rgba(79, 70, 229, 0.18);
+  border-radius: 6px;
+  pointer-events: none;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.8);
+  transition: left 60ms ease-out, top 60ms ease-out;
+}
+
+.lazarus-target-crosshair {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  margin-left: -3px;
+  margin-top: -3px;
+  border-radius: 50%;
+  background: var(--indigo);
+  box-shadow: 0 0 0 2px #ffffff;
+}
+
+.lazarus-status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border: 1px solid var(--border);
+}
+
+@media (max-width: 375px) {
+  .lazarus-stage {
+    height: 320px;
+  }
+  .lazarus-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+@media (min-width: 768px) {
+  .lazarus-stage {
+    height: 440px;
+  }
+}
+
+@media (min-width: 1080px) {
+  .lazarus-stage {
+    height: 480px;
+  }
+}
+

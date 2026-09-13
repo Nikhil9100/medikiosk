@@ -164,10 +164,11 @@ export default function HospitalOps() {
     };
   }, [load]);
 
+  const cases = overview?.cases;
   const urgentCases = useMemo(() => {
-    if (!overview?.cases) return [];
-    return overview.cases.filter((c) => c.caseStatus === "URGENT_REVIEW" || c.unreviewedSignals > 0);
-  }, [overview?.cases]);
+    if (!cases) return [];
+    return cases.filter((c) => c.caseStatus === "URGENT_REVIEW" || c.unreviewedSignals > 0);
+  }, [cases]);
 
   const filteredCases = useMemo(() => {
     if (!overview?.cases) return [];

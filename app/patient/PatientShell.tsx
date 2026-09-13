@@ -7,7 +7,7 @@ import { clearFormDraft,clearOfflineState,enqueueJsonMutation,getResumeCredentia
 
 type ConnectionState="online"|"offline"|"syncing"|"attention";
 type MutationResult={ok:boolean;queued:boolean;status:number;data?:any};
-type Context={
+export type Context={
  workflow:PatientWorkflow;setWorkflow:React.Dispatch<React.SetStateAction<PatientWorkflow>>;
  sync:(patch:Record<string,unknown>)=>Promise<boolean>;
  mutate:(path:string,method:"POST"|"PATCH"|"DELETE",body?:Record<string,unknown>,mutationId?:string)=>Promise<MutationResult>;
@@ -16,7 +16,8 @@ type Context={
  saveDraft:(key:string,value:unknown)=>Promise<void>;loadDraft:<T>(key:string)=>Promise<T|null>;clearDraft:(key:string)=>Promise<void>;
  connection:ConnectionState;pendingCount:number;queuedBodies:(path:string)=>Promise<Record<string,unknown>[]>;
 };
-const Ctx=createContext<Context|null>(null);
+export const PatientContext=createContext<Context|null>(null);
+const Ctx=PatientContext;
 const progress = [
   { key: "language", labelKey: "stepLanguage", fallback: "Language" },
   { key: "consent", labelKey: "stepConsent", fallback: "Consent" },

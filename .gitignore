@@ -12,4 +12,8 @@ test-results/
 .vercel/
 .agents/
 skills-lock.json
+*.pem
+*.traineddata
 *.tsbuildinfo
+supabase/.temp/
+screenshots/

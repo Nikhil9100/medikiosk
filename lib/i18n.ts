@@ -322,7 +322,16 @@ const en = {
   "anayaNavAnatomy": "Go to Body Map →",
   "anayaNavInterview": "Go to Symptoms →",
   "anayaNavDocuments": "Go to Documents →",
-  "newMessages": "New messages"
+  "newMessages": "New messages",
+  "pinpointSelector": "Pinpoint on body",
+  "standardDiagram": "Standard view",
+  "zoomInstruction": "Drag or tap to place the selector over the affected area.",
+  "cancelPinpoint": "Return to standard diagram",
+  "confirmSelection": "Confirm selection",
+  "maleFigure": "Male",
+  "femaleFigure": "Female",
+  "selectedLocationLabel": "Selected location",
+  "noAreaSelected": "None selected"
 };
 
 export type TranslationKey = keyof typeof en;
@@ -627,7 +636,16 @@ const hi: Record<TranslationKey, string> = {
   "anayaNavAnatomy": "शरीर के नक्शे पर जाएं →",
   "anayaNavInterview": "लक्षणों पर जाएं →",
   "anayaNavDocuments": "दस्तावेज़ों पर जाएं →",
-  "newMessages": "नए संदेश"
+  "newMessages": "नए संदेश",
+  "pinpointSelector": "शरीर पर सटीक स्थान चुनें",
+  "standardDiagram": "सामान्य दृश्य",
+  "zoomInstruction": "प्रभावित क्षेत्र पर चयनकर्ता रखने के लिए खींचें या स्पर्श करें।",
+  "cancelPinpoint": "सामान्य आरेख पर वापस जाएं",
+  "confirmSelection": "चयन की पुष्टि करें",
+  "maleFigure": "पुरुष",
+  "femaleFigure": "महिला",
+  "selectedLocationLabel": "चयनित स्थान",
+  "noAreaSelected": "कोई चयनित नहीं"
 };
 const bn: Record<TranslationKey, string> = {
   "appName": "MediKiosk",
@@ -929,7 +947,16 @@ const bn: Record<TranslationKey, string> = {
   "anayaNavAnatomy": "বডি ম্যাপে যান →",
   "anayaNavInterview": "উপসর্গে যান →",
   "anayaNavDocuments": "নথিপত্রে যান →",
-  "newMessages": "নতুন বার্তা"
+  "newMessages": "নতুন বার্তা",
+  "pinpointSelector": "শরীরে নির্দিষ্ট স্থান চিহ্নিত করুন",
+  "standardDiagram": "সাধারণ ভিউ",
+  "zoomInstruction": "আক্রান্ত স্থানে সিলেক্টর রাখতে টেনে আনুন বা আলতো চাপ দিন।",
+  "cancelPinpoint": "সাধারণ চিত্রে ফিরে যান",
+  "confirmSelection": "নির্বাচন নিশ্চিত করুন",
+  "maleFigure": "পুরুষ",
+  "femaleFigure": "মহিলা",
+  "selectedLocationLabel": "নির্বাচিত স্থান",
+  "noAreaSelected": "কোনো স্থান নির্বাচিত নেই"
 };
 const te: Record<TranslationKey, string> = {
   "appName": "MediKiosk",
@@ -1231,7 +1258,16 @@ const te: Record<TranslationKey, string> = {
   "anayaNavAnatomy": "బాడీ మ్యాప్‌కు వెళ్లండి →",
   "anayaNavInterview": "లక్షణాలకు వెళ్లండి →",
   "anayaNavDocuments": "పత్రాలకు వెళ్లండి →",
-  "newMessages": "కొత్త సందేశాలు"
+  "newMessages": "కొత్త సందేశాలు",
+  "pinpointSelector": "శరీరంపై ఖచ్చితమైన స్థానాన్ని ఎంచుకోండి",
+  "standardDiagram": "సాధారణ వీక్షణ",
+  "zoomInstruction": "బాధిత ప్రాంతంపై సెలెక్టర్‌ను ఉంచడానికి లాగండి లేదా నొక్కండి.",
+  "cancelPinpoint": "సాధారణ చిత్రానికి తిరిగి వెళ్లండి",
+  "confirmSelection": "ఎంపికను నిర్ధారించండి",
+  "maleFigure": "పురుషుడు",
+  "femaleFigure": "మహిళ",
+  "selectedLocationLabel": "ఎంచుకున్న స్థానం",
+  "noAreaSelected": "ఏదీ ఎంపిక చేయలేదు"
 };
 const ta: Record<TranslationKey, string> = {
   "appName": "MediKiosk",
@@ -1533,7 +1569,16 @@ const ta: Record<TranslationKey, string> = {
   "anayaNavAnatomy": "உடல் வரைபடத்திற்குச் செல்லவும் →",
   "anayaNavInterview": "அறிகுறிகளுக்குச் செல்லவும் →",
   "anayaNavDocuments": "ஆவணங்களுக்குச் செல்லவும் →",
-  "newMessages": "புதிய செய்திகள்"
+  "newMessages": "புதிய செய்திகள்",
+  "pinpointSelector": "உடலில் துல்லியமான இடத்தை தேர்வு செய்யவும்",
+  "standardDiagram": "இயல்பான பார்வை",
+  "zoomInstruction": "பாதிக்கப்பட்ட பகுதியில் தேர்வியை வைக்க இழுக்கவும் அல்லது தட்டவும்.",
+  "cancelPinpoint": "இயல்பான வரைபடத்திற்குத் திரும்பு",
+  "confirmSelection": "தேர்வை உறுதிப்படுத்து",
+  "maleFigure": "ஆண்",
+  "femaleFigure": "பெண்",
+  "selectedLocationLabel": "தேர்ந்தெடுக்கப்பட்ட இடம்",
+  "noAreaSelected": "எதுவும் தேர்ந்தெடுக்கப்படவில்லை"
 };
 const mr: Record<TranslationKey, string> = {
   "appName": "MediKiosk",
@@ -1835,7 +1880,16 @@ const mr: Record<TranslationKey, string> = {
   "anayaNavAnatomy": "शरीराच्या नकाशावर जा →",
   "anayaNavInterview": "लक्षणांवर जा →",
   "anayaNavDocuments": "कागदपत्रांवर जा →",
-  "newMessages": "नवीन संदेश"
+  "newMessages": "नवीन संदेश",
+  "pinpointSelector": "शरीरावर नेमका भाग निवडा",
+  "standardDiagram": "सामान्य दृश्य",
+  "zoomInstruction": "बाधित भागावर सिलेक्टर ठेवण्यासाठी ड्रॅग करा किंवा टॅप करा.",
+  "cancelPinpoint": "सामान्य आकृतीवर परत जा",
+  "confirmSelection": "निवडीची पुष्टी करा",
+  "maleFigure": "पुरुष",
+  "femaleFigure": "स्त्री",
+  "selectedLocationLabel": "निवडलेला भाग",
+  "noAreaSelected": "काहीही निवडलेले नाही"
 };
 
 const translations: Record<PatientLanguage, Record<TranslationKey, string>> = {
@@ -1849,4 +1903,8 @@ const translations: Record<PatientLanguage, Record<TranslationKey, string>> = {
 
 export function t(lang: PatientLanguage, key: TranslationKey): string {
   return translations[lang]?.[key] ?? en[key] ?? "";
+}
+
+export function getTranslation(lang: PatientLanguage, key: TranslationKey): string {
+  return t(lang, key);
 }
