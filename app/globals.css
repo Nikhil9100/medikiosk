@@ -358,6 +358,285 @@ pre{max-width:100%;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;wor
 .anaya-btn-danger{background:#b42318;color:#ffffff;border-color:#9e1f15}
 .anaya-btn-danger:hover{background:#941b12}
 
+/* ── Lazarus Location Selector: Pinpoint & Zoom ────────────────────────────── */
+.lazarus-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  gap: 0.75rem;
+}
+
+.lazarus-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.lazarus-button {
+  min-height: 44px;
+  padding: 0.45rem 1rem;
+  border: 1px solid var(--border, #cde3da);
+  border-radius: 999px;
+  background: var(--panel, #ffffff);
+  color: var(--text, #113d35);
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.lazarus-button--cancel {
+  border-color: #cbd5e1;
+  color: #475569;
+}
+
+.lazarus-button--cancel:hover {
+  background: #f1f5f9;
+}
+
+.lazarus-stage {
+  position: relative;
+  width: 100%;
+  height: 380px;
+  border: 1px solid var(--border, #cde3da);
+  border-radius: 1rem;
+  background: radial-gradient(circle at 50% 50%, #f8fafc 0%, #e2e8f0 100%);
+  overflow: hidden;
+  cursor: crosshair;
+  user-select: none;
+}
+
+.lazarus-stage--zoomed {
+  border-color: #0c8264;
+  box-shadow: 0 0 0 1px #0c8264;
+}
+
+.lazarus-viewport {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lazarus-image {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+}
+
+.lazarus-target-box {
+  position: absolute;
+  border: 2px solid #0c8264;
+  background: rgba(12, 130, 100, 0.2);
+  border-radius: 6px;
+  pointer-events: none;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.8);
+  transition: left 60ms ease-out, top 60ms ease-out;
+}
+
+.lazarus-target-crosshair {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  margin-left: -3px;
+  margin-top: -3px;
+  border-radius: 50%;
+  background: #0c8264;
+  box-shadow: 0 0 0 2px #ffffff;
+}
+
+.lazarus-status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border: 1px solid var(--border, #cde3da);
+  padding: 0.65rem 1rem;
+  background: #f8faf9;
+  border-radius: 0.75rem;
+}
+
+@media (max-width: 375px) {
+  .lazarus-stage {
+    height: 320px;
+  }
+  .lazarus-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+@media (min-width: 768px) {
+  .lazarus-stage {
+    height: 440px;
+  }
+}
+
+@media (min-width: 1080px) {
+  .lazarus-stage {
+    height: 480px;
+  }
+}
+
+/* ── Enhanced Chatbot Conversation UI ────────────────────────────────────────── */
+.assistant-page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: calc(100vh - 180px);
+  max-width: 860px;
+  margin: 0 auto;
+}
+
+.assistant-thread {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px;
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 20px 20px 0 0;
+  overflow-y: auto;
+  min-height: 420px;
+  max-height: 65vh;
+  box-shadow: 0 4px 20px rgba(12, 130, 100, 0.04);
+}
+
+.assistant-message {
+  display: flex;
+  width: 100%;
+  list-style: none;
+}
+
+.assistant-message--patient {
+  justify-content: flex-end;
+}
+
+.assistant-message--assistant {
+  justify-content: flex-start;
+}
+
+.assistant-bubble {
+  max-width: min(85%, 620px);
+  padding: 14px 18px;
+  font-size: 0.96rem;
+  line-height: 1.55;
+  border-radius: 18px;
+  position: relative;
+  word-break: break-word;
+}
+
+.assistant-message--patient .assistant-bubble {
+  background: linear-gradient(135deg, #0b5d4b, #0c8264);
+  color: #ffffff;
+  border-bottom-right-radius: 4px;
+  box-shadow: 0 3px 12px rgba(11, 93, 75, 0.18);
+}
+
+.assistant-message--assistant .assistant-bubble {
+  background: #f7faf8;
+  color: #113d35;
+  border: 1px solid #d4e5de;
+  border-bottom-left-radius: 4px;
+  box-shadow: 0 2px 8px rgba(12, 40, 32, 0.04);
+}
+
+.assistant-composer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-top: none;
+  border-radius: 0 0 20px 20px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
+}
+
+.assistant-input {
+  flex: 1;
+  min-height: 48px;
+  border: 1.5px solid #d0e2dc;
+  border-radius: 999px;
+  padding: 0 20px;
+  font-size: 0.95rem;
+  color: #113d35;
+  background: #fbfdfc;
+  transition: all 0.2s ease;
+}
+
+.assistant-input:focus {
+  outline: none;
+  border-color: #0c8264;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(12, 130, 100, 0.15);
+}
+
+.mic-button {
+  width: 48px;
+  height: 48px;
+  min-height: 48px;
+  flex: none;
+  border-radius: 50%;
+  background: #f0f7f4;
+  border: 1.5px solid #b8ded0;
+  display: grid;
+  place-items: center;
+  font-size: 1.25rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.mic-button:hover {
+  background: #e2f2eb;
+  border-color: #0c8264;
+}
+
+.mic-button.live {
+  background: #feeceb;
+  border-color: #f04438;
+  color: #b42318;
+  animation: pulse-mic 1.4s infinite;
+}
+
+@keyframes pulse-mic {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(240, 68, 56, 0.4); }
+  70% { transform: scale(1.06); box-shadow: 0 0 0 10px rgba(240, 68, 56, 0); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(240, 68, 56, 0); }
+}
+
+@media (max-width: 600px) {
+  .assistant-bubble {
+    max-width: 92%;
+    padding: 12px 14px;
+    font-size: 0.91rem;
+  }
+  .assistant-composer {
+    padding: 10px 12px;
+    padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+  }
+  .assistant-input {
+    min-height: 44px;
+    font-size: 0.9rem;
+    padding: 0 14px;
+  }
+  .mic-button {
+    width: 44px;
+    height: 44px;
+    min-height: 44px;
+  }
+}
+
 /* ========================================================================
    Patient Console Beautification & Mobile/Laptop Ergonomics
    ======================================================================== */

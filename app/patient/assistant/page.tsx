@@ -514,8 +514,16 @@ export default function Assistant() {
             return (
               <li key={m.id} className={`msg assistant-message ${m.role === "ASSISTANT" ? "assistant assistant-message--assistant" : "patient assistant-message--patient"}`}>
                 <div className="bubble assistant-bubble">
+                  {m.role === "ASSISTANT" && (
+                    <div className="assistant-sender-tag" style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "6px", fontSize: "0.8rem", fontWeight: 700, color: "#0c8264" }}>
+                      <span aria-hidden="true">👩‍⚕️</span>
+                      <span>{assistantName}</span>
+                    </div>
+                  )}
                   <p style={{ margin: 0, whiteSpace: "pre-line" }}>{m.content}</p>
-                  {m.safety?.[0] && <div className="urgent-box assistant-safety" role="alert">{m.safety[0].summary}</div>}
+                  {m.safety?.[0] && !m.content.includes(m.safety[0].summary) && (
+                    <div className="urgent-box assistant-safety" role="alert">{m.safety[0].summary}</div>
+                  )}
                   {m.citations && m.citations.length > 0 && (
                     <ul className="assistant-citations" style={{ listStyle: "none", margin: "8px 0 0", padding: 0 }}>
                       {m.citations.map((c, i) => (
@@ -583,9 +591,13 @@ export default function Assistant() {
         )}
         {busy && (
           <li className="msg assistant assistant-message assistant-message--assistant" aria-live="polite">
-            <div className="bubble assistant-bubble" style={{ display: "inline-flex", alignItems: "center", gap: 6, color: "#25534b" }}>
-              <span aria-hidden="true">⏳</span>
-              <em>{assistantName} · {t("processing")}</em>
+            <div className="bubble assistant-bubble typing-bubble" style={{ display: "inline-flex", alignItems: "center", gap: 10, color: "#25534b" }}>
+              <div className="typing-dots" aria-hidden="true">
+                <span /><span /><span />
+              </div>
+              <em style={{ fontStyle: "normal", fontSize: "0.86rem", fontWeight: 600, color: "#0c8264" }}>
+                {assistantName} · {t("processing")}
+              </em>
             </div>
           </li>
         )}
