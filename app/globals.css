@@ -484,3 +484,720 @@ pre{max-width:100%;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;wor
   }
 }
 
+/* ========================================================================
+   MEDIKIOSK PRODUCTION REDESIGN — TWO-ZONE KIOSK & ACCESSIBILITY SYSTEM
+   ======================================================================== */
+
+/* Large Text / Elderly Accessibility Mode */
+.large-text {
+  font-size: 118%;
+  line-height: 1.6;
+}
+
+.large-text button,
+.large-text input,
+.large-text select,
+.large-text textarea {
+  min-height: 56px;
+  font-size: 1.1rem;
+}
+
+.large-text .primary,
+.large-text .secondary,
+.large-text .reference-primary,
+.large-text .reference-secondary {
+  min-height: 60px;
+  padding: 14px 28px;
+  font-size: 1.15rem;
+}
+
+.large-text .emergency-primary-cta {
+  min-height: 64px;
+  font-size: 1.25rem;
+}
+
+.large-text-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #eef6f2;
+  border: 1px solid #c2ded4;
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: #174b3d;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.large-text-switch:hover {
+  background: #dff0e8;
+  border-color: #087156;
+}
+
+.large-text-switch.active {
+  background: #087156;
+  color: #ffffff;
+  border-color: #065843;
+}
+
+.large-text-icon {
+  font-size: 1.1rem;
+  font-weight: 800;
+}
+
+/* Two-Zone Kiosk Layout */
+.patient-kiosk-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+}
+
+.patient-interaction-zone {
+  flex: 1;
+  min-width: 0;
+}
+
+.patient-medi-zone {
+  display: none;
+}
+
+@media (min-width: 840px) {
+  .patient-kiosk-layout {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    align-items: start;
+    gap: 24px;
+  }
+
+  .patient-medi-zone {
+    display: block;
+    position: sticky;
+    top: 24px;
+  }
+}
+
+@media (min-width: 1080px) {
+  .patient-kiosk-layout {
+    grid-template-columns: 1fr 370px;
+    gap: 32px;
+  }
+}
+
+/* Medi Assistant Panel */
+.medi-panel-container {
+  background: #fbfdfc;
+  border: 1px solid #cfe0d8;
+  border-radius: 20px;
+  padding: 20px;
+  box-shadow: 0 10px 30px rgba(16, 67, 54, 0.07);
+}
+
+.medi-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #e3ede8;
+}
+
+.medi-avatar-frame {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: #dff4ec;
+  border: 1px solid #bce6d7;
+  display: grid;
+  place-items: center;
+  font-size: 1.6rem;
+  flex-shrink: 0;
+}
+
+.medi-meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.medi-name {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #10233f;
+  margin: 0 0 2px;
+}
+
+.medi-mode-badge {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #e1f2ec;
+  color: #0b614b;
+}
+
+.medi-mode-safety {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.medi-speech-card {
+  margin-top: 14px;
+  background: #ffffff;
+  border: 1px solid #dce8e3;
+  border-radius: 14px;
+  padding: 14px;
+}
+
+.medi-speech-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #173f36;
+  margin: 0 0 6px;
+}
+
+.medi-speech-body {
+  font-size: 0.88rem;
+  color: #3b5a51;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.medi-speech-tip {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed #dce8e3;
+  font-size: 0.82rem;
+  color: #5d756e;
+}
+
+.medi-context-drawer {
+  margin-top: 14px;
+  border-top: 1px solid #e6efe9;
+  padding-top: 10px;
+}
+
+.medi-drawer-toggle {
+  background: none;
+  border: none;
+  padding: 0;
+  color: #0b664f;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.medi-drawer-toggle:hover {
+  text-decoration: underline;
+}
+
+.medi-drawer-body {
+  margin-top: 8px;
+  background: #f3f8f5;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 0.8rem;
+  color: #435e56;
+  line-height: 1.45;
+}
+
+/* ========================================================================
+   EMERGENCY MODAL & SAFETY INTERRUPT (P0 CLINICAL SAFETY)
+   ======================================================================== */
+.emergency-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 9999;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  animation: modal-fade-in 0.25s ease-out;
+}
+
+.emergency-modal {
+  background: #ffffff;
+  border: 3px solid #dc2626;
+  border-radius: 24px;
+  max-width: 540px;
+  width: 100%;
+  padding: clamp(24px, 5vw, 36px);
+  box-shadow: 0 25px 60px rgba(220, 38, 38, 0.35);
+  text-align: center;
+  position: relative;
+  animation: modal-pop-up 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes modal-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes modal-pop-up {
+  from { transform: scale(0.92) translateY(12px); opacity: 0; }
+  to { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+.emergency-pulse-badge {
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 16px;
+  background: #fee2e2;
+  border: 3px solid #f87171;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 2.5rem;
+  animation: emergency-beat 1.6s infinite ease-in-out;
+}
+
+@keyframes emergency-beat {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4); }
+  50% { transform: scale(1.08); box-shadow: 0 0 0 16px rgba(220, 38, 38, 0); }
+}
+
+.emergency-modal-title {
+  font-size: clamp(1.4rem, 3.5vw, 1.8rem);
+  font-weight: 900;
+  color: #991b1b;
+  margin: 0 0 10px;
+  letter-spacing: -0.02em;
+}
+
+.emergency-alert-strip {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin: 14px 0;
+  color: #b91c1c;
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.emergency-instruction-box {
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: 14px;
+  padding: 14px 18px;
+  margin: 16px 0 24px;
+  text-align: left;
+}
+
+.emergency-instruction-box ol {
+  margin: 8px 0 0;
+  padding-left: 20px;
+  color: #9a3412;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.emergency-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.emergency-primary-cta {
+  background: linear-gradient(180deg, #dc2626, #b91c1c) !important;
+  color: #ffffff !important;
+  border: 2px solid #991b1b !important;
+  box-shadow: 0 8px 24px rgba(220, 38, 38, 0.35) !important;
+  font-weight: 900 !important;
+  font-size: 1.15rem !important;
+  padding: 16px 28px !important;
+  border-radius: 16px !important;
+  letter-spacing: 0.02em !important;
+  min-height: 56px;
+  cursor: pointer;
+}
+
+.emergency-primary-cta:hover {
+  background: #991b1b !important;
+}
+
+.emergency-secondary-btn {
+  background: #f3f4f6;
+  border: 1px solid #d1d5db;
+  color: #4b5563;
+  padding: 10px 18px;
+  border-radius: 12px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.emergency-secondary-btn:hover {
+  background: #e5e7eb;
+}
+
+/* ========================================================================
+   CLINICAL CONFIRMATION CARD (P0 CONFIRMATION ARCHITECTURE)
+   ======================================================================== */
+.clinical-confirm-card {
+  background: #f4faf7;
+  border: 2px solid #89cbba;
+  border-radius: 18px;
+  padding: 18px 20px;
+  margin: 18px 0;
+  box-shadow: 0 6px 18px rgba(8, 113, 86, 0.08);
+}
+
+.confirm-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.confirm-badge {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: #087156;
+  color: #ffffff;
+  padding: 3px 10px;
+  border-radius: 999px;
+}
+
+.confirm-source-tag {
+  font-size: 0.78rem;
+  color: #55756c;
+  font-weight: 600;
+}
+
+.confirm-title {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #10233f;
+  margin: 0 0 6px;
+}
+
+.confirm-details-box {
+  background: #ffffff;
+  border: 1px solid #cce2d9;
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin: 12px 0 16px;
+}
+
+.confirm-detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid #f0f5f2;
+}
+
+.confirm-detail-row:last-child {
+  border-bottom: none;
+}
+
+.confirm-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.confirm-btn-yes {
+  flex: 1;
+  background: #087156;
+  color: #ffffff;
+  border: 1px solid #065843;
+  padding: 12px 18px;
+  border-radius: 12px;
+  font-weight: 800;
+  font-size: 0.95rem;
+  cursor: pointer;
+  min-height: 48px;
+}
+
+.confirm-btn-yes:hover {
+  background: #065843;
+}
+
+.confirm-btn-edit {
+  background: #ffffff;
+  color: #294c42;
+  border: 1px solid #b8d4ca;
+  padding: 12px 18px;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 0.92rem;
+  cursor: pointer;
+  min-height: 48px;
+}
+
+.confirm-btn-edit:hover {
+  background: #f0f7f4;
+}
+
+/* ========================================================================
+   VOICE STATE CONTROL (4 CLEAR EXPLICIT STATES)
+   ======================================================================== */
+.voice-state-controller {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: #f7fbf9;
+  border: 1px solid #dce8e3;
+  border-radius: 18px;
+  margin: 16px 0;
+}
+
+.voice-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  background: #eef7f3;
+  color: #0b664f;
+}
+
+.voice-status-pill.recording {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.voice-waveform-active {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+}
+
+.voice-waveform-bar {
+  width: 4px;
+  background: #087156;
+  border-radius: 999px;
+  animation: sound-bar-bounce 1s infinite ease-in-out;
+}
+
+@keyframes sound-bar-bounce {
+  0%, 100% { height: 6px; }
+  50% { height: 22px; }
+}
+
+/* ========================================================================
+   PRE-SUBMISSION REVIEW SCREEN (app/patient/review)
+   ======================================================================== */
+.review-reference-card {
+  max-width: 820px;
+  margin: 0 auto;
+}
+
+.review-summary-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 22px 0;
+}
+
+.review-item-card {
+  background: #ffffff;
+  border: 1px solid #d5e6df;
+  border-radius: 16px;
+  padding: 16px 20px;
+  box-shadow: 0 4px 12px rgba(16, 67, 54, 0.04);
+}
+
+.review-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.review-card-title {
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #087156;
+  margin: 0;
+}
+
+.review-edit-btn {
+  background: #eef7f3;
+  border: 1px solid #c4ded4;
+  color: #087156;
+  border-radius: 8px;
+  padding: 5px 12px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.review-edit-btn:hover {
+  background: #dff2eb;
+}
+
+.review-content-body {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #10233f;
+  margin: 0;
+}
+
+.review-tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.review-symptom-tag {
+  background: #f0f7f4;
+  border: 1px solid #cde3da;
+  color: #245244;
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.review-submit-primary {
+  min-height: 56px;
+  font-size: 1.1rem !important;
+  font-weight: 800 !important;
+}
+
+/* ========================================================================
+   COMPLETION SCREEN ENHANCEMENTS
+   ======================================================================== */
+.complete-modern-card {
+  text-align: center;
+}
+
+.completion-hero {
+  margin-bottom: 24px;
+}
+
+.token-highlight-card {
+  background: linear-gradient(135deg, #f3faf6, #ffffff) !important;
+  border: 2px solid #8ecbb9 !important;
+  border-radius: 20px !important;
+  padding: 24px !important;
+  box-shadow: 0 12px 30px rgba(8, 113, 86, 0.12) !important;
+}
+
+.token-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.token-label {
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: #1c5243;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.token-badge {
+  background: #dff2ea;
+  color: #087156;
+  font-size: 0.75rem;
+  font-weight: 800;
+  padding: 3px 10px;
+  border-radius: 999px;
+}
+
+.token-value {
+  display: block;
+  font-size: clamp(2.8rem, 6vw, 3.8rem) !important;
+  font-weight: 900 !important;
+  color: #087156 !important;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  margin: 12px 0 14px;
+}
+
+.token-help {
+  font-size: 0.9rem;
+  color: #55756c;
+  margin: 0;
+}
+
+.plain-next-steps {
+  margin: 24px 0;
+}
+
+.next-steps-heading {
+  font-size: 1.15rem !important;
+  font-weight: 800 !important;
+  color: #10233f !important;
+  margin-bottom: 16px !important;
+}
+
+.next-step-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  margin: 12px 0;
+  text-align: left;
+}
+
+.step-badge {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #087156;
+  color: #ffffff;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-size: 0.95rem;
+  flex-shrink: 0;
+}
+
+.step-content strong {
+  display: block;
+  font-size: 0.98rem;
+  color: #10233f;
+  margin-bottom: 2px;
+}
+
+.step-content p {
+  margin: 0;
+  font-size: 0.88rem;
+  color: #55726a;
+}
+
+.complete-reassurance-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: #f5f9f7;
+  border: 1px solid #d8e8e1;
+  border-radius: 14px;
+  padding: 14px 16px;
+  text-align: left;
+  margin: 20px 0;
+  font-size: 0.85rem;
+  color: #3b5a51;
+}
+
+.complete-reassurance-note .note-icon {
+  font-size: 1.3rem;
+  flex-shrink: 0;
+}
+
+

@@ -4,6 +4,8 @@ import { usePathname,useRouter } from "next/navigation";
 import { defaultWorkflow,routeForStep,type BodyRegion,type PatientLanguage,type PatientStep,type PatientWorkflow } from "@/lib/patient-flow";
 import { t as translate,type TranslationKey,languageNames,localizedAssistantName } from "@/lib/i18n";
 import { clearFormDraft,clearOfflineState,enqueueJsonMutation,getResumeCredentials,listPendingMutations,loadFormDraft,loadOfflineWorkflow,loadResumeCredentials,pendingMutationCount,replayQueuedMutations,saveFormDraft,saveOfflineWorkflow } from "@/lib/offline-resilience";
+import LargeTextToggle from "@/components/ui/LargeTextToggle";
+import MediAssistantPanel, { type MediMode } from "@/components/ui/MediAssistantPanel";
 
 type ConnectionState="online"|"offline"|"syncing"|"attention";
 type MutationResult={ok:boolean;queued:boolean;status:number;data?:any};
@@ -150,17 +152,140 @@ export default function PatientShell({children}:{children:React.ReactNode}){
  const queuedBodies=useCallback(async(path:string)=>(await listPendingMutations()).filter(m=>m.path===path&&m.body).map(m=>m.body as Record<string,unknown>),[]);
  const value=useMemo(()=>({workflow,setWorkflow,sync,mutate,ensureSynced,beginSession,finishOfflineCase,t:(k:TranslationKey)=>translate(workflow.language,k),setLanguage,reset,saveDraft:safeSaveDraft,loadDraft:loadFormDraft,clearDraft:clearFormDraft,connection,pendingCount,queuedBodies}),[workflow,sync,mutate,ensureSynced,beginSession,finishOfflineCase,safeSaveDraft,connection,pendingCount,queuedBodies,reset]);
  const current=pathname==="/patient"?0:progress.findIndex(x=>pathname.includes(`/patient/${x.key}`));
+
+ // Medi context mapping for kiosk 2-zone layout
+ const isIntakeScreen =
+   pathname.includes("/patient/consent") ||
+   pathname.includes("/patient/identity") ||
+   pathname.includes("/patient/complaint") ||
+   pathname.includes("/patient/anatomy") ||
+   pathname.includes("/patient/symptoms") ||
+   pathname.includes("/patient/interview") ||
+   pathname.includes("/patient/documents") ||
+   pathname.includes("/patient/review");
+
+ const mediMode: MediMode =
+   pathname.includes("review") ? "completion" :
+   pathname.includes("documents") ? "guide" :
+   pathname.includes("consent") || pathname.includes("identity") ? "guide" :
+   "interviewer";
+
+ const mediMessage =
+   pathname.includes("complaint") ? "Tell us what is bothering you today in your own words. You can tap quick choices or speak." :
+   pathname.includes("anatomy") ? "Tap where on the body the discomfort is located, and tell us how severe it feels." :
+   pathname.includes("symptoms") ? "Select any other symptoms you are experiencing. If you aren't sure, you can choose 'I'm not sure'." :
+   pathname.includes("interview") ? "Answer each question one by one. You can use touch or tap the microphone to speak." :
+   pathname.includes("documents") ? "If you have old prescriptions or reports, you can upload photos of them now. This step is optional." :
+   pathname.includes("review") ? "Please check that all your answers are correct before submitting to the doctor." :
+   pathname.includes("consent") ? "Your privacy is protected. We collect only what is needed for your doctor visit today." :
+   pathname.includes("identity") ? "If you have an ABHA ID, you can link it here. If not, feel free to continue without it." :
+   "I'll help you prepare your details for the doctor.";
+
+ const mediWhy =
+   pathname.includes("complaint") ? "Understanding your main concern helps the doctor prepare before entering the examination room." :
+   pathname.includes("anatomy") ? "Locating the exact area and severity helps the triage team determine if immediate attention is needed." :
+   pathname.includes("symptoms") ? "Associated symptoms give the doctor a complete picture of your current illness." :
+   pathname.includes("interview") ? "These standard clinical questions help the doctor diagnose and treat you faster." :
+   pathname.includes("documents") ? "Old medical reports help the doctor understand your medical history and current medications." :
+   pathname.includes("review") ? "Once submitted, this summary goes directly to the doctor's consultation computer." :
+   pathname.includes("consent") ? "Hospital regulations require your consent before collecting health information." :
+   pathname.includes("identity") ? "ABHA helps connect your health records across hospitals in India." :
+   undefined;
+
  return <Ctx.Provider value={value}>
    <a className="skip-link" href="#patient-main">Skip to main content</a>
    <div className="patient-app reference-patient-app">
     <header className="patient-topbar reference-patient-header">
-      <div className="patient-brand"><span className="brand-mark" aria-hidden="true">✚</span><div><strong>MediKiosk</strong><span>{translate(workflow.language,"patientVisit")} · {translate(workflow.language,"tagline")}</span></div></div>
-      <div className="patient-top-actions"><span className={`connection-chip ${connection}`} role="status">{connection==="online"?translate(workflow.language,"connectionOnline"):connection==="syncing"?translate(workflow.language,"connectionSyncing"):connection==="offline"?`${translate(workflow.language,"connectionOffline")} · ${pendingCount}`:translate(workflow.language,"connectionAttention")}</span><button type="button" onClick={()=>router.push("/patient/assistant")} className="top-action medi-launcher" aria-label={translate(workflow.language,"assistant")}><span aria-hidden="true">👩‍⚕️</span> {localizedAssistantName(workflow.language)}</button><label className="language-chip"><span className="sr-only">{translate(workflow.language,"languageTitle")}</span><select value={workflow.language} onChange={e=>{const l=e.target.value as PatientLanguage;setLanguage(l);void sync({language:l});}}>{Object.entries(languageNames).map(([k,v])=><option key={k} value={k}>{v}</option>)}</select></label></div>
+      <div className="patient-brand">
+        <span className="brand-mark" aria-hidden="true">✚</span>
+        <div>
+          <strong>MediKiosk</strong>
+          <span>{translate(workflow.language,"patientVisit")} · {translate(workflow.language,"tagline")}</span>
+        </div>
+      </div>
+      <div className="patient-top-actions">
+        <LargeTextToggle />
+        <span className={`connection-chip ${connection}`} role="status">
+          {connection==="online"? "✓ Progress saved" : connection==="syncing"?translate(workflow.language,"connectionSyncing"):connection==="offline"?`${translate(workflow.language,"connectionOffline")} · ${pendingCount}`:translate(workflow.language,"connectionAttention")}
+        </span>
+        <button type="button" onClick={()=>router.push("/patient/assistant")} className="top-action medi-launcher" aria-label={translate(workflow.language,"assistant")}>
+          <span aria-hidden="true">👩‍⚕️</span> {localizedAssistantName(workflow.language)}
+        </button>
+        <label className="language-chip">
+          <span className="sr-only">{translate(workflow.language,"languageTitle")}</span>
+          <select value={workflow.language} onChange={e=>{const l=e.target.value as PatientLanguage;setLanguage(l);void sync({language:l});}}>
+            {Object.entries(languageNames).map(([k,v])=><option key={k} value={k}>{v}</option>)}
+          </select>
+        </label>
+      </div>
     </header>
-    {current>=0&&<nav className="patient-progress reference-progress" aria-label="Clinical intake progress">{progress.map((p,i)=><span key={p.key} className={i<current?"done":i===current?"active":""}><b>{i+1}</b><em>{translate(workflow.language,p.labelKey)||p.fallback}</em></span>)}</nav>}
+
+    {current>=0 && (
+      <>
+        <div className="patient-calm-progress-header" role="status" aria-label={`Step ${Math.min(current+1, 9)} of 9: ${translate(workflow.language, progress[current]?.labelKey) || progress[current]?.fallback || "Intake"}`}>
+          <div className="calm-progress-meta">
+            <span className="calm-step-indicator">Step {Math.min(current+1, 9)} of 9</span>
+            <span className="calm-step-sep" aria-hidden="true">·</span>
+            <strong className="calm-step-title">{translate(workflow.language, progress[current]?.labelKey) || progress[current]?.fallback || "Intake"}</strong>
+          </div>
+          <div className="calm-progress-bar-container" aria-hidden="true">
+            <div className="calm-progress-bar-fill" style={{ width: `${Math.min(100, Math.round(((current+1)/9)*100))}%` }} />
+          </div>
+        </div>
+
+        {/* Existing tested progress element preserved for test compatibility */}
+        <nav className="patient-progress reference-progress sr-only" aria-label="Clinical intake progress">
+          {progress.map((p,i)=><span key={p.key} className={i<current?"done":i===current?"active":""}><b>{i+1}</b><em>{translate(workflow.language,p.labelKey)||p.fallback}</em></span>)}
+        </nav>
+      </>
+    )}
+
     {error&&<div className="system-banner error shell-banner" role="alert">{error}{connection!=="online"&&workflow.sessionId&&<button type="button" className="inline-retry" onClick={()=>void flush()}>Retry sync</button>}</div>}
-    <main id="patient-main" className="patient-main reference-patient-main">{boot?<div className="loading-card" role="status"><h1 className="sr-only">Patient Console Loading</h1>Loading secure session…</div>:children}</main>
-    <footer className="patient-footer reference-patient-footer"><nav className="patient-footer-nav" aria-label="Footer navigation"><div className="footer-brand"><strong>MediKiosk</strong><span className="footer-brand-sep" aria-hidden="true">·</span><span>{translate(workflow.language,"patientVisit")}</span></div><div className="footer-links"><a href="/patient/consent">{translate(workflow.language,"footerPrivacy")}</a><a href="/patient/consent">{translate(workflow.language,"footerTerms")}</a><a href="/patient/assistant">{localizedAssistantName(workflow.language)} {translate(workflow.language,"footerHelp")}</a><a href="/patient/language">{translate(workflow.language,"footerLanguage")}</a></div></nav><div className="footer-disclaimer"><span>{translate(workflow.language,"nonDiagnosticDisclaimer") || "Not a diagnostic tool · Physician review required"}</span><span>{translate(workflow.language,"emergencyNotice")}</span></div></footer>
+    
+    <main id="patient-main" className="patient-main reference-patient-main">
+      {boot ? (
+        <div className="loading-card" role="status">
+          <h1 className="sr-only">Patient Console Loading</h1>
+          Loading secure session…
+        </div>
+      ) : isIntakeScreen ? (
+        <div className="patient-kiosk-layout">
+          <div className="patient-interaction-zone">
+            {children}
+          </div>
+          <div className="patient-medi-zone">
+            <MediAssistantPanel
+              mode={mediMode}
+              message={mediMessage}
+              whyExplanation={mediWhy}
+              stepContext={`Step ${Math.min(current+1, 9)} of 9`}
+            />
+          </div>
+        </div>
+      ) : (
+        children
+      )}
+    </main>
+
+    <footer className="patient-footer reference-patient-footer">
+      <nav className="patient-footer-nav" aria-label="Footer navigation">
+        <div className="footer-brand">
+          <strong>MediKiosk</strong>
+          <span className="footer-brand-sep" aria-hidden="true">·</span>
+          <span>{translate(workflow.language,"patientVisit")}</span>
+        </div>
+        <div className="footer-links">
+          <a href="/patient/consent">{translate(workflow.language,"footerPrivacy")}</a>
+          <a href="/patient/consent">{translate(workflow.language,"footerTerms")}</a>
+          <a href="/patient/assistant">{localizedAssistantName(workflow.language)} {translate(workflow.language,"footerHelp")}</a>
+          <a href="/patient/language">{translate(workflow.language,"footerLanguage")}</a>
+        </div>
+      </nav>
+      <div className="footer-disclaimer">
+        <span>{translate(workflow.language,"nonDiagnosticDisclaimer") || "Not a diagnostic tool · Physician review required"}</span>
+        <span>{translate(workflow.language,"emergencyNotice")}</span>
+      </div>
+    </footer>
    </div>
  </Ctx.Provider>;
 }

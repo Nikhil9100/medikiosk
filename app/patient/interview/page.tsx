@@ -6,6 +6,8 @@ import { QUESTIONS, nextQuestion, stateForYesNo } from "@/lib/interview-engine";
 import { interviewLabel } from "@/lib/interview-localization";
 import type { InterviewFact, InterviewState } from "@/lib/patient-flow";
 import { usePatient } from "../PatientShell";
+import EmergencyModal from "@/components/ui/EmergencyModal";
+import ConfirmationCard from "@/components/ui/ConfirmationCard";
 
 export default function Interview() {
   const router = useRouter();
@@ -25,6 +27,13 @@ export default function Interview() {
   const [error, setError] = useState("");
   const [recording, setRecording] = useState(false);
   const [speaking, setSpeaking] = useState(false);
+  const [showEmergency, setShowEmergency] = useState(false);
+  const [emergencyReason, setEmergencyReason] = useState("");
+  const [pendingConfirmation, setPendingConfirmation] = useState<{
+    transcript: string;
+    state: InterviewState;
+  } | null>(null);
+  const [whyOpen, setWhyOpen] = useState(false);
 
   const rec = useRef<MediaRecorder | null>(null);
   const stream = useRef<MediaStream | null>(null);
@@ -44,7 +53,7 @@ export default function Interview() {
       abort.current?.abort();
       if (timeout.current) clearTimeout(timeout.current);
       if (rec.current && rec.current.state !== "inactive") rec.current.stop();
-      stream.current?.getTracks().forEach((t) => t.stop());
+      stream.current?.getTracks().forEach((trk) => trk.stop());
       audio.current?.pause();
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -59,6 +68,13 @@ export default function Interview() {
     prov: "PATIENT" | "VOICE" | "TOUCH" = "PATIENT"
   ) {
     if (!q || busy) return;
+
+    // Red flag safety check
+    if (q.redFlag && (state === "KNOWN" || (raw && raw.toLowerCase().includes("yes")))) {
+      setEmergencyReason(interviewLabel(q.id, workflow.language, q.label));
+      setShowEmergency(true);
+    }
+
     setBusy(true);
     setError("");
 
@@ -79,6 +95,7 @@ export default function Interview() {
       setFacts(next);
       setWorkflow((w) => ({ ...w, interviewFacts: next }));
       setValue("");
+      setPendingConfirmation(null);
       await clearDraft("interview-answer-draft");
     } else {
       setError(t("networkError") || "Could not save this answer. Please retry.");
@@ -98,6 +115,8 @@ export default function Interview() {
       rec.current.stop();
       return;
     }
+
+    setPendingConfirmation(null);
 
     try {
       discard.current = false;
@@ -135,7 +154,11 @@ export default function Interview() {
           const d = (await res.json()) as { transcript: string };
 
           if (q.type === "yes_no") {
-            await save(stateForYesNo(d.transcript), d.transcript, "VOICE");
+            const inferredState = stateForYesNo(d.transcript);
+            setPendingConfirmation({
+              transcript: d.transcript,
+              state: inferredState,
+            });
           } else {
             setValue(d.transcript);
           }
@@ -199,16 +222,18 @@ export default function Interview() {
     return (
       <section className="flow-card reference-card interview-reference-card">
         <div className="medi-interview-heading">
-          <span className="medi-large-avatar">👩‍⚕️</span>
+          <span className="medi-large-avatar" aria-hidden="true">👩‍⚕️</span>
           <div>
-            <p className="eyebrow">{t("interviewEyebrow")}</p>
-            <h1>{t("interviewCompleteHeading")}</h1>
+            <p className="eyebrow">{t("interviewEyebrow") || "Visit Preparation"}</p>
+            <h1>{t("interviewCompleteHeading") || "All Questions Answered!"}</h1>
           </div>
         </div>
-        <p className="lead">{t("interviewCompleteLead")}</p>
+        <p className="lead">
+          {t("interviewCompleteLead") || "Thank you. Your answers will help the doctor prepare before your consultation."}
+        </p>
         <div className="actions">
-          <button className="primary" onClick={() => void finish()}>
-            {t("continue")} →
+          <button className="primary reference-primary" onClick={() => void finish()}>
+            {t("continue") || "Continue to Documents"} →
           </button>
         </div>
       </section>
@@ -221,113 +246,170 @@ export default function Interview() {
   return (
     <section className="flow-card reference-card interview-reference-card">
       <div className="medi-interview-heading">
-        <span className="medi-large-avatar">👩‍⚕️</span>
+        <span className="medi-large-avatar" aria-hidden="true">👩‍⚕️</span>
         <div>
           <p className="eyebrow">
-            {t("interviewEyebrow")} · {n}/{QUESTIONS.length}
+            Question {n} of {QUESTIONS.length}
           </p>
-          <h1>{t("interviewHeading") || t("interviewTitle")}</h1>
+          <h1>I&apos;ll ask you a few quick questions.</h1>
+
         </div>
       </div>
 
       <div className="panel interview-question-panel">
-        <small>{q.domain.replaceAll("_", " ")}</small>
-        <h2>{label}</h2>
-        <button
-          className="secondary"
-          disabled={speaking}
-          onClick={() => void speakQuestion()}
-        >
-          {speaking ? "🔊 Playing…" : `🔊 ${t("speak")}`}
-        </button>
-        {q.redFlag && <p className="helper">{t("redFlagNotice")}</p>}
+        <small className="interview-domain-tag">{q.domain.replaceAll("_", " ")}</small>
+        <h2 className="interview-current-question">{label}</h2>
+
+        <div className="interview-audio-controls">
+          <button
+            type="button"
+            className="secondary interview-speak-btn"
+            disabled={speaking}
+            onClick={() => void speakQuestion()}
+            aria-label="Read question aloud with audio"
+          >
+            {speaking ? "🔊 Playing…" : "🔊 Read aloud"}
+          </button>
+        </div>
+
+        {/* Why am I asking this? contextual drawer */}
+        <div className="interview-why-block">
+          <button
+            type="button"
+            className="interview-why-toggle"
+            onClick={() => setWhyOpen(!whyOpen)}
+            aria-expanded={whyOpen}
+          >
+            <span>💡 Why am I asking this?</span>
+            <span aria-hidden="true">{whyOpen ? "▲" : "▼"}</span>
+          </button>
+          {whyOpen && (
+            <div className="interview-why-details">
+              This helps the healthcare team understand how your symptoms have changed over time and identify any safety concerns.
+            </div>
+          )}
+        </div>
+
+        {q.redFlag && (
+          <p className="helper red-flag-helper">
+            ⚠️ {t("redFlagNotice") || "This question helps identify if urgent care is required."}
+          </p>
+        )}
       </div>
+
+      {/* Voice Confirmation Card */}
+      {pendingConfirmation && (
+        <div style={{ margin: "14px 0" }}>
+          <ConfirmationCard
+            source="From microphone"
+            title="I heard:"
+            value={pendingConfirmation.transcript}
+            question="Is this what you meant?"
+            confirmLabel="✓ THAT'S CORRECT"
+            editLabel="✎ EDIT"
+            onConfirm={() =>
+              void save(pendingConfirmation.state, pendingConfirmation.transcript, "VOICE")
+            }
+            onEdit={() => {
+              setValue(pendingConfirmation.transcript);
+              setPendingConfirmation(null);
+            }}
+            onRetry={() => void voice()}
+          />
+        </div>
+      )}
 
       {q.type === "yes_no" ? (
         <>
-          <div className="choice-grid">
+          <div className="choice-grid interview-choices-grid">
             <button
               type="button"
-              className="choice"
+              className="choice interview-choice-btn"
               onClick={() => void save("KNOWN", "yes", "TOUCH")}
             >
-              {t("yes")}
+              ✓ {t("yes") || "Yes"}
             </button>
             <button
               type="button"
-              className="choice"
+              className="choice interview-choice-btn"
               onClick={() => void save("DENIED", "no", "TOUCH")}
             >
-              {t("no")}
+              ✕ {t("no") || "No"}
             </button>
             <button
               type="button"
-              className="choice"
+              className="choice interview-choice-btn uncertainty"
               onClick={() => void save("UNKNOWN", undefined, "TOUCH")}
             >
-              {t("unknown")}
+              ❓ {t("unknown") || "I'm not sure"}
             </button>
             <button
               type="button"
-              className="choice"
+              className="choice interview-choice-btn tell-doctor"
               onClick={() => void save("DECLINED", undefined, "TOUCH")}
             >
-              {t("decline")}
+              💬 {t("decline") || "I'll tell the doctor"}
             </button>
           </div>
-          <div className="actions">
+
+          <div className="voice-mic-bar">
             <button
               type="button"
               className={`mic-button ${recording ? "live" : ""}`}
               onClick={() => void voice()}
+              aria-label={recording ? "Stop listening" : "Tap to speak your answer"}
             >
-              {recording ? `■ ${t("stop")}` : `🎙️ ${t("listen")}`}
+              {recording ? "■ Stop speaking" : "🎙️ Tap to speak your answer"}
             </button>
           </div>
         </>
       ) : (
         <>
           <div className="field">
-            <label htmlFor="answer">{t("yourAnswer")}</label>
+            <label htmlFor="answer">{t("yourAnswer") || "Your answer:"}</label>
             <textarea
               id="answer"
               value={value}
               onChange={(e) => setValue(e.target.value)}
+              placeholder="Speak or type your answer here…"
             />
           </div>
-          <div className="actions">
+
+          <div className="actions interview-actions-row">
             <button
               type="button"
               className={`mic-button ${recording ? "live" : ""}`}
               onClick={() => void voice()}
             >
-              {recording ? `■ ${t("stop")}` : `🎙️ ${t("listen")}`}
+              {recording ? "■ Stop" : "🎙️ Speak"}
             </button>
             <button
               type="button"
-              className="primary"
+              className="primary reference-primary"
               disabled={!value.trim() || busy}
               onClick={() => void save("KNOWN", value, "PATIENT")}
             >
-              {t("saveAnswer")} →
+              {t("saveAnswer") || "Save answer"} →
             </button>
           </div>
-          <div className="actions">
+
+          <div className="uncertainty-answers-row">
             <button
               type="button"
-              className="secondary"
+              className="secondary uncertainty-chip"
               onClick={() => void save("UNKNOWN")}
             >
-              {t("unknown")}
+              ❓ I&apos;m not sure
             </button>
             <button
               type="button"
-              className="secondary"
+              className="secondary uncertainty-chip"
               onClick={() => void save("DECLINED")}
             >
-              {t("decline")}
+              💬 I&apos;ll tell the doctor
             </button>
           </div>
+
         </>
       )}
 
@@ -336,6 +418,14 @@ export default function Interview() {
           {error}
         </div>
       )}
+
+      {/* Emergency Modal */}
+      <EmergencyModal
+        isOpen={showEmergency}
+        symptomReason={emergencyReason}
+        onGetHelp={() => {}}
+        onAcknowledge={() => setShowEmergency(false)}
+      />
     </section>
   );
 }

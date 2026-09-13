@@ -8,6 +8,7 @@ import { parseAnatomyVoice, getLocaleForLanguage } from "@/lib/anatomy-voice";
 import { usePatient } from "../PatientShell";
 import type { PatientBodyRegion, PatientBodySubregion } from "@/lib/patient-flow";
 import { LazarusLocationSelectorWrapper as LazarusLocationSelector } from "@/components/lazarus/LazarusLocationSelectorWrapper";
+import EmergencyModal from "@/components/ui/EmergencyModal";
 
 const regions: [BodyRegion, TranslationKey, string][] = [
   ["head", "regionHead", "Head & Neck"],
@@ -97,6 +98,17 @@ export default function Anatomy() {
   const [listening, setListening] = useState(false);
   const [voiceFeedback, setVoiceFeedback] = useState("");
   const [speechSupported, setSpeechSupported] = useState(true);
+  const [showEmergency, setShowEmergency] = useState(false);
+  const [emergencyReason, setEmergencyReason] = useState("");
+
+  function checkChestEmergency(r: BodyRegion | null, s: Severity | null): boolean {
+    if (r === "chest" && (s === "SEVERE" || s === "VERY_SEVERE")) {
+      setEmergencyReason("Severe discomfort reported in chest area");
+      setShowEmergency(true);
+      return true;
+    }
+    return false;
+  }
 
   const recRef = useRef<any>(null);
   const silenceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -319,6 +331,9 @@ export default function Anatomy() {
 
   async function next() {
     if (busy) return;
+    if (checkChestEmergency(region, severity)) {
+      return;
+    }
     setBusy(true);
     setError("");
 
@@ -395,7 +410,11 @@ export default function Anatomy() {
             className={`severity-reference ${value.toLowerCase().replaceAll("_", "-")}${proposedSeverity === value ? " proposed" : ""}`}
             aria-pressed={severity === value}
             aria-label={`${t(key) || fallback} — ${range}`}
-            onClick={() => { setSeverity(value); setProposedSeverity(null); }}
+            onClick={() => {
+              setSeverity(value);
+              setProposedSeverity(null);
+              checkChestEmergency(region, value);
+            }}
           >
             <span className="severity-face" aria-hidden="true">{face}</span>
             <strong>{t(key) || fallback}</strong>
@@ -598,6 +617,13 @@ export default function Anatomy() {
           {busy ? t("processing") : `${t("next")} →`}
         </button>
       </div>
+
+      <EmergencyModal
+        isOpen={showEmergency}
+        symptomReason={emergencyReason}
+        onGetHelp={() => {}}
+        onAcknowledge={() => setShowEmergency(false)}
+      />
     </section>
   );
 }

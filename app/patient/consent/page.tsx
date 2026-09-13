@@ -9,6 +9,7 @@ export default function Consent() {
   const { sync, setWorkflow, t } = usePatient();
   const [busy, setBusy] = useState(false);
   const [declined, setDeclined] = useState(false);
+  const [expanded, setExpanded] = useState(false);
 
   async function accept() {
     if (busy) return;
@@ -34,49 +35,70 @@ export default function Consent() {
     <section className="flow-card reference-card consent-reference-card">
       <div className="centered-reference-heading">
         <div className="reference-icon-badge shield" aria-hidden="true">
-          ⌾
+          🛡️
         </div>
-        <p className="eyebrow">{t("consentEyebrow")}</p>
-        <h1>{t("consentHeading") || "Your Information Stays Private"}</h1>
-        <p className="lead">{t("consentLead")}</p>
+        <p className="eyebrow">{t("consentEyebrow") || "Before We Begin"}</p>
+        <h1>Your Information Stays Private</h1>
+        <p className="lead">
+          We&apos;ll ask about your health so the healthcare team can better understand your visit.
+        </p>
+
       </div>
 
-      <div className="privacy-points">
-        <div>
-          <span>🛡</span>
+      <div className="privacy-points" role="list" aria-label="Privacy commitments">
+        <div role="listitem">
+          <span aria-hidden="true">🛡</span>
           <p>
-            <b>{t("consentPoint1Title")}</b>
-            <small>{t("consentPoint1Desc")}</small>
+            <b>{t("consentPoint1Title") || "Only for your medical care"}</b>
+            <small>{t("consentPoint1Desc") || "Your answers go directly to the attending clinical team for this visit."}</small>
           </p>
         </div>
-        <div>
-          <span>🔒</span>
+        <div role="listitem">
+          <span aria-hidden="true">🔒</span>
           <p>
-            <b>{t("consentPoint2Title")}</b>
-            <small>{t("consentPoint2Desc")}</small>
+            <b>{t("consentPoint2Title") || "Protected and access controlled"}</b>
+            <small>{t("consentPoint2Desc") || "Only authorized hospital staff can review your case."}</small>
           </p>
         </div>
-        <div>
-          <span>🩺</span>
+        <div role="listitem">
+          <span aria-hidden="true">🩺</span>
           <p>
-            <b>{t("consentPoint3Title")}</b>
-            <small>{t("consentPoint3Desc")}</small>
+            <b>{t("consentPoint3Title") || "Your doctor remains in control"}</b>
+            <small>{t("consentPoint3Desc") || "MediKiosk does not make medical diagnoses. Your doctor reviews everything."}</small>
           </p>
         </div>
-        <div>
-          <span>↺</span>
+        <div role="listitem">
+          <span aria-hidden="true">↺</span>
           <p>
-            <b>{t("consentPoint4Title")}</b>
-            <small>{t("consentPoint4Desc")}</small>
+            <b>{t("consentPoint4Title") || "Connection-safe and encrypted"}</b>
+            <small>{t("consentPoint4Desc") || "Your progress is saved securely on this kiosk so nothing is lost if interrupted."}</small>
           </p>
         </div>
       </div>
 
-      <div className="consent-note">{t("consentNote")}</div>
+      <div className="consent-expandable-section">
+        <button
+          type="button"
+          className="consent-toggle-details"
+          onClick={() => setExpanded(!expanded)}
+          aria-expanded={expanded}
+        >
+          <span>Need more details on how your health data is handled?</span>
+          <span aria-hidden="true">{expanded ? "▲" : "▼"}</span>
+        </button>
+
+        {expanded && (
+          <div className="consent-note" role="region">
+            {t("consentNote") ||
+              "By continuing, you agree to clinical intake for this visit. Optional identity information can be skipped, and MediKiosk does not replace emergency care."}
+          </div>
+        )}
+      </div>
 
       {declined && (
         <div className="system-banner warning" role="status">
-          {t("consentDeclinedNotice")}
+          {t("consentDeclinedNotice") ||
+            "Consent was declined. You can review the points above and tap “I Agree and Continue” whenever you are ready."}
         </div>
       )}
 
@@ -85,10 +107,16 @@ export default function Consent() {
           className="primary reference-primary"
           disabled={busy}
           onClick={() => void accept()}
+          aria-label="I Agree and Continue with visit intake"
         >
-          {busy ? t("processing") : `${t("agreeContinue") || "I Agree and Continue"} →`}
+          {busy ? t("processing") : "I Agree and Continue →"}
         </button>
-        <button className="secondary" disabled={busy} onClick={() => void decline()}>
+        <button
+          className="secondary"
+          disabled={busy}
+          onClick={() => void decline()}
+          aria-label="Decline consent"
+        >
           {t("declineBtn") || "Decline"}
         </button>
       </div>

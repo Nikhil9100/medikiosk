@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { MAX_FILE_SIZE } from "@/lib/documents";
 import { usePatient } from "../PatientShell";
+import ConfirmationCard from "@/components/ui/ConfirmationCard";
 
 type Doc = {
   id: string;
@@ -15,13 +16,22 @@ type Doc = {
   createdAt: string;
 };
 
+const documentExamples = [
+  { icon: "📄", label: "Prescription", desc: "Doctor's notes & rx" },
+  { icon: "🧪", label: "Lab report", desc: "Blood, urine, x-ray" },
+  { icon: "🏥", label: "Discharge summary", desc: "Hospital records" },
+  { icon: "💊", label: "Medicine list", desc: "Current medications" },
+];
+
 export default function Documents() {
   const router = useRouter();
-  const { t, ensureSynced, finishOfflineCase, connection, pendingCount } = usePatient();
+  const { t, ensureSynced, connection, pendingCount, finishOfflineCase } = usePatient();
   const [docs, setDocs] = useState<Doc[]>([]);
+
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
+  const [confirmedOcr, setConfirmedOcr] = useState<Record<string, boolean>>({});
 
   async function load() {
     try {
@@ -126,7 +136,6 @@ export default function Documents() {
     if (!(await onlineGate())) return;
     setBusy("submit");
     setError("");
-
     try {
       const res = await fetch("/api/patient/complete", { method: "POST" });
       const d = await res.json().catch(() => ({}));
@@ -136,28 +145,48 @@ export default function Documents() {
         return;
       }
       if (res.status === 409) {
-        setError(
-          "A document is still being processed or saved changes remain. Finish processing/sync before submission."
-        );
+        setError("A document is still being processed or saved changes remain. Finish processing/sync before submission.");
       } else {
-        setError(d.error ?? (t("saveFailedRetry") || "Submission failed. Please retry."));
+        setError(d.error ?? "Submission failed. Please retry.");
       }
     } catch {
-      setError(
-        "Connection was lost before submission was confirmed. Your answers remain recoverable; reconnect and press Submit again. Submission is idempotent."
-      );
+      setError("Connection was lost before submission was confirmed. Your answers remain recoverable; reconnect and press Submit again. Submission is idempotent.");
     }
     setBusy("");
   }
 
+  async function goToReview() {
+    if (!(await onlineGate())) return;
+    router.push("/patient/review");
+  }
+
+
   return (
     <section className="flow-card reference-card documents-reference-card">
-      <p className="eyebrow">{t("documentsEyebrow")}</p>
+      <p className="eyebrow">{t("documentsEyebrow") || "8 · Medical Documents"}</p>
       <h1>
-        {t("documentsHeading")}{" "}
+        Do you have any old medical reports?{" "}
         <span className="soft-title">{t("documentsOptional") || "(Optional)"}</span>
       </h1>
-      <p className="lead">{t("documentsLead")}</p>
+      <p className="lead">
+        You can upload photos of prescriptions, lab reports or discharge papers so the healthcare team can review your history. If you don&apos;t have any, you can continue directly.
+      </p>
+
+
+      {/* Helpful Examples Grid */}
+      <div className="document-examples-grid" role="group" aria-label="Examples of documents you can upload">
+        {documentExamples.map((ex) => (
+          <div key={ex.label} className="doc-example-item">
+            <span className="doc-example-icon" aria-hidden="true">
+              {ex.icon}
+            </span>
+            <div className="doc-example-text">
+              <strong>{ex.label}</strong>
+              <small>{ex.desc}</small>
+            </div>
+          </div>
+        ))}
+      </div>
 
       {pendingCount > 0 && (
         <div className="system-banner warning">
@@ -168,13 +197,14 @@ export default function Documents() {
         </div>
       )}
 
+      {/* Upload Dropzone */}
       <label
         className={`document-dropzone ${connection === "offline" ? "disabled" : ""}`}
         htmlFor="doc"
       >
-        <span className="document-upload-icon">⇧</span>
-        <strong>{t("dropzoneTitle")}</strong>
-        <small>{t("dropzoneSub")}</small>
+        <span className="document-upload-icon">📷</span>
+        <strong>Take a photo or choose a file</strong>
+        <small>{t("dropzoneSub") || "Upload photos or PDF up to 20 MB"}</small>
         <input
           id="doc"
           type="file"
@@ -200,82 +230,106 @@ export default function Documents() {
             disabled={!!busy || connection === "offline"}
             onClick={() => void upload()}
           >
-            {busy === "upload" ? t("uploading") : t("uploadBtn")}
+            {busy === "upload" ? "Reading your medical report…" : (t("uploadBtn") || "Upload photo")}
           </button>
         </div>
       )}
 
+      {/* Uploaded Documents List */}
       {docs.length > 0 && (
         <div className="document-card-list">
           {docs.map((d) => {
             const complete = d.ocrStatus === "COMPLETED" && d.extractionStatus === "COMPLETED";
+            const isConfirmed = confirmedOcr[d.id];
             return (
-              <article key={d.id} className="document-card">
-                <span className="document-type-icon">
-                  {d.mimeType.includes("pdf") ? "PDF" : "IMG"}
-                </span>
-                <div className="document-card-copy">
-                  <strong>{d.originalFilename}</strong>
-                  <small>
-                    OCR: {d.ocrStatus.replaceAll("_", " ")} · Extraction:{" "}
-                    {d.extractionStatus.replaceAll("_", " ")}
-                  </small>
-                  {!complete && (
-                    <div className="document-progress">
-                      <span
-                        style={{
-                          width:
-                            d.ocrStatus === "COMPLETED"
-                              ? d.extractionStatus === "COMPLETED"
-                                ? "100%"
-                                : "65%"
-                              : "30%",
-                        }}
-                      />
-                    </div>
-                  )}
-                </div>
-                <div className="document-card-actions">
-                  {d.ocrStatus !== "COMPLETED" ? (
-                    <button
-                      type="button"
-                      className="secondary"
-                      disabled={!!busy || connection === "offline"}
-                      onClick={() => void process(d.id, "ocr")}
-                    >
-                      {busy === `ocr:${d.id}`
-                        ? t("ocrReading")
+              <div key={d.id} className="doc-item-wrapper">
+                <article className="document-card">
+                  <span className="document-type-icon">
+                    {d.mimeType.includes("pdf") ? "PDF" : "IMG"}
+                  </span>
+                  <div className="document-card-copy">
+                    <strong>{d.originalFilename}</strong>
+                    <small>
+                      {d.ocrStatus === "COMPLETED"
+                        ? "Report successfully scanned"
                         : d.ocrStatus === "FAILED"
-                        ? t("ocrRetry")
-                        : t("runOcr")}
-                    </button>
-                  ) : d.extractionStatus !== "COMPLETED" ? (
+                        ? "We couldn't read this document clearly"
+                        : "Reading medical report…"}
+                    </small>
+                    {!complete && (
+                      <div className="document-progress">
+                        <span
+                          style={{
+                            width:
+                              d.ocrStatus === "COMPLETED"
+                                ? d.extractionStatus === "COMPLETED"
+                                  ? "100%"
+                                  : "65%"
+                                : "35%",
+                          }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                  <div className="document-card-actions">
+                    {d.ocrStatus !== "COMPLETED" ? (
+                      <button
+                        type="button"
+                        className="secondary"
+                        disabled={!!busy || connection === "offline"}
+                        onClick={() => void process(d.id, "ocr")}
+                      >
+                        {busy === `ocr:${d.id}`
+                          ? "Reading report…"
+                          : d.ocrStatus === "FAILED"
+                          ? "Try clearer photo"
+                          : "Read report"}
+                      </button>
+                    ) : d.extractionStatus !== "COMPLETED" ? (
+                      <button
+                        type="button"
+                        className="secondary"
+                        disabled={!!busy || connection === "offline"}
+                        onClick={() => void process(d.id, "extraction")}
+                      >
+                        {busy === `extraction:${d.id}`
+                          ? "Checking medicines…"
+                          : "Check medicines"}
+                      </button>
+                    ) : (
+                      <span className="status ok">✓ Verified</span>
+                    )}
                     <button
                       type="button"
-                      className="secondary"
+                      className="icon-remove"
+                      aria-label={`Remove ${d.originalFilename}`}
                       disabled={!!busy || connection === "offline"}
-                      onClick={() => void process(d.id, "extraction")}
+                      onClick={() => void remove(d.id)}
                     >
-                      {busy === `extraction:${d.id}`
-                        ? t("extracting")
-                        : d.extractionStatus === "FAILED"
-                        ? t("retryExtraction")
-                        : t("extract")}
+                      ×
                     </button>
-                  ) : (
-                    <span className="status ok">{t("readyStatus") || "Ready"}</span>
-                  )}
-                  <button
-                    type="button"
-                    className="icon-remove"
-                    aria-label={`Remove ${d.originalFilename}`}
-                    disabled={!!busy || connection === "offline"}
-                    onClick={() => void remove(d.id)}
-                  >
-                    ×
-                  </button>
-                </div>
-              </article>
+                  </div>
+                </article>
+
+                {/* Clinical confirmation card for completed OCR */}
+                {complete && !isConfirmed && (
+                  <div style={{ marginTop: "8px" }}>
+                    <ConfirmationCard
+                      source="From uploaded prescription"
+                      title="We found this information"
+                      label="Report:"
+                      value={d.originalFilename}
+                      question="Is this the report you want to share with the doctor?"
+                      confirmLabel="✓ YES, USE THIS REPORT"
+                      editLabel="REPLACE PHOTO"
+                      onConfirm={() =>
+                        setConfirmedOcr((prev) => ({ ...prev, [d.id]: true }))
+                      }
+                      onEdit={() => void remove(d.id)}
+                    />
+                  </div>
+                )}
+              </div>
             );
           })}
         </div>
@@ -291,18 +345,28 @@ export default function Documents() {
         </div>
       )}
 
-      <div className="reference-actions">
+      <div className="reference-actions stacked-mobile">
         <button type="button" className="secondary" onClick={() => router.back()}>
           ← {t("back")}
         </button>
-        <button
-          type="button"
-          className="primary reference-primary"
-          disabled={!!busy || connection === "offline"}
-          onClick={() => void submit()}
-        >
-          {busy === "submit" ? t("processing") : `${t("submitToDoctor") || "Submit to doctor"} →`}
-        </button>
+        <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+          <button
+            type="button"
+            className="secondary"
+            disabled={!!busy || connection === "offline"}
+            onClick={() => void goToReview()}
+          >
+            Review all answers →
+          </button>
+          <button
+            type="button"
+            className="primary reference-primary"
+            disabled={!!busy || connection === "offline"}
+            onClick={() => void submit()}
+          >
+            {busy === "submit" ? t("processing") : t("submitToDoctor") || "Submit to doctor"} →
+          </button>
+        </div>
       </div>
     </section>
   );
