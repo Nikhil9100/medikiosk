@@ -114,6 +114,14 @@ export default function PatientWelcome() {
             >
               {busy ? t("startingSecurely") : `${t("continue")} →`}
             </button>
+            <button
+              type="button"
+              className="secondary"
+              style={{ width: "100%", marginTop: "8px", borderRadius: "12px", padding: "11px 16px", fontSize: "0.9rem" }}
+              onClick={() => router.push("/patient/login")}
+            >
+              📱 Quick Check-in with Phone / ABHA
+            </button>
           </div>
         </div>
       </div>

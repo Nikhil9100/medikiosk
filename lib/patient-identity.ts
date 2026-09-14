@@ -9,3 +9,13 @@ export function maskAbhaAddress(value: string) {
   const shown = name.length <= 2 ? name[0] ?? "" : `${name.slice(0, 2)}${"*".repeat(Math.min(6, Math.max(2, name.length - 2)))}`;
   return `${shown}@${domain}`;
 }
+
+export function formatAbhaNumber(value: string): string {
+  const digits = normalizeAbhaNumber(value).slice(0, 14);
+  const parts: string[] = [];
+  if (digits.length > 0) parts.push(digits.slice(0, 2));
+  if (digits.length > 2) parts.push(digits.slice(2, 6));
+  if (digits.length > 6) parts.push(digits.slice(6, 10));
+  if (digits.length > 10) parts.push(digits.slice(10, 14));
+  return parts.join("-");
+}
