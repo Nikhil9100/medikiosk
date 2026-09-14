@@ -293,6 +293,20 @@ export default function CasePage() {
               <small>Assigned Physician</small>
               <strong>{data.consultation?.doctorName || "Unassigned"}</strong>
             </div>
+            <div className="case-meta-item">
+              <small>ABHA / Identity</small>
+              {c.identity?.status === "VERIFIED" ? (
+                <span className="status ok" title="ABDM Verified Patient">
+                  ✓ ABHA Verified {c.identity.abhaLast4 ? `(..${c.identity.abhaLast4})` : ""}
+                </span>
+              ) : c.identity?.status === "SELF_DECLARED" ? (
+                <span className="status routine" title="Self-declared by patient">
+                  Self-declared {c.identity.abhaLast4 ? `(..${c.identity.abhaLast4})` : ""}
+                </span>
+              ) : (
+                <span className="helper">Not linked</span>
+              )}
+            </div>
           </div>
 
           <div className="actions" style={{ margin: 0 }}>

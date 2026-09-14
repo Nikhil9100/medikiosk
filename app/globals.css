@@ -1437,3 +1437,229 @@ body.patient-modal-open { overflow: hidden; }
   .auth-card-tabs{flex-direction:row!important}
 }
 
+/* ============================================================
+   CONSOLE CRAFT PASS — Doctor + Hospital (visual only)
+   Appended last: wins by source order. No markup contracts changed.
+   ============================================================ */
+:root{
+  --ck-navy:#12283c;--ck-navy-2:#0d1f2f;--ck-green:#0b5d4b;
+  --ck-ink:#16232e;--ck-ink-2:#42535f;--ck-ink-3:#6b7c88;
+  --ck-line:#dde5ea;--ck-line-strong:#c6d3db;
+  --ck-canvas:#f4f7f9;--ck-surface:#fff;--ck-surface-2:#f8fafb;
+  --ck-red:#b42318;--ck-red-bg:#fef4f2;--ck-red-line:#f0c1bb;
+  --ck-amber:#8a5a00;--ck-amber-bg:#fff9ec;--ck-amber-line:#f0d9a3;
+  --ck-blue:#1f4f8b;--ck-blue-bg:#f2f7fd;--ck-blue-line:#c9dcf1;
+  --ck-ok:#166b45;--ck-ok-bg:#f1f8f3;--ck-ok-line:#c3e2ce;
+  --ck-sh-1:0 1px 2px rgba(18,40,60,.06);
+  --ck-sh-2:0 2px 8px rgba(18,40,60,.07);
+  --ck-focus:0 0 0 3px rgba(31,79,139,.28)
+}
+
+.console-shell{background:var(--ck-canvas);color:var(--ck-ink)}
+
+/* Header: quiet, professional, never stacks into full-width blocks */
+.console-header{
+  background:linear-gradient(180deg,var(--ck-navy),var(--ck-navy-2));
+  border-top:3px solid #e8a03a;
+  padding:12px clamp(14px,3vw,40px);
+  box-shadow:var(--ck-sh-2);
+  flex-wrap:wrap
+}
+.console-brand strong{font-size:1.02rem;letter-spacing:.01em}
+.console-brand span{font-size:.76rem;opacity:.72;margin-top:2px}
+.console-user{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.staff-badge{display:grid;line-height:1.25;text-align:right}
+.staff-badge strong{font-size:.9rem}
+.staff-badge small{font-size:.72rem;opacity:.72}
+.console-header .secondary{
+  background:rgba(255,255,255,.1);color:#fff;border-color:rgba(255,255,255,.24);
+  min-height:40px;padding:8px 14px;font-size:.85rem;border-radius:9px
+}
+.console-header .secondary:hover{background:rgba(255,255,255,.18)}
+
+/* Page title block */
+.console-main{width:min(100%,1440px);padding:22px clamp(12px,2.6vw,32px) 40px}
+.console-title{margin-bottom:14px;align-items:flex-end}
+.console-title h1{font-size:clamp(1.35rem,2.4vw,1.7rem);letter-spacing:-.01em;color:var(--ck-ink)}
+.console-title h2{margin:0;font-size:1.02rem;letter-spacing:.005em;color:var(--ck-ink)}
+.console-title .eyebrow{color:var(--ck-ink-3);font-size:.7rem;letter-spacing:.1em}
+.console-shell .helper{color:var(--ck-ink-3);font-size:.82rem;line-height:1.5}
+
+/* Metrics: scannable, compact, never a wall of giant cards */
+.stat-grid{grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:10px}
+.stat{
+  background:var(--ck-surface);border:1px solid var(--ck-line);border-radius:12px;
+  padding:13px 14px;box-shadow:var(--ck-sh-1)
+}
+.stat small{color:var(--ck-ink-3);font-size:.68rem;letter-spacing:.06em}
+.stat strong{font-size:1.5rem;margin-top:4px;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.stat.urgent{background:var(--ck-red-bg);border-color:var(--ck-red-line)}
+.stat.urgent strong{color:var(--ck-red)}
+.stat.high-priority{background:var(--ck-amber-bg);border-color:var(--ck-amber-line)}
+.stat.high-priority strong{color:var(--ck-amber)}
+
+/* Panels */
+.panel{
+  background:var(--ck-surface);border:1px solid var(--ck-line);border-radius:14px;
+  padding:16px clamp(14px,2vw,20px);box-shadow:var(--ck-sh-1);margin-top:14px
+}
+.panel h2,.panel h3{color:var(--ck-ink);letter-spacing:-.005em}
+
+/* Attention area: patient safety outranks every routine metric */
+.attention-section{
+  margin-top:14px;padding:14px clamp(14px,2vw,18px);
+  background:var(--ck-red-bg);border:1px solid var(--ck-red-line);
+  border-left:4px solid var(--ck-red);border-radius:14px
+}
+.attention-section.hospital{background:var(--ck-amber-bg);border-color:var(--ck-amber-line);border-left-color:#c8860b}
+.attention-header h2{font-size:1rem;display:flex;gap:8px;align-items:center;margin:0;color:#7d1d13}
+.attention-section.hospital .attention-header h2{color:#6d4400}
+.attention-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(268px,1fr));gap:12px;margin-top:12px}
+.attention-card{
+  background:var(--ck-surface);border:1px solid var(--ck-red-line);border-radius:12px;
+  padding:14px;display:grid;gap:10px;box-shadow:var(--ck-sh-1)
+}
+.attention-card.high-priority{border-color:var(--ck-amber-line)}
+.attention-card-top{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.attention-card-body strong{display:block;font-size:.98rem;line-height:1.35}
+.attention-card-body p{margin:6px 0 0;font-size:.84rem;color:var(--ck-ink-2);line-height:1.5}
+.attention-card-footer{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+
+/* Status vocabulary — one visual language, never colour alone */
+.status{
+  border-radius:6px;padding:4px 8px;font-size:.7rem;font-weight:800;letter-spacing:.03em;
+  background:var(--ck-surface-2);border-color:var(--ck-line-strong);color:var(--ck-ink-2);
+  align-items:center;gap:5px;white-space:nowrap
+}
+.status.urgent{background:var(--ck-red-bg);color:var(--ck-red);border-color:var(--ck-red-line)}
+.status.high-priority{background:var(--ck-amber-bg);color:var(--ck-amber);border-color:var(--ck-amber-line)}
+.status.ok{background:var(--ck-ok-bg);color:var(--ck-ok);border-color:var(--ck-ok-line)}
+.status.routine{background:var(--ck-blue-bg);color:var(--ck-blue);border-color:var(--ck-blue-line)}
+.severity-tag{
+  display:inline-flex;border-radius:6px;padding:3px 8px;font-size:.72rem;font-weight:800;
+  border:1px solid var(--ck-line-strong);background:var(--ck-surface-2);color:var(--ck-ink-2)
+}
+.severity-tag.mild{background:var(--ck-ok-bg);color:var(--ck-ok);border-color:var(--ck-ok-line)}
+.severity-tag.moderate{background:var(--ck-amber-bg);color:var(--ck-amber);border-color:var(--ck-amber-line)}
+.severity-tag.severe,.severity-tag.very_severe{background:var(--ck-red-bg);color:var(--ck-red);border-color:var(--ck-red-line)}
+
+/* Tables: sticky header, clear rows, obvious Case ID affordance */
+.table-wrap{overflow:auto;border:1px solid var(--ck-line);border-radius:12px;margin-top:12px}
+.data-table{min-width:840px}
+.data-table th{
+  position:sticky;top:0;z-index:1;background:var(--ck-surface-2);
+  color:var(--ck-ink-3);font-size:.68rem;letter-spacing:.06em;
+  padding:10px 12px;border-bottom:1px solid var(--ck-line-strong);white-space:nowrap
+}
+.data-table td{padding:12px;border-bottom:1px solid #eef2f4;font-size:.88rem;color:var(--ck-ink-2);vertical-align:middle}
+.data-table tbody tr:last-child td{border-bottom:0}
+.data-table tbody tr:hover{background:#f6fafc}
+.data-table a{color:var(--ck-green);text-decoration:none;border-radius:6px}
+.data-table a strong{font-variant-numeric:tabular-nums;letter-spacing:.01em;font-size:.92rem}
+.data-table a:hover strong{text-decoration:underline}
+.data-table a:focus-visible,.attention-card a:focus-visible,.console-shell button:focus-visible,
+.console-shell input:focus-visible,.console-shell select:focus-visible,.console-shell textarea:focus-visible{
+  outline:none;box-shadow:var(--ck-focus)
+}
+.data-table td[data-label="Waiting"],.data-table td[data-label="Wait"]{font-variant-numeric:tabular-nums}
+
+/* Filters / search controls */
+.console-shell .actions{margin-top:0;gap:10px}
+.console-shell .panel input,.console-shell .panel select{
+  min-height:42px;border:1px solid var(--ck-line-strong);border-radius:9px;
+  padding:8px 12px;background:var(--ck-surface);color:var(--ck-ink)
+}
+
+/* Case workspace sections */
+.case-section{border-top:1px solid var(--ck-line);padding-top:16px;margin-top:18px}
+.urgent-box{
+  border-left:4px solid var(--ck-red);background:var(--ck-red-bg);
+  border:1px solid var(--ck-red-line);border-left-width:4px;
+  padding:14px 16px;border-radius:12px;color:#7d1d13
+}
+.evidence{
+  border-left:3px solid #9fb6c4;background:var(--ck-surface-2);
+  border-radius:10px;padding:12px 14px;margin:10px 0
+}
+.dash-grid{grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+.dash-item{border:1px solid var(--ck-line);border-radius:10px;padding:12px;background:var(--ck-surface-2)}
+.console-grid{gap:14px}
+.ops-grid{gap:14px}
+
+/* Operational rows: kiosks, staff, audit */
+.kiosk-row,.staff-row,.audit-row{
+  padding:11px 2px;border-bottom:1px solid #eef2f4;align-items:center;font-size:.87rem
+}
+.kiosk-row:last-child,.staff-row:last-child,.audit-row:last-child{border-bottom:0}
+
+/* States */
+.state-box,.empty-row td{color:var(--ck-ink-3)}
+.state-box h3{color:var(--ck-ink);margin-top:0}
+.loading-card{border-radius:14px;border-color:var(--ck-line);box-shadow:var(--ck-sh-1);color:var(--ck-ink-2)}
+.system-banner{border-radius:10px;font-size:.88rem;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.login-card{border-radius:16px;border-color:var(--ck-line);box-shadow:var(--ck-sh-2)}
+
+/* Tablet and below: deliberate layouts, not a shrunken desktop */
+@media(max-width:1080px){
+  .console-grid,.ops-grid{grid-template-columns:1fr}
+}
+@media(max-width:760px){
+  .console-header{flex-direction:row;align-items:center}
+  .console-brand span{display:none}
+  .console-main{padding:16px 12px 32px}
+  .console-title{align-items:flex-start;margin-bottom:12px}
+  .console-title h1{font-size:1.2rem}
+  .stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .stat strong{font-size:1.32rem}
+  .attention-grid{grid-template-columns:1fr}
+  .table-wrap{border:0;border-radius:0;overflow:visible}
+  .console-shell .actions{width:100%}
+  .console-shell .panel input,.console-shell .panel select{width:100%}
+}
+@media(max-width:380px){
+  .console-main{padding:14px 10px 28px}
+  .stat-grid{grid-template-columns:1fr}
+  .console-header .secondary{padding:7px 11px;font-size:.8rem}
+  .staff-badge small{display:none}
+}
+
+/* Case ID affordance: clearly interactive, on every viewport */
+.data-table td[data-label="Case"] a,.data-table td[data-label="Case ID"] a{
+  display:inline-flex;align-items:center;gap:6px;padding:2px 4px;margin:-2px -4px
+}
+.data-table td[data-label="Case"] a::after,.data-table td[data-label="Case ID"] a::after{
+  content:"→";font-weight:700;color:var(--ck-ink-3);transition:transform .12s ease
+}
+.data-table td[data-label="Case"] a:hover::after{transform:translateX(2px);color:var(--ck-green)}
+
+/* Re-assert mobile card metrics after the craft-pass table rules */
+@media(max-width:760px){
+  .doctor-queue-table td,.hospital-queue-table td{padding:10px 13px;border-bottom:1px solid #eef2f4;font-size:.87rem}
+  .doctor-queue-table td:last-child,.hospital-queue-table td:last-child{border-bottom:0}
+  .doctor-queue-table tr,.hospital-queue-table tr{border-color:var(--ck-line);box-shadow:var(--ck-sh-1);border-radius:12px}
+  .doctor-queue-table tbody tr:hover,.hospital-queue-table tbody tr:hover{background:#fff}
+  .doctor-queue-table td[data-label="Action"] a,.hospital-queue-table td[data-label="Action"] a{width:100%;text-align:center}
+}
+
+/* Link-styled primary actions must read as buttons, not links */
+a.primary,a.primary:visited{color:#fff;text-decoration:none}
+a.primary:hover{color:#fff;text-decoration:none;background:#084d3e}
+a.secondary,a.secondary:visited{text-decoration:none}
+.severity-tag{white-space:nowrap}
+
+/* Queues become cards from tablet down — no sideways table scrolling */
+@media(max-width:900px){
+  .table-wrap{overflow:visible;border:0;border-radius:0}
+  .doctor-queue-table,.hospital-queue-table{min-width:0;border-collapse:separate;border-spacing:0 10px}
+  .doctor-queue-table thead,.hospital-queue-table thead{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;border:0!important}
+  .doctor-queue-table tbody,.hospital-queue-table tbody{display:block}
+  .doctor-queue-table tr,.hospital-queue-table tr{display:block;border:1px solid var(--ck-line);border-radius:12px;background:#fff;box-shadow:var(--ck-sh-1);margin-bottom:10px;overflow:hidden}
+  .doctor-queue-table tbody tr:hover,.hospital-queue-table tbody tr:hover{background:#fff}
+  .doctor-queue-table td,.hospital-queue-table td{display:grid;grid-template-columns:minmax(104px,36%) minmax(0,1fr);gap:10px;width:100%;padding:10px 13px;border-bottom:1px solid #eef2f4;font-size:.87rem;overflow-wrap:anywhere}
+  .doctor-queue-table td:last-child,.hospital-queue-table td:last-child{border-bottom:0}
+  .doctor-queue-table td::before,.hospital-queue-table td::before{content:attr(data-label);font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--ck-ink-3);line-height:1.5}
+  .doctor-queue-table .empty-row td,.hospital-queue-table .empty-row td{display:block;text-align:center;padding:20px}
+  .doctor-queue-table .empty-row td::before,.hospital-queue-table .empty-row td::before{display:none}
+  .doctor-queue-table td[data-label="Action"] a,.hospital-queue-table td[data-label="Action"] a{width:100%;text-align:center}
+}
+
