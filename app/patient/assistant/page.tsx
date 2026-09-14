@@ -26,6 +26,10 @@ type ChatDraft = {
   mutationId: string;
 };
 
+function cleanMenuLabel(text: string): string {
+  return text.replace(/^[\p{Emoji_Presentation}\p{Extended_Pictographic}\uFE0F\s]+/u, "").trim();
+}
+
 export default function Assistant() {
   const router = useRouter();
   const { workflow, t, saveDraft, loadDraft, clearDraft, ensureSynced, connection } = usePatient();
@@ -332,9 +336,9 @@ export default function Assistant() {
     }
   }
 
-  // Step context helper
+  // Step context helper: active only when a contextual intake step prompt exists
   const step = workflow.currentStep;
-  const showStepContext = step === "anatomy" || step === "interview" || step === "documents" || step === "complete" || step === "symptoms" || step === "complaint";
+  const hasStepPrompt = step === "anatomy" || step === "interview" || step === "documents" || step === "complete";
 
   return (
     <section className="assistant-page reference-assistant-page" aria-labelledby="anaya-title" style={{ position: "relative" }}>
@@ -375,7 +379,7 @@ export default function Assistant() {
               title={t("anayaRestartTitle")}
               aria-label={t("anayaRestartTitle") || "Restart conversation"}
             >
-              🔄 <span className="anaya-restart-text">{t("anayaMenuRestartChat")}</span>
+              🔄 <span className="anaya-restart-text">{cleanMenuLabel(t("anayaMenuRestartChat"))}</span>
             </button>
           )}
         </div>
@@ -399,11 +403,13 @@ export default function Assistant() {
               </div>
             </div>
 
-            {showStepContext && (
+            {hasStepPrompt && (
               <div className="anaya-step-banner">
-                <span className="anaya-step-icon" aria-hidden="true">
-                  {step === "anatomy" ? "📍" : step === "interview" ? "📝" : step === "documents" ? "📄" : "✅"}
-                </span>
+                {step !== "complete" && (
+                  <span className="anaya-step-icon" aria-hidden="true">
+                    {step === "anatomy" ? "📍" : step === "interview" ? "📝" : "📄"}
+                  </span>
+                )}
                 <div className="anaya-step-content">
                   <p className="anaya-step-label">
                     {step === "anatomy" && "Current Step: Severity & Area"}
@@ -421,7 +427,7 @@ export default function Assistant() {
                       else if (step === "complete") void send(t("anayaStepPromptComplete"));
                     }}
                   >
-                    💡 {step === "anatomy" && t("anayaStepPromptAnatomy")}
+                    {step === "anatomy" && t("anayaStepPromptAnatomy")}
                     {step === "interview" && t("anayaStepPromptInterview")}
                     {step === "documents" && t("anayaStepPromptDocuments")}
                     {step === "complete" && t("anayaStepPromptComplete")}
@@ -706,7 +712,7 @@ export default function Assistant() {
                 }}
               >
                 <span className="anaya-menu-icon" aria-hidden="true">🩺</span>
-                <span>{t("anayaMenuDescribeSymptoms")}</span>
+                <span>{cleanMenuLabel(t("anayaMenuDescribeSymptoms"))}</span>
               </button>
 
               <button
@@ -718,7 +724,7 @@ export default function Assistant() {
                 }}
               >
                 <span className="anaya-menu-icon" aria-hidden="true">📋</span>
-                <span>{t("anayaMenuDoctorPrep")}</span>
+                <span>{cleanMenuLabel(t("anayaMenuDoctorPrep"))}</span>
               </button>
 
               <button
@@ -730,7 +736,7 @@ export default function Assistant() {
                 }}
               >
                 <span className="anaya-menu-icon" aria-hidden="true">📍</span>
-                <span>{t("anayaMenuWhereItHurts")}</span>
+                <span>{cleanMenuLabel(t("anayaMenuWhereItHurts"))}</span>
               </button>
 
               <button
@@ -742,7 +748,7 @@ export default function Assistant() {
                 }}
               >
                 <span className="anaya-menu-icon" aria-hidden="true">📄</span>
-                <span>{t("anayaMenuDocumentHelp")}</span>
+                <span>{cleanMenuLabel(t("anayaMenuDocumentHelp"))}</span>
               </button>
 
               <button
@@ -754,7 +760,7 @@ export default function Assistant() {
                 }}
               >
                 <span className="anaya-menu-icon" aria-hidden="true">🌿</span>
-                <span>{t("anayaMenuGeneralHealth")}</span>
+                <span>{cleanMenuLabel(t("anayaMenuGeneralHealth"))}</span>
               </button>
 
               <button
@@ -766,7 +772,7 @@ export default function Assistant() {
                 }}
               >
                 <span className="anaya-menu-icon" aria-hidden="true">🎙️</span>
-                <span>{t("anayaMenuVoiceHelp")}</span>
+                <span>{cleanMenuLabel(t("anayaMenuVoiceHelp"))}</span>
               </button>
 
               <button
@@ -778,7 +784,7 @@ export default function Assistant() {
                 }}
               >
                 <span className="anaya-menu-icon" aria-hidden="true">🔄</span>
-                <span>{t("anayaMenuRestartChat")}</span>
+                <span>{cleanMenuLabel(t("anayaMenuRestartChat"))}</span>
               </button>
             </div>
           </div>
