@@ -75,7 +75,7 @@ export default function StaffPortal() {
                 <strong>Demo Doctor Credentials:</strong>
                 <div style={{ marginTop: 4, fontFamily: "monospace", fontSize: "0.8rem", color: "var(--ck-green)" }}>
                   Email: <strong>doctor@medikiosk.local</strong><br />
-                  Password: <strong>doctor-demo-2026</strong>
+                  Password: <strong>doctor123</strong>
                 </div>
               </div>
 
@@ -141,7 +141,7 @@ export default function StaffPortal() {
                 <strong>Demo Hospital Credentials:</strong>
                 <div style={{ marginTop: 4, fontFamily: "monospace", fontSize: "0.8rem", color: "var(--ck-green)" }}>
                   Email: <strong>hospital@medikiosk.local</strong><br />
-                  Password: <strong>hospital-demo-2026</strong>
+                  Password: <strong>hospital123</strong>
                 </div>
               </div>
 
