@@ -1050,3 +1050,140 @@ pre{max-width:100%;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;wor
 .offline-floating-toast:hover {
   background: #fef3c7;
 }
+
+/* ========================================================================
+   Patient Console v2 — mobile + laptop completion pass
+   Goals: 44px touch targets, legible multilingual type, correct mobile
+   viewport height, single progress representation, laptop density.
+   ======================================================================== */
+
+/* --- Correct full-height on mobile browsers (URL bar safe) --- */
+.patient-app { min-height: 100vh; }
+@supports (height: 100dvh) {
+  .patient-app { min-height: 100dvh; }
+}
+
+/* --- Touch-target floor across the whole patient flow --- */
+.patient-app button,
+.patient-app select,
+.patient-app [role="button"],
+.patient-app .choice,
+.patient-app .status,
+.patient-app .chip-remove,
+.patient-app .clear-all-chip-btn,
+.patient-app .anatomy-voice-trigger,
+.patient-app .voice-confirm-btn,
+.patient-app .voice-edit-btn,
+.patient-app .severity-reference,
+.patient-app .body-region-choice-label {
+  min-height: 44px;
+}
+.patient-app .chip-remove,
+.patient-app .severity-face {
+  min-width: 44px;
+}
+.patient-app .actions,
+.patient-app .reference-actions,
+.patient-app .voice-confirmation-actions,
+.patient-app .selected-chips-list,
+.patient-app .subregion-pills-list {
+  gap: 12px;
+}
+.patient-app .status {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 12px;
+}
+
+/* --- Legible type floors (multilingual scripts need the extra size) --- */
+.patient-app .helper,
+.patient-app .citation,
+.patient-app .anatomy-mic-label,
+.patient-app .patient-footer,
+.patient-app small {
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+.patient-app .patient-topbar span { font-size: 0.85rem; }
+.patient-app .eyebrow { font-size: 0.8rem; }
+
+/* --- Visible focus for keyboard and switch-access users --- */
+.patient-app :focus-visible {
+  outline: 3px solid #0c8264;
+  outline-offset: 2px;
+  border-radius: 10px;
+}
+
+/* --- Desktop step rail: scroll affordance instead of a silent cut-off --- */
+.patient-progress.reference-progress {
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+  mask-image: linear-gradient(90deg, transparent 0, #000 18px, #000 calc(100% - 18px), transparent 100%);
+}
+.patient-progress.reference-progress span { scroll-snap-align: center; }
+.patient-progress.reference-progress em { font-size: 0.8rem; font-style: normal; line-height: 1.25; }
+
+/* --- One progress representation per breakpoint --- */
+@media (min-width: 769px) {
+  .patient-progress-mobile { display: none !important; }
+}
+
+/* --- Phones: readable body map, comfortable controls, safe bottom dock --- */
+@media (max-width: 640px) {
+  .patient-main { padding-bottom: 26px; }
+  .body-map, .lazarus-viewport { min-height: 320px; }
+  .severity-reference-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+  .severity-reference { min-height: 74px; }
+  .body-region-list { gap: 10px; }
+  .mobile-action-dock > * { flex: 1 1 160px; min-height: 50px; }
+  .field input, .field textarea, .field select { font-size: 1rem; }
+  .flow-card { border-radius: 18px; }
+  .patient-footer { font-size: 0.85rem; gap: 10px; }
+}
+
+@media (max-width: 400px) {
+  .severity-reference-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .patient-top-actions > * { flex-basis: 100%; }
+  .mobile-progress-title { font-size: 0.85rem; }
+}
+
+/* --- Laptop: use the width, keep the reading column sane --- */
+@media (min-width: 1200px) {
+  .patient-main { width: min(100%, 1240px); }
+  .flow-card { max-width: 1000px; }
+  .anatomy-reference-layout { gap: 32px; }
+  .assistant-page { min-height: 70vh; }
+  .assistant-thread { max-height: 62vh; }
+}
+@media (min-width: 1440px) {
+  .patient-main { width: min(100%, 1360px); }
+}
+
+/* --- Emergency modal: scroll-locked, readable, translated confirmation --- */
+body.patient-modal-open { overflow: hidden; }
+.emergency-modal-card,
+.offline-modal-card {
+  width: min(100%, 520px);
+  max-height: 88vh;
+  overflow: auto;
+}
+.emergency-staff-confirm {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #eaf6ef;
+  border: 1px solid #b7dec7;
+  color: #17663c;
+  font-weight: 700;
+  line-height: 1.5;
+}
+.emergency-modal-card button,
+.offline-modal-card button { min-height: 50px; width: 100%; }
+
+/* --- Reduced motion --- */
+@media (prefers-reduced-motion: reduce) {
+  .patient-app *, .patient-app *::before, .patient-app *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
