@@ -17,8 +17,8 @@ pre{max-width:100%;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;wor
 .dash-item textarea{display:block;width:100%;max-width:100%;min-height:72px;resize:vertical;border:1px solid #b9cbc4;border-radius:10px;padding:9px 10px;margin:8px 0}
 .kiosk-row>*,.staff-row>*,.audit-row>*{min-width:0;overflow-wrap:anywhere}
 .assistant-header>*{min-width:0}
-.assistant-header h1,.assistant-header p{overflow-wrap:anywhere}
-.patient-top-actions{min-width:0;flex-wrap:wrap}
+.assistant-header h1,.assistant-header p{overflow-wrap:break-word;word-break:normal}
+.patient-top-actions{min-width:0}
 .language-chip{min-width:0}
 .language-chip select{max-width:100%}
 
@@ -66,17 +66,16 @@ pre{max-width:100%;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;wor
   .kiosk-row .status,.staff-row .status{align-self:flex-start}
   .audit-row time{font-size:.78rem;color:var(--muted)}
   .dash-grid{grid-template-columns:1fr}
-  .assistant-header{flex-wrap:wrap;padding:14px}
-  .assistant-header .secondary{order:3;width:100%}
+  .assistant-header{padding:12px 14px}
   .assistant-thread{padding:14px;max-height:58vh}
   .bubble{max-width:94%}
 }
 
 @media (max-width:480px){
-  .patient-topbar{padding:10px 12px;gap:10px}
-  .patient-top-actions{gap:8px}
-  .patient-top-actions>*{flex:1 1 135px}
-  .top-action,.language-chip select{width:100%;min-height:46px}
+  .patient-topbar{padding:8px 12px;gap:8px}
+  .patient-top-actions{gap:6px;flex-wrap:nowrap;justify-content:flex-end}
+  .patient-top-actions>*{flex:0 0 auto;width:auto}
+  .top-action,.language-chip select{width:auto;min-height:38px}
   .patient-progress{padding:8px 10px;scrollbar-width:thin}
   .patient-progress span{min-width:72px}
   .patient-progress em{font-size:.62rem;font-style:normal;line-height:1.2;text-align:center}
@@ -84,8 +83,8 @@ pre{max-width:100%;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;wor
   .hero h1,.flow-card h1{font-size:clamp(1.65rem,9vw,2.1rem)}
   .hero-art{min-height:220px;padding:18px;border-radius:18px}
   .choice-grid{grid-template-columns:1fr}
-  .assistant-composer{grid-template-columns:48px minmax(0,1fr);gap:8px;padding:10px}
-  .assistant-composer .primary{grid-column:1/-1;width:100%}
+  .assistant-composer{display:flex;align-items:center;gap:8px;padding:10px 12px}
+  .assistant-composer .primary{width:auto;flex:0 0 auto;grid-column:auto}
   .assistant-composer input{min-width:0;width:100%}
   .assistant-thread{max-height:52vh}
   .msg.patient .bubble,.msg.assistant .bubble{max-width:96%}
@@ -103,7 +102,6 @@ pre{max-width:100%;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;wor
 @media (max-width:360px){
   .stat-grid{grid-template-columns:1fr}
   .doctor-queue-table td,.hospital-queue-table td{grid-template-columns:1fr;gap:3px}
-  .patient-top-actions>*{flex-basis:100%}
 }
 
 @media (min-width:1280px){
@@ -224,7 +222,7 @@ pre{max-width:100%;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;wor
  .welcome-reference-grid{grid-template-columns:1fr}.welcome-reference-card{max-width:720px}.reference-trust-strip{grid-template-columns:repeat(2,1fr)}.reference-trust-strip>span{border-right:0;border-bottom:1px solid #e0ebe7}.reference-trust-strip>span:last-child{grid-column:1/-1}.anatomy-reference-layout{grid-template-columns:1fr}.body-map{min-height:270px}.body-map svg{height:240px}.severity-reference-grid{grid-template-columns:repeat(3,1fr)}
 }
 @media(max-width:640px){
- .reference-patient-header{position:static}.patient-brand .brand-mark{width:38px;height:38px}.patient-brand strong{font-size:1.05rem!important}.patient-brand span{font-size:.7rem!important}.reference-patient-main{padding:14px 10px 22px}.reference-card{border-radius:18px;padding:22px 16px;box-shadow:0 8px 24px rgba(16,67,54,.09)}.reference-card:before{height:4px}.reference-progress{justify-content:flex-start;padding:9px 8px;gap:0}.reference-progress span{min-width:76px}.reference-progress em{font-size:.59rem}.reference-progress span:not(:last-child):after{width:66%}.reference-trust-list{grid-template-columns:1fr}.reference-bottom-cards{grid-template-columns:1fr 1fr}.reference-actions{flex-direction:column-reverse;align-items:stretch}.reference-actions>*{width:100%;margin:0!important}.reference-actions .primary{min-width:0}.stacked-mobile{flex-direction:column}.privacy-points>div{grid-template-columns:38px 1fr;padding:10px}.reference-step-dots{gap:12px}.voice-capture-block{grid-template-columns:1fr 64px 1fr}.reference-mic{width:62px;height:62px}.severity-reference-grid{grid-template-columns:repeat(2,1fr)}.severity-reference.none{grid-column:1/-1}.body-region-list{grid-template-columns:1fr}.body-map{min-height:230px;padding:8px}.body-map svg{height:220px}.symptom-reference-option{min-height:48px}.compact-severity{grid-template-columns:1fr 1fr}.medi-interview-heading{align-items:flex-start}.medi-large-avatar{width:54px;height:54px;font-size:1.7rem}.selected-file-card,.document-card{align-items:flex-start;flex-wrap:wrap}.selected-file-card>button{width:100%}.document-card-actions{width:100%;justify-content:space-between}.document-dropzone{min-height:140px;margin:16px 0}.complete-reference-card{padding-top:28px}.completion-mark{width:80px;height:80px;font-size:3rem}.reference-trust-strip{grid-template-columns:1fr}.reference-trust-strip>span:last-child{grid-column:auto}.footer-disclaimer{font-size:.68rem}.assistant-header.reference-assistant-header{display:grid;grid-template-columns:auto auto 1fr}.assistant-header.reference-assistant-header .secondary{grid-column:1/-1;order:3}
+ .reference-patient-header{position:static}.patient-brand .brand-mark{width:38px;height:38px}.patient-brand strong{font-size:1.05rem!important}.patient-brand span{font-size:.7rem!important}.reference-patient-main{padding:14px 10px 22px}.reference-card{border-radius:18px;padding:22px 16px;box-shadow:0 8px 24px rgba(16,67,54,.09)}.reference-card:before{height:4px}.reference-progress{justify-content:flex-start;padding:9px 8px;gap:0}.reference-progress span{min-width:76px}.reference-progress em{font-size:.59rem}.reference-progress span:not(:last-child):after{width:66%}.reference-trust-list{grid-template-columns:1fr}.reference-bottom-cards{grid-template-columns:1fr 1fr}.reference-actions{flex-direction:column-reverse;align-items:stretch}.reference-actions>*{width:100%;margin:0!important}.reference-actions .primary{min-width:0}.stacked-mobile{flex-direction:column}.privacy-points>div{grid-template-columns:38px 1fr;padding:10px}.reference-step-dots{gap:12px}.voice-capture-block{grid-template-columns:1fr 64px 1fr}.reference-mic{width:62px;height:62px}.severity-reference-grid{grid-template-columns:repeat(2,1fr)}.severity-reference.none{grid-column:1/-1}.body-region-list{grid-template-columns:1fr}.body-map{min-height:230px;padding:8px}.body-map svg{height:220px}.symptom-reference-option{min-height:48px}.compact-severity{grid-template-columns:1fr 1fr}.medi-interview-heading{align-items:flex-start}.medi-large-avatar{width:54px;height:54px;font-size:1.7rem}.selected-file-card,.document-card{align-items:flex-start;flex-wrap:wrap}.selected-file-card>button{width:100%}.document-card-actions{width:100%;justify-content:space-between}.document-dropzone{min-height:140px;margin:16px 0}.complete-reference-card{padding-top:28px}.completion-mark{width:80px;height:80px;font-size:3rem}.reference-trust-strip{grid-template-columns:1fr}.reference-trust-strip>span:last-child{grid-column:auto}.footer-disclaimer{font-size:.68rem}
 }
 @media(max-width:380px){.reference-bottom-cards{grid-template-columns:1fr}.reference-step-dots{gap:9px}.reference-step-dots span{width:25px;height:25px}.severity-reference-grid{grid-template-columns:1fr 1fr}.body-region-choice{font-size:.85rem}.voice-wave{gap:3px}.voice-wave i{width:2px}}
 
@@ -1143,7 +1141,6 @@ pre{max-width:100%;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;wor
 
 @media (max-width: 400px) {
   .severity-reference-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .patient-top-actions > * { flex-basis: 100%; }
   .mobile-progress-title { font-size: 0.85rem; }
 }
 
@@ -1209,102 +1206,219 @@ body.patient-modal-open { overflow: hidden; }
    Anaya mobile breathing room — Soft accessible interface direction
    ======================================================================= */
 @media(max-width:640px){
-  /* Keep header in one row; stop the old grid stack that pushed buttons below. */
-  .assistant-header.reference-assistant-header{
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    gap:10px;
-    padding:14px 16px
+  /* Keep header in one single row; prevent any letter-by-letter wrapping */
+  .assistant-header.reference-assistant-header {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 8px !important;
+    padding: 10px 12px !important;
+    box-sizing: border-box !important;
   }
-  .assistant-header.reference-assistant-header .secondary{grid-column:auto;order:0}
-  .assistant-header-main{gap:10px;flex:1;min-width:0}
-  .assistant-header-meta{min-width:0}
-  .assistant-header-meta h1{font-size:1.05rem;gap:6px}
-  .assistant-header-meta p{font-size:.72rem;color:var(--mk-ink-3,#5d756e)}
-  .reference-female-avatar{width:44px;height:44px}
-  .reference-female-avatar img{width:44px!important;height:44px!important}
-  .anaya-header-actions{gap:6px;flex:none}
-  .anaya-menu-trigger,.anaya-restart-trigger{
-    padding:8px 12px;
-    font-size:.78rem;
-    min-height:38px;
-    border-radius:999px;
-    border-color:#b7d6ca;
-    background:#f7fcfa
+  .assistant-header.reference-assistant-header .secondary {
+    grid-column: auto !important;
+    order: 0 !important;
+  }
+  .assistant-header-main {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+  }
+  .anaya-back-btn {
+    padding: 6px 10px !important;
+    font-size: 0.8rem !important;
+    min-height: 36px !important;
+    border-radius: 999px !important;
+    white-space: nowrap !important;
+    flex: 0 0 auto !important;
+  }
+  .reference-female-avatar {
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px !important;
+    flex: 0 0 auto !important;
+  }
+  .reference-female-avatar img {
+    width: 36px !important;
+    height: 36px !important;
+  }
+  .assistant-header-meta {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+  }
+  .assistant-header-meta h1 {
+    font-size: 1.05rem !important;
+    gap: 6px !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    word-break: normal !important;
+    overflow-wrap: normal !important;
+    margin: 0 !important;
+  }
+  .assistant-header-meta p {
+    font-size: 0.72rem !important;
+    color: var(--mk-ink-3,#5d756e) !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    word-break: normal !important;
+    overflow-wrap: normal !important;
+    margin: 0 !important;
+  }
+  .anaya-header-actions {
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    flex: 0 0 auto !important;
+  }
+  .anaya-menu-trigger {
+    padding: 6px 10px !important;
+    font-size: 0.78rem !important;
+    min-height: 36px !important;
+    border-radius: 999px !important;
+    border-color: #b7d6ca !important;
+    background: #f7fcfa !important;
+    white-space: nowrap !important;
+    flex: 0 0 auto !important;
+  }
+  .anaya-restart-trigger {
+    padding: 6px 10px !important;
+    font-size: 0.78rem !important;
+    min-height: 36px !important;
+    border-radius: 999px !important;
+    border-color: #b7d6ca !important;
+    background: #f7fcfa !important;
+    white-space: nowrap !important;
+    flex: 0 0 auto !important;
+  }
+  /* Hide the long restart text on mobile so only 🔄 is shown */
+  .anaya-restart-text {
+    display: none !important;
   }
 
-  /* Calmer thread surface with more air. */
-  .assistant-thread{
-    padding:24px 16px 30px;
-    gap:24px;
-    background:var(--mk-g-050,#f6f9f8)
+  /* Calmer thread surface with more air */
+  .assistant-thread {
+    padding: 16px 12px 24px !important;
+    gap: 16px !important;
+    background: var(--mk-g-050,#f6f9f8) !important;
   }
-  .assistant-message{margin:0}
-  .assistant-bubble{
-    max-width:84%;
-    padding:15px 17px;
-    line-height:1.62
+  .assistant-message { margin: 0 !important; }
+  .assistant-bubble {
+    max-width: 88% !important;
+    padding: 12px 14px !important;
+    line-height: 1.55 !important;
+    word-break: break-word !important;
+    overflow-wrap: break-word !important;
   }
-  .assistant-sender-tag{margin-bottom:8px!important}
-  .anaya-msg-actions{margin-top:12px}
-  .anaya-quick-chips{margin-top:14px;gap:10px}
-  .assistant-citations{margin-top:12px!important}
+  .assistant-sender-tag { margin-bottom: 6px !important; }
+  .anaya-msg-actions { margin-top: 10px !important; }
+  .anaya-quick-chips { margin-top: 12px !important; gap: 8px !important; }
+  .assistant-citations { margin-top: 10px !important; }
 
-  /* Welcome card: softer, roomier. */
-  .assistant-welcome-card{
-    padding:16px;
-    border-radius:18px;
-    background:linear-gradient(135deg,#f3faf7,#fff);
-    border:1.5px solid #d5e9e1;
-    gap:14px;
-    box-shadow:0 2px 10px rgba(11,93,75,.04)
+  /* Welcome card: softer, roomier */
+  .assistant-welcome-card {
+    padding: 14px !important;
+    border-radius: 16px !important;
+    background: linear-gradient(135deg,#f3faf7,#fff) !important;
+    border: 1.5px solid #d5e9e1 !important;
+    gap: 12px !important;
+    box-shadow: 0 2px 10px rgba(11,93,75,.04) !important;
   }
-  .assistant-welcome-card .medi-mini-avatar{width:48px;height:48px}
-  .assistant-welcome-card .medi-mini-avatar img{width:48px!important;height:48px!important}
+  .assistant-welcome-card .medi-mini-avatar { width: 42px !important; height: 42px !important; flex: none !important; }
+  .assistant-welcome-card .medi-mini-avatar img { width: 42px !important; height: 42px !important; }
 
-  /* Step banner: lighter and more padded. */
-  .anaya-step-banner{
-    padding:14px 16px;
-    border-radius:16px;
-    gap:14px;
-    background:#fdfaf3;
-    border:1.5px solid #f6e3b5
+  /* Step banner: lighter and more padded */
+  .anaya-step-banner {
+    padding: 12px 14px !important;
+    border-radius: 14px !important;
+    gap: 12px !important;
+    background: #fdfaf3 !important;
+    border: 1.5px solid #f6e3b5 !important;
   }
-  .anaya-step-icon{font-size:1.5rem}
-  .anaya-step-label{font-size:.72rem}
-  .anaya-step-chip{padding:8px 14px;font-size:.84rem}
+  .anaya-step-icon { font-size: 1.4rem !important; }
+  .anaya-step-label { font-size: 0.72rem !important; }
+  .anaya-step-chip { padding: 6px 12px !important; font-size: 0.8rem !important; }
 
-  /* Topic cards: full-width, taller, more separation. */
-  .anaya-starter-section{gap:16px;margin-top:4px}
-  .anaya-starter-heading{font-size:1rem;color:var(--mk-ink,#113d35);margin:0 0 2px}
-  .anaya-starter-grid{grid-template-columns:1fr;gap:14px}
-  .anaya-starter-card{
-    padding:16px;
-    border-radius:18px;
-    border:1.5px solid #d5e5df;
-    box-shadow:0 2px 10px rgba(11,93,75,.04);
-    gap:14px;
-    min-height:76px
+  /* Topic cards: full-width, taller, more separation */
+  .anaya-starter-section { gap: 14px !important; margin-top: 4px !important; }
+  .anaya-starter-heading { font-size: 0.95rem !important; color: var(--mk-ink,#113d35) !important; margin: 0 0 2px !important; }
+  .anaya-starter-grid { grid-template-columns: 1fr !important; gap: 12px !important; }
+  .anaya-starter-card {
+    padding: 14px !important;
+    border-radius: 16px !important;
+    border: 1.5px solid #d5e5df !important;
+    box-shadow: 0 2px 10px rgba(11,93,75,.04) !important;
+    gap: 12px !important;
+    min-height: 68px !important;
   }
-  .anaya-starter-card:active{transform:scale(.98)}
-  .anaya-card-icon{font-size:1.7rem;padding-top:0}
-  .anaya-card-text strong{font-size:1rem;margin-bottom:4px;color:var(--mk-ink,#113d35)}
-  .anaya-card-text p{font-size:.86rem;line-height:1.45}
+  .anaya-starter-card:active { transform: scale(.98) !important; }
+  .anaya-card-icon { font-size: 1.5rem !important; padding-top: 0 !important; }
+  .anaya-card-text strong { font-size: 0.95rem !important; margin-bottom: 2px !important; color: var(--mk-ink,#113d35) !important; }
+  .anaya-card-text p { font-size: 0.82rem !important; line-height: 1.4 !important; }
 
-  /* Composer stays comfortable but not cramped. */
-  .assistant-composer{padding:14px 16px;gap:10px}
-  .assistant-composer .primary{min-height:44px;padding:10px 14px;font-size:.9rem}
-  .mic-button{min-height:44px;min-width:44px;padding:10px}
+  /* Composer: never squish input, clean flex row */
+  .assistant-composer {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    padding: 10px 12px !important;
+    padding-bottom: max(10px, env(safe-area-inset-bottom, 10px)) !important;
+    background: #ffffff !important;
+    border-top: 1px solid var(--line) !important;
+    position: sticky !important;
+    bottom: 0 !important;
+    z-index: 10 !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
+  }
+  .assistant-composer .mic-button {
+    flex: 0 0 42px !important;
+    width: 42px !important;
+    height: 42px !important;
+    min-height: 42px !important;
+    min-width: 42px !important;
+    padding: 0 !important;
+    display: grid !important;
+    place-items: center !important;
+    border-radius: 50% !important;
+  }
+  .assistant-composer .assistant-input {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    width: 100% !important;
+    min-height: 42px !important;
+    height: 42px !important;
+    padding: 0 14px !important;
+    font-size: 0.9rem !important;
+    border-radius: 999px !important;
+    border: 1.5px solid #d0e2dc !important;
+    background: #fbfdfc !important;
+  }
+  .assistant-composer .primary,
+  .assistant-composer .anaya-send-btn {
+    flex: 0 0 auto !important;
+    width: auto !important;
+    min-width: 68px !important;
+    max-width: none !important;
+    min-height: 42px !important;
+    height: 42px !important;
+    padding: 0 16px !important;
+    font-size: 0.88rem !important;
+    border-radius: 999px !important;
+    white-space: nowrap !important;
+  }
 }
 
 @media(max-width:400px){
-  .assistant-header.reference-assistant-header{padding:12px 12px}
-  .assistant-header-meta h1{font-size:1rem}
-  .assistant-header-meta p{font-size:.7rem}
-  .anaya-menu-trigger,.anaya-restart-trigger{padding:7px 10px;font-size:.74rem}
-  .anaya-starter-card{padding:14px;border-radius:16px}
-  .assistant-thread{padding:22px 14px 28px;gap:22px}
-  .assistant-bubble{max-width:86%;padding:14px 16px}
-  .assistant-composer{padding:12px 14px;gap:9px}
+  .assistant-header.reference-assistant-header { padding: 8px 10px !important; }
+  .assistant-header-meta h1 { font-size: 0.95rem !important; }
+  .assistant-header-meta p { display: none !important; } /* hide subtitle on extra-narrow phones */
+  .anaya-menu-trigger, .anaya-restart-trigger { padding: 5px 8px !important; font-size: 0.72rem !important; }
+  .assistant-bubble { max-width: 92% !important; padding: 10px 12px !important; }
+  .assistant-composer { padding: 8px 10px !important; gap: 6px !important; }
 }

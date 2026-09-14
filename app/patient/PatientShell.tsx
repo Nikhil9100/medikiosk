@@ -185,7 +185,9 @@ export default function PatientShell({children}:{children:React.ReactNode}){
         >
           <span className={`connection-chip ${connection}`}>{connection==="online"?translate(workflow.language,"connectionOnline"):connection==="syncing"?translate(workflow.language,"connectionSyncing"):connection==="offline"?`${translate(workflow.language,"connectionOffline")} · ${pendingCount}`:translate(workflow.language,"connectionAttention")}</span>
         </button>
-        <button type="button" onClick={()=>router.push("/patient/assistant")} className="top-action medi-launcher" aria-label={translate(workflow.language,"assistant")}><Image src="/anaya-avatar.png" alt="" width={28} height={28} style={{borderRadius:"50%",objectFit:"cover",flex:"none"}} /> <span>{localizedAssistantName(workflow.language)}</span></button>
+        {!pathname.includes("/patient/assistant") && (
+          <button type="button" onClick={()=>router.push("/patient/assistant")} className="top-action medi-launcher" aria-label={translate(workflow.language,"assistant")}><Image src="/anaya-avatar.png" alt="" width={28} height={28} style={{borderRadius:"50%",objectFit:"cover",flex:"none"}} /> <span>{localizedAssistantName(workflow.language)}</span></button>
+        )}
         <label className="language-chip"><span className="sr-only">{translate(workflow.language,"languageTitle")}</span><select value={workflow.language} onChange={e=>{const l=e.target.value as PatientLanguage;setLanguage(l);void sync({language:l});}}>{Object.entries(languageNames).map(([k,v])=><option key={k} value={k}>{v}</option>)}</select></label>
       </div>
     </header>

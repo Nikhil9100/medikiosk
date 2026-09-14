@@ -340,18 +340,18 @@ export default function Assistant() {
     <section className="assistant-page reference-assistant-page" aria-labelledby="anaya-title" style={{ position: "relative" }}>
       <header className="assistant-header reference-assistant-header">
         <div className="assistant-header-main">
-          <button className="secondary" onClick={() => router.back()} aria-label="Go back">
+          <button className="secondary anaya-back-btn" onClick={() => router.back()} aria-label="Go back">
             ← {t("back")}
           </button>
           <span className="assistant-avatar reference-female-avatar" aria-hidden="true">
-            <Image src="/anaya-avatar.png" alt="" width={44} height={44} style={{borderRadius:"50%",objectFit:"cover",display:"block"}} />
+            <Image src="/anaya-avatar.png" alt="" width={40} height={40} style={{borderRadius:"50%",objectFit:"cover",display:"block"}} />
           </span>
           <div className="assistant-header-meta">
-            <h1 id="anaya-title" style={{ margin: 0, fontSize: "1.25rem", fontWeight: 700, color: "#0f3e34", display: "flex", alignItems: "center", gap: "8px" }}>
+            <h1 id="anaya-title" style={{ margin: 0, fontSize: "1.15rem", fontWeight: 700, color: "#0f3e34", display: "flex", alignItems: "center", gap: "6px" }}>
               <span>{assistantName}</span>
-              <span className="assistant-status-dot" style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "#10b981" }} title="Online" aria-hidden="true" />
+              <span className="assistant-status-dot" style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "#10b981", flex: "none" }} title="Online" aria-hidden="true" />
             </h1>
-            <p style={{ margin: "2px 0 0", color: "#557069", fontSize: "0.82rem" }} title={t("anayaHeaderEyebrow") || "Female voice health assistant"}>
+            <p className="anaya-header-sub" style={{ margin: "2px 0 0", color: "#557069", fontSize: "0.78rem" }} title={t("anayaHeaderEyebrow") || "Female voice health assistant"}>
               {t("anayaHeaderSub") || "Voice and chat support · general information only"}
             </p>
           </div>
@@ -373,8 +373,9 @@ export default function Assistant() {
               className="secondary anaya-restart-trigger"
               onClick={() => setRestartModalOpen(true)}
               title={t("anayaRestartTitle")}
+              aria-label={t("anayaRestartTitle") || "Restart conversation"}
             >
-              🔄 {t("anayaMenuRestartChat")}
+              🔄 <span className="anaya-restart-text">{t("anayaMenuRestartChat")}</span>
             </button>
           )}
         </div>
@@ -661,7 +662,7 @@ export default function Assistant() {
           aria-label={t("assistantComposerAria") || `Message ${assistantName}`}
           className="assistant-input"
         />
-        <button className="primary" disabled={busy || !draft.trim()}>
+        <button className="primary anaya-send-btn" disabled={busy || !draft.trim()}>
           {busy ? t("processing") : t("send")}
         </button>
       </form>
