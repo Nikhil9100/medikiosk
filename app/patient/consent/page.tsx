@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { usePatient } from "../PatientShell";
+import PatientIcon from "@/components/patient/PatientIcon";
 
 export default function Consent() {
   const router = useRouter();
@@ -34,7 +35,7 @@ export default function Consent() {
     <section className="flow-card reference-card consent-reference-card">
       <div className="centered-reference-heading">
         <div className="reference-icon-badge shield" aria-hidden="true">
-          ⌾
+          <PatientIcon name="shield" size={26}/>
         </div>
         <p className="eyebrow">{t("consentEyebrow")}</p>
         <h1>{t("consentHeading") || "Your Information Stays Private"}</h1>
@@ -43,28 +44,28 @@ export default function Consent() {
 
       <div className="privacy-points">
         <div>
-          <span>🛡</span>
+          <span><PatientIcon name="shield" size={20}/></span>
           <p>
             <b>{t("consentPoint1Title")}</b>
             <small>{t("consentPoint1Desc")}</small>
           </p>
         </div>
         <div>
-          <span>🔒</span>
+          <span><PatientIcon name="lock" size={20}/></span>
           <p>
             <b>{t("consentPoint2Title")}</b>
             <small>{t("consentPoint2Desc")}</small>
           </p>
         </div>
         <div>
-          <span>🩺</span>
+          <span><PatientIcon name="stethoscope" size={20}/></span>
           <p>
             <b>{t("consentPoint3Title")}</b>
             <small>{t("consentPoint3Desc")}</small>
           </p>
         </div>
         <div>
-          <span>↺</span>
+          <span><PatientIcon name="refresh" size={20}/></span>
           <p>
             <b>{t("consentPoint4Title")}</b>
             <small>{t("consentPoint4Desc")}</small>

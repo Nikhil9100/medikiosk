@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { localizedAssistantName } from "@/lib/i18n";
@@ -343,7 +344,7 @@ export default function Assistant() {
             ← {t("back")}
           </button>
           <span className="assistant-avatar reference-female-avatar" aria-hidden="true">
-            👩‍⚕️
+            <Image src="/anaya-avatar.png" alt="" width={44} height={44} style={{borderRadius:"50%",objectFit:"cover",display:"block"}} />
           </span>
           <div className="assistant-header-meta">
             <h1 id="anaya-title" style={{ margin: 0, fontSize: "1.25rem", fontWeight: 700, color: "#0f3e34", display: "flex", alignItems: "center", gap: "8px" }}>
@@ -383,7 +384,7 @@ export default function Assistant() {
         {messages.length === 0 ? (
           <li className="anaya-starter-container">
             <div className="assistant-welcome-card reference-welcome-hero">
-              <span className="medi-mini-avatar" aria-hidden="true">👩‍⚕️</span>
+              <span className="medi-mini-avatar" aria-hidden="true"><Image src="/anaya-avatar.png" alt="" width={48} height={48} style={{borderRadius:"50%",objectFit:"cover",display:"block"}} /></span>
               <div>
                 <b style={{ fontSize: "1.02rem", color: "#0f3e34", display: "block", marginBottom: 3 }}>
                   {t("assistantWelcomeGreeting") || "Namaste! How can I help with your visit today?"}

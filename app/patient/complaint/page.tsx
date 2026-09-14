@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { usePatient } from "../PatientShell";
@@ -237,7 +238,7 @@ export default function Complaint() {
       )}
 
       <div className="medi-helper-card">
-        <span className="medi-mini-avatar">👩‍⚕️</span>
+        <span className="medi-mini-avatar"><Image src="/anaya-avatar.png" alt="" width={40} height={40} style={{borderRadius:"50%",objectFit:"cover",display:"block"}} /></span>
         <p>
           {/* Medi is here to help */}
           <b>{t("anayaHelperTitle") || "Anaya is here to help"}</b>

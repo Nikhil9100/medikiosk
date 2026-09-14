@@ -33,14 +33,16 @@ export default function LanguagePage() {
             aria-pressed={workflow.language === key}
             onClick={() => setLanguage(key as PatientLanguage)}
           >
-            <span className="language-reference-radio">
+            <span className="language-reference-radio" aria-hidden="true">
               {workflow.language === key ? "●" : "○"}
             </span>
-            <span>
+            <span className="language-reference-label">
               <strong>{label}</strong>
               <small>{key.toUpperCase()}</small>
             </span>
-            <span>›</span>
+            <span className="language-reference-chevron" aria-hidden="true">
+              ›
+            </span>
           </button>
         ))}
       </div>

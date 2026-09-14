@@ -157,7 +157,7 @@ function getDeterministicResponse(
   const isFollowUp = norm.length < 25 && (norm.includes("how much") || norm.includes("tell me more") || norm.includes("what about") || norm.includes("why"));
 
   if (isGreeting(message)) {
-    return "Namaste! I am Anaya, your MediKiosk health assistant. I can help you organize your symptoms, prepare questions for your doctor, understand wellness habits (like fitness, sleep, and nutrition), or guide you through uploading medical records. What would you like help with today?";
+    return "Namaste! 🙏 I am Anaya, your MediKiosk health assistant. I can help you organize your symptoms, prepare questions for your doctor, understand wellness habits (like fitness, sleep, and nutrition), or guide you through uploading medical records. What would you like help with today?";
   }
 
   if (isFitnessQuery(message) || (isFollowUp && isFitnessQuery(lastPatient))) {

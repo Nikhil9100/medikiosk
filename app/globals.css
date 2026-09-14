@@ -1187,3 +1187,124 @@ body.patient-modal-open { overflow: hidden; }
     transition-duration: 0.001ms !important;
   }
 }
+
+/* Emoji glyphs used inside quick-choice chips and hints: give them an explicit
+   colour-emoji stack so kiosk devices without an emoji font in the default
+   sans fallback still render them instead of empty boxes. */
+.quick-chip,.chip-emoji,.anaya-hint-icon,.reference-hint-icon,.severity-face,
+.symptom-reference-option,.document-card-icon{
+  font-family:"Noto Color Emoji","Apple Color Emoji","Segoe UI Emoji","Noto Emoji",
+    "Inter","Noto Sans",ui-sans-serif,system-ui,sans-serif}
+
+/* Severity heading row: on narrow phones the voice button squeezed the heading
+   until words broke mid-letter. Stack it and keep words whole. */
+.severity-section-header h1{overflow-wrap:break-word;word-break:normal;hyphens:none}
+@media(max-width:520px){
+  .severity-section-header{flex-direction:column;align-items:flex-start;gap:12px}
+  .severity-section-header h1{font-size:1.42rem;line-height:1.2}
+  .severity-voice-trigger{width:100%;justify-content:center;min-height:46px}
+}
+
+/* =======================================================================
+   Anaya mobile breathing room — Soft accessible interface direction
+   ======================================================================= */
+@media(max-width:640px){
+  /* Keep header in one row; stop the old grid stack that pushed buttons below. */
+  .assistant-header.reference-assistant-header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    padding:14px 16px
+  }
+  .assistant-header.reference-assistant-header .secondary{grid-column:auto;order:0}
+  .assistant-header-main{gap:10px;flex:1;min-width:0}
+  .assistant-header-meta{min-width:0}
+  .assistant-header-meta h1{font-size:1.05rem;gap:6px}
+  .assistant-header-meta p{font-size:.72rem;color:var(--mk-ink-3,#5d756e)}
+  .reference-female-avatar{width:44px;height:44px}
+  .reference-female-avatar img{width:44px!important;height:44px!important}
+  .anaya-header-actions{gap:6px;flex:none}
+  .anaya-menu-trigger,.anaya-restart-trigger{
+    padding:8px 12px;
+    font-size:.78rem;
+    min-height:38px;
+    border-radius:999px;
+    border-color:#b7d6ca;
+    background:#f7fcfa
+  }
+
+  /* Calmer thread surface with more air. */
+  .assistant-thread{
+    padding:24px 16px 30px;
+    gap:24px;
+    background:var(--mk-g-050,#f6f9f8)
+  }
+  .assistant-message{margin:0}
+  .assistant-bubble{
+    max-width:84%;
+    padding:15px 17px;
+    line-height:1.62
+  }
+  .assistant-sender-tag{margin-bottom:8px!important}
+  .anaya-msg-actions{margin-top:12px}
+  .anaya-quick-chips{margin-top:14px;gap:10px}
+  .assistant-citations{margin-top:12px!important}
+
+  /* Welcome card: softer, roomier. */
+  .assistant-welcome-card{
+    padding:16px;
+    border-radius:18px;
+    background:linear-gradient(135deg,#f3faf7,#fff);
+    border:1.5px solid #d5e9e1;
+    gap:14px;
+    box-shadow:0 2px 10px rgba(11,93,75,.04)
+  }
+  .assistant-welcome-card .medi-mini-avatar{width:48px;height:48px}
+  .assistant-welcome-card .medi-mini-avatar img{width:48px!important;height:48px!important}
+
+  /* Step banner: lighter and more padded. */
+  .anaya-step-banner{
+    padding:14px 16px;
+    border-radius:16px;
+    gap:14px;
+    background:#fdfaf3;
+    border:1.5px solid #f6e3b5
+  }
+  .anaya-step-icon{font-size:1.5rem}
+  .anaya-step-label{font-size:.72rem}
+  .anaya-step-chip{padding:8px 14px;font-size:.84rem}
+
+  /* Topic cards: full-width, taller, more separation. */
+  .anaya-starter-section{gap:16px;margin-top:4px}
+  .anaya-starter-heading{font-size:1rem;color:var(--mk-ink,#113d35);margin:0 0 2px}
+  .anaya-starter-grid{grid-template-columns:1fr;gap:14px}
+  .anaya-starter-card{
+    padding:16px;
+    border-radius:18px;
+    border:1.5px solid #d5e5df;
+    box-shadow:0 2px 10px rgba(11,93,75,.04);
+    gap:14px;
+    min-height:76px
+  }
+  .anaya-starter-card:active{transform:scale(.98)}
+  .anaya-card-icon{font-size:1.7rem;padding-top:0}
+  .anaya-card-text strong{font-size:1rem;margin-bottom:4px;color:var(--mk-ink,#113d35)}
+  .anaya-card-text p{font-size:.86rem;line-height:1.45}
+
+  /* Composer stays comfortable but not cramped. */
+  .assistant-composer{padding:14px 16px;gap:10px}
+  .assistant-composer .primary{min-height:44px;padding:10px 14px;font-size:.9rem}
+  .mic-button{min-height:44px;min-width:44px;padding:10px}
+}
+
+@media(max-width:400px){
+  .assistant-header.reference-assistant-header{padding:12px 12px}
+  .assistant-header-meta h1{font-size:1rem}
+  .assistant-header-meta p{font-size:.7rem}
+  .anaya-menu-trigger,.anaya-restart-trigger{padding:7px 10px;font-size:.74rem}
+  .anaya-starter-card{padding:14px;border-radius:16px}
+  .assistant-thread{padding:22px 14px 28px;gap:22px}
+  .assistant-bubble{max-width:86%;padding:14px 16px}
+  .assistant-composer{padding:12px 14px;gap:9px}
+}
