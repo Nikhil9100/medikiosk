@@ -3,9 +3,21 @@ import { Pool, type PoolClient } from "pg";
 
 let pool: Pool | null = null;
 export function databaseConfigured(){ return Boolean(process.env.DATABASE_URL); }
+
+function resolveDatabaseUrl(raw?: string): string {
+  if (!raw) return "";
+  if (raw.includes("db.pmxuxxcgvukepufhowwz.supabase.co")) {
+    return raw
+      .replace("db.pmxuxxcgvukepufhowwz.supabase.co", "aws-0-ap-northeast-2.pooler.supabase.com")
+      .replace("postgresql://postgres:", "postgresql://postgres.pmxuxxcgvukepufhowwz:");
+  }
+  return raw;
+}
+
 function getPool(){
-  if(!process.env.DATABASE_URL) throw new Error("DATABASE_URL is not configured");
-  if(!pool) pool=new Pool({connectionString:process.env.DATABASE_URL,max:5,idleTimeoutMillis:20000,connectionTimeoutMillis:5000,ssl:{rejectUnauthorized:false}});
+  const url = resolveDatabaseUrl(process.env.DATABASE_URL);
+  if(!url) throw new Error("DATABASE_URL is not configured");
+  if(!pool) pool=new Pool({connectionString:url,max:5,idleTimeoutMillis:20000,connectionTimeoutMillis:5000,ssl:{rejectUnauthorized:false}});
   return pool;
 }
 export async function withTx<T>(scope:{sessionId?:string;ownerId?:string;staffId?:string;kioskId?:string;role?:"staff"|"kiosk"}, fn:(c:PoolClient)=>Promise<T>){
