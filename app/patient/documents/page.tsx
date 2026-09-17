@@ -92,32 +92,48 @@ export default function Documents() {
       const d = await res.json().catch(() => ({}));
       if (!res.ok) {
         setError(d.error ?? "Upload failed");
+        setBusy("");
       } else {
         setFile(null);
         await load();
+        setBusy("");
+        if (d?.id) {
+          const ocrOk = await process(d.id, "ocr");
+          if (ocrOk) {
+            await process(d.id, "extraction");
+          }
+        }
       }
     } catch {
       setError(
         "Connection was lost during upload. The file was not cached locally; please select it again after reconnecting."
       );
+      setBusy("");
     }
-    setBusy("");
   }
 
-  async function process(id: string, kind: "ocr" | "extraction") {
-    if (!(await onlineGate())) return;
+  async function process(id: string, kind: "ocr" | "extraction"): Promise<boolean> {
+    if (!(await onlineGate())) return false;
     setBusy(`${kind}:${id}`);
     setError("");
 
     try {
       const res = await fetch(`/api/patient/documents/${id}/${kind}`, { method: "POST" });
       const d = await res.json().catch(() => ({}));
-      if (!res.ok) setError(d.error ?? `${kind} failed`);
+      if (!res.ok) {
+        setError(d.error ?? `${kind} failed`);
+        await load();
+        setBusy("");
+        return false;
+      }
       await load();
+      setBusy("");
+      return true;
     } catch {
       setError("Connection was lost during processing. Reconnect and retry; processing endpoints are idempotent.");
+      setBusy("");
+      return false;
     }
-    setBusy("");
   }
 
   async function remove(id: string) {
