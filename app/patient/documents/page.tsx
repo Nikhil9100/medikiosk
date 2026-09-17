@@ -62,9 +62,22 @@ export default function Documents() {
     return true;
   }
 
-  async function upload() {
-    if (!file) return;
-    if (file.size > MAX_FILE_SIZE) {
+  const [dragActive, setDragActive] = useState(false);
+
+  async function handleFile(selectedFile: File) {
+    if (!selectedFile) return;
+    if (selectedFile.size > MAX_FILE_SIZE) {
+      setError("Maximum file size is 20 MB.");
+      return;
+    }
+    setFile(selectedFile);
+    await upload(selectedFile);
+  }
+
+  async function upload(fileToUpload?: File) {
+    const target = fileToUpload ?? file;
+    if (!target) return;
+    if (target.size > MAX_FILE_SIZE) {
       setError("Maximum file size is 20 MB.");
       return;
     }
@@ -74,7 +87,7 @@ export default function Documents() {
 
     try {
       const fd = new FormData();
-      fd.append("file", file);
+      fd.append("file", target);
       const res = await fetch("/api/patient/documents", { method: "POST", body: fd });
       const d = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -170,38 +183,74 @@ export default function Documents() {
       )}
 
       <label
-        className={`document-dropzone ${connection === "offline" ? "disabled" : ""}`}
+        className={`document-dropzone ${dragActive ? "drag-active" : ""} ${connection === "offline" ? "disabled" : ""}`}
         htmlFor="doc"
+        onDragOver={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (connection !== "offline") setDragActive(true);
+        }}
+        onDragLeave={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setDragActive(false);
+        }}
+        onDrop={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setDragActive(false);
+          if (connection === "offline") return;
+          const dropped = e.dataTransfer.files?.[0];
+          if (dropped) void handleFile(dropped);
+        }}
       >
-        <span className="document-upload-icon">⇧</span>
-        <strong>{t("dropzoneTitle")}</strong>
-        <small>{t("dropzoneSub")}</small>
+        <span className="document-upload-icon">{busy === "upload" ? "⏳" : "⇧"}</span>
+        <strong>{busy === "upload" ? "Uploading document…" : t("dropzoneTitle")}</strong>
+        <small>{busy === "upload" ? "Please wait while we secure your record…" : t("dropzoneSub")}</small>
         <input
           id="doc"
           type="file"
           accept=".pdf,.png,.jpg,.jpeg,.webp,.bmp,.tif,.tiff"
-          disabled={connection === "offline"}
-          onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+          disabled={connection === "offline" || busy === "upload"}
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) void handleFile(f);
+            e.target.value = "";
+          }}
         />
       </label>
 
-      {file && (
+      {busy === "upload" && file && (
+        <div className="selected-file-card upload-in-progress">
+          <span className="file-spinner" aria-hidden="true">⏳</span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <strong>Uploading {file.name}…</strong>
+            <small>
+              {Math.max(0.01, file.size / 1024 / 1024).toFixed(2)} MB · Securing and preparing for review
+            </small>
+            <div className="document-progress" style={{ marginTop: 8 }}>
+              <span style={{ width: "90%", animation: "pulse 1.2s infinite" }} />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {busy !== "upload" && file && (
         <div className="selected-file-card">
           <span>📄</span>
           <div>
             <strong>{file.name}</strong>
             <small>
-              {Math.max(0.01, file.size / 1024 / 1024).toFixed(2)} MB ·{" "}
-              {t("readyToUpload") || "ready to upload"}
+              {Math.max(0.01, file.size / 1024 / 1024).toFixed(2)} MB · {t("readyToUpload") || "ready to upload"}
             </small>
           </div>
           <button
             type="button"
             className="secondary"
             disabled={!!busy || connection === "offline"}
-            onClick={() => void upload()}
+            onClick={() => void upload(file)}
           >
-            {busy === "upload" ? t("uploading") : t("uploadBtn")}
+            {t("uploadBtn") || "Retry Upload"}
           </button>
         </div>
       )}

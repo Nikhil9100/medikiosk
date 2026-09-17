@@ -1844,3 +1844,566 @@ a.secondary,a.secondary:visited{text-decoration:none}
   }
 }
 
+/* =========================================================================
+   Clinical Intake Summary & Visual Dashboard
+   ========================================================================= */
+.intake-summary-container {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.intake-section-highlight {
+  border: 1px solid #d3e4dc;
+  background: #fbfdfc;
+  border-radius: 14px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(11, 93, 75, 0.03);
+}
+
+.intake-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.intake-title-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.intake-title-group h4 {
+  margin: 0;
+  font-size: 1.05rem;
+  color: #123e35;
+  font-weight: 700;
+}
+
+.intake-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.intake-badge.primary {
+  background: #e6f4f0;
+  color: #0b5d4b;
+  border: 1px solid #b2dacd;
+}
+
+.intake-version-chip {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #5b736b;
+  background: #eef3f1;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid #dce6e2;
+}
+
+.chief-complaint-box {
+  background: #ffffff;
+  border: 1px solid #dce9e3;
+  border-radius: 10px;
+  padding: 14px;
+}
+
+.chief-complaint-text strong {
+  font-size: 1.15rem;
+  color: #123e35;
+  font-style: italic;
+  line-height: 1.45;
+  display: block;
+}
+
+.complaint-tags-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.complaint-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #f2f7f5;
+  border: 1px solid #cfe0d8;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  color: #1c3c35;
+}
+
+.complaint-severity {
+  font-size: 0.7rem;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+
+.complaint-severity.severe {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.complaint-severity.moderate {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.complaint-severity.mild {
+  background: #e0f2fe;
+  color: #075985;
+}
+
+.intake-safety-alerts {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.intake-alert-card.urgent {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  background: #fff1f0;
+  border-left: 4px solid #dc2626;
+  padding: 10px 14px;
+  border-radius: 8px;
+  color: #991b1b;
+}
+
+.intake-alert-card.urgent strong {
+  display: block;
+  font-size: 0.9rem;
+}
+
+.intake-interview-section {
+  margin-top: 6px;
+}
+
+.intake-section-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.intake-section-heading h5 {
+  margin: 0;
+  font-size: 0.95rem;
+  color: #163e36;
+  font-weight: 700;
+}
+
+.intake-questions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 10px;
+}
+
+.intake-q-card {
+  background: #ffffff;
+  border: 1px solid #dce6e2;
+  border-radius: 10px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.intake-q-card:hover {
+  border-color: #a8cfc0;
+  box-shadow: 0 2px 8px rgba(11, 93, 75, 0.05);
+}
+
+.intake-q-card.badge-known {
+  border-left: 3.5px solid #0a7057;
+}
+
+.intake-q-card.badge-denied {
+  border-left: 3.5px solid #94a3b8;
+}
+
+.intake-q-card.badge-unknown {
+  border-left: 3.5px solid #f59e0b;
+}
+
+.intake-q-card.badge-declined {
+  border-left: 3.5px solid #d1d5db;
+}
+
+.intake-q-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.intake-q-title {
+  font-weight: 700;
+  font-size: 0.86rem;
+  color: #163832;
+  line-height: 1.3;
+}
+
+.intake-state-tag {
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.intake-state-tag.badge-known {
+  background: #e6f6ee;
+  color: #086047;
+  border: 1px solid #a8dfc4;
+}
+
+.intake-state-tag.badge-denied {
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+}
+
+.intake-state-tag.badge-unknown {
+  background: #fffbeb;
+  color: #b45309;
+  border: 1px solid #fde68a;
+}
+
+.intake-state-tag.badge-declined {
+  background: #f3f4f6;
+  color: #6b7280;
+  border: 1px solid #e5e7eb;
+}
+
+.intake-q-value {
+  color: #064e3b;
+  font-size: 0.88rem;
+  font-weight: 600;
+  background: #f0fdf4;
+  padding: 6px 9px;
+  border-radius: 6px;
+  border: 1px solid #bbf7d0;
+  line-height: 1.35;
+}
+
+.intake-q-empty {
+  color: #64748b;
+  font-size: 0.8rem;
+  font-style: italic;
+  line-height: 1.3;
+}
+
+.intake-provenance-meta {
+  font-size: 0.68rem;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-top: auto;
+  padding-top: 4px;
+}
+
+.intake-docs-summary {
+  background: #f8faf9;
+  border: 1px solid #dce8e3;
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+
+.intake-docs-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.intake-doc-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #ffffff;
+  border: 1px solid #cfded7;
+  padding: 5px 10px;
+  border-radius: 8px;
+  font-size: 0.82rem;
+}
+
+.doc-name {
+  font-weight: 600;
+  color: #173b33;
+}
+
+.doc-badge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  background: #eaf5f0;
+  color: #086047;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.intake-raw-drawer {
+  margin-top: 14px;
+  border: 1px solid #dce8e3;
+  border-radius: 10px;
+  background: #f8fbf9;
+  overflow: hidden;
+}
+
+.intake-raw-summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  cursor: pointer;
+  user-select: none;
+  font-size: 0.84rem;
+  color: #1e3f37;
+  background: #edf5f1;
+}
+
+.raw-summary-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.code-icon {
+  font-family: monospace;
+  font-weight: 700;
+  color: #0b5d4b;
+  background: #dbece4;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.78rem;
+}
+
+.copy-json-btn {
+  background: #ffffff;
+  border: 1px solid #b8d4c8;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #0b5d4b;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.copy-json-btn:hover {
+  background: #0b5d4b;
+  color: #ffffff;
+}
+
+.raw-json-body pre {
+  margin: 0;
+  padding: 14px;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  overflow: auto;
+  max-height: 360px;
+  background: #ffffff;
+  border-top: 1px solid #dce8e3;
+  color: #1e293b;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+/* =========================================================================
+   Dashavidha Atura Pariksha Visual Cards
+   ========================================================================= */
+.dash-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 14px;
+  margin-top: 12px;
+}
+
+.dash-item-visual {
+  background: #ffffff;
+  border: 1px solid #d8e5df;
+  border-radius: 14px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 2px 8px rgba(11, 93, 75, 0.04);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.dash-item-visual:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 5px 16px rgba(11, 93, 75, 0.08);
+  border-color: #b0d1c4;
+}
+
+.dash-header-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.dash-icon-box {
+  width: 52px;
+  height: 52px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.04);
+}
+
+.dash-title-group {
+  flex: 1;
+  min-width: 0;
+}
+
+.dash-sanskrit {
+  font-size: 0.94rem;
+  font-weight: 700;
+  color: #143830;
+  display: block;
+  line-height: 1.25;
+}
+
+.dash-english {
+  font-size: 0.76rem;
+  color: #556e66;
+  display: block;
+  line-height: 1.2;
+  margin-top: 2px;
+}
+
+.dash-status-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.dash-badge {
+  font-size: 0.68rem;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 999px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.dash-badge.observed {
+  background: #e6f6ee;
+  color: #086047;
+  border: 1px solid #a4dfc2;
+}
+
+.dash-badge.unassessed {
+  background: #f8fafc;
+  color: #64748b;
+  border: 1px solid #e2e8f0;
+}
+
+.dash-clinical-helper {
+  font-size: 0.77rem;
+  color: #647770;
+  line-height: 1.35;
+  margin: 0 0 8px;
+}
+
+.dash-item-visual textarea {
+  width: 100%;
+  min-height: 64px;
+  border: 1px solid #c2d4cd;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 0.84rem;
+  line-height: 1.4;
+  resize: vertical;
+  background: #fcfefe;
+  margin-bottom: 8px;
+  color: #17322b;
+  box-sizing: border-box;
+}
+
+.dash-item-visual textarea:focus {
+  outline: none;
+  border-color: #0b5d4b;
+  box-shadow: 0 0 0 2px rgba(11, 93, 75, 0.12);
+}
+
+.dash-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  margin-top: auto;
+  gap: 8px;
+}
+
+.dash-save-btn {
+  min-height: 34px;
+  padding: 6px 14px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #0b5d4b;
+  border: 1px solid #b8d4c8;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.dash-save-btn:hover {
+  background: #0b5d4b;
+  color: #ffffff;
+}
+
+.dash-save-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* =========================================================================
+   Document Dropzone & Feedback States
+   ========================================================================= */
+.document-dropzone.drag-active {
+  border-color: #0b5d4b !important;
+  background: #eef7f4 !important;
+  transform: scale(1.01);
+  box-shadow: 0 4px 16px rgba(11, 93, 75, 0.12);
+}
+
+.upload-in-progress {
+  border-color: #9ec9b9 !important;
+  background: #f4faf7 !important;
+}
+
+.file-spinner {
+  font-size: 1.3rem;
+  display: inline-block;
+  animation: spin 1.5s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+

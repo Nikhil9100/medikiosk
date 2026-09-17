@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { DASHAVIDHA } from "@/lib/dashavidha";
+import { IntakeSummaryCard } from "./IntakeSummaryCard";
+import { DashavidhaIcon, DASHAVIDHA_META } from "./dashavidha-icons";
 
 type Bundle = {
   case: {
@@ -527,37 +529,16 @@ export default function CasePage() {
                 ))}
               </div>
 
-              {/* Adaptive Interview */}
+              {/* Clinical Intake Summary & Structured Interview */}
               <div className="case-section">
-                <h3>Adaptive interview</h3>
-                {Object.values(data.interview ?? {}).length ? (
-                  <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
-                    {Object.values(data.interview ?? {}).map((x: any) => (
-                      <div
-                        key={x.questionId}
-                        style={{
-                          background: "#f9fbfb",
-                          border: "1px solid #e2ece8",
-                          borderRadius: 8,
-                          padding: "8px 12px",
-                        }}
-                      >
-                        <b>{x.questionId.replaceAll("_", " ")}:</b>{" "}
-                        <span style={{ color: "#183c36" }}>{x.value ?? x.state}</span>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="helper">No structured interview answers recorded for this session.</p>
-                )}
-              </div>
-
-              {/* Clinical Summary Draft */}
-              <div className="case-section">
-                <h3>Clinical intake summary</h3>
-                <pre style={{ whiteSpace: "pre-wrap", fontFamily: "inherit", background: "#f8fbf9", border: "1px solid #dce8e3", borderRadius: 8, padding: 12 }}>
-                  {c.summary ? (typeof c.summary === "string" ? c.summary : JSON.stringify(c.summary, null, 2)) : "Draft intake summary not available."}
-                </pre>
+                <IntakeSummaryCard
+                  summary={c.summary}
+                  complaints={data.complaints}
+                  interview={data.interview}
+                  documents={data.documents}
+                  evidence={data.evidence}
+                  safetySignals={data.signals}
+                />
               </div>
             </section>
 
@@ -711,38 +692,68 @@ export default function CasePage() {
               <div className="dash-grid">
                 {DASHAVIDHA.map(([key, label, help]) => {
                   const row = assessed.get(key) as any;
+                  const isObserved = row?.state === "OBSERVED" || !!row?.value?.trim();
+                  const meta = DASHAVIDHA_META[key] ?? {
+                    sanskrit: label,
+                    english: help,
+                    clinicalFocus: help,
+                    bgGradient: "linear-gradient(135deg, #e6f4f0 0%, #d1ebe3 100%)",
+                  };
                   return (
-                    <div className="dash-item" key={key}>
-                      <strong>{label}</strong>
-                      <p className="helper">{help}</p>
+                    <div className="dash-item-visual" key={key}>
+                      <div className="dash-header-row">
+                        <div
+                          className="dash-icon-box"
+                          style={{ background: meta.bgGradient }}
+                        >
+                          <DashavidhaIcon name={key} size={42} />
+                        </div>
+                        <div className="dash-title-group">
+                          <span className="dash-sanskrit">{meta.sanskrit}</span>
+                          <span className="dash-english">{meta.english}</span>
+                        </div>
+                      </div>
+
+                      <div className="dash-status-row">
+                        <span className={`dash-badge ${isObserved ? "observed" : "unassessed"}`}>
+                          {isObserved ? "✓ Observed" : "Not Assessed"}
+                        </span>
+                      </div>
+
+                      <p className="dash-clinical-helper">{meta.clinicalFocus}</p>
+
                       <textarea
                         aria-label={`${label} observation`}
                         defaultValue={row?.value ?? ""}
                         id={`d-${key}`}
+                        placeholder={`Clinical observation for ${label}…`}
                         rows={2}
                       />
-                      <button
-                        type="button"
-                        className="secondary"
-                        onClick={async () => {
-                          const el = document.getElementById(`d-${key}`) as HTMLTextAreaElement;
-                          setSaving(key);
-                          const r = await fetch(`/api/staff/case/${sessionId}/dashavidha`, {
-                            method: "PUT",
-                            headers: { "content-type": "application/json" },
-                            body: JSON.stringify({
-                              observation: key,
-                              state: el.value.trim() ? "OBSERVED" : "NOT_ASSESSED",
-                              value: el.value.trim() || null,
-                            }),
-                          });
-                          if (r.ok) await load();
-                          else setError("Dashavidha observation was not saved.");
-                          setSaving("");
-                        }}
-                      >
-                        Save
-                      </button>
+                      <div className="dash-actions">
+                        <button
+                          type="button"
+                          className="dash-save-btn"
+                          disabled={saving === key}
+                          onClick={async () => {
+                            const el = document.getElementById(`d-${key}`) as HTMLTextAreaElement;
+                            setSaving(key);
+                            const r = await fetch(`/api/staff/case/${sessionId}/dashavidha`, {
+                              method: "PUT",
+                              headers: { "content-type": "application/json" },
+                              body: JSON.stringify({
+                                observation: key,
+                                state: el.value.trim() ? "OBSERVED" : "NOT_ASSESSED",
+                                value: el.value.trim() || null,
+                              }),
+                            });
+                            if (r.ok) await load();
+                            else setError("Dashavidha observation was not saved.");
+                            setSaving("");
+                          }}
+                        >
+                          {saving === key ? "Saving…" : "Save"}
+                        </button>
+                      </div>
                     </div>
                   );
                 })}
