@@ -109,6 +109,7 @@ export default function CasePage() {
   const { sessionId } = useParams<{ sessionId: string }>();
   const router = useRouter();
   const [data, setData] = useState<Bundle | null>(null);
+  const [fhirBundle, setFhirBundle] = useState<any>(null);
   const [error, setError] = useState("");
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState("");
@@ -124,8 +125,18 @@ export default function CasePage() {
         setError("Unable to load this case.");
         return;
       }
-      setData(await r.json());
+      const bundleData = await r.json();
+      setData(bundleData);
       setError("");
+
+      try {
+        const fr = await fetch(`/api/staff/case/${sessionId}/fhir`, { cache: "no-store" });
+        if (fr.ok) {
+          setFhirBundle(await fr.json());
+        }
+      } catch {
+        // Handled gracefully by fallback
+      }
     } catch {
       setError("Unable to load this case. Please check network connection.");
     }
@@ -538,6 +549,14 @@ export default function CasePage() {
                   documents={data.documents}
                   evidence={data.evidence}
                   safetySignals={data.signals}
+                  fhirBundle={fhirBundle}
+                  caseDetails={{
+                    caseId: c.caseId,
+                    sessionId: c.sessionId,
+                    language: c.language,
+                    createdAt: c.createdAt,
+                    completedAt: c.completedAt,
+                  }}
                 />
               </div>
             </section>
