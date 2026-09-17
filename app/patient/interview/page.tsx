@@ -231,20 +231,23 @@ export default function Interview() {
       </div>
 
       <div className="panel interview-question-panel">
-        <small>{q.domain.replaceAll("_", " ")}</small>
+        <small className="interview-domain-tag">{q.domain.replaceAll("_", " ")}</small>
         <h2>{label}</h2>
         <button
-          className="secondary"
+          type="button"
+          className="interview-listen-btn"
           disabled={speaking}
           onClick={() => void speakQuestion()}
+          aria-label={speaking ? (t("stop") || "Stop") : (t("readQuestionAloud") || "Read question aloud")}
         >
-          {speaking ? "🔊 Playing…" : `🔊 ${t("speak")}`}
+          <span aria-hidden="true">{speaking ? "🔊" : "🔉"}</span>
+          <span>{speaking ? (t("playingAudio") || "Playing…") : (t("readQuestionAloud") || "Read question aloud")}</span>
         </button>
         {q.redFlag && <p className="helper">{t("redFlagNotice")}</p>}
       </div>
 
       {q.type === "yes_no" ? (
-        <>
+        <div className="interview-answer-container">
           <div className="choice-grid">
             <button
               type="button"
@@ -275,60 +278,73 @@ export default function Interview() {
               {t("decline")}
             </button>
           </div>
-          <div className="actions">
+          <div className="interview-voice-row">
             <button
               type="button"
-              className={`mic-button ${recording ? "live" : ""}`}
+              className={`interview-voice-trigger ${recording ? "live" : ""}`}
               onClick={() => void voice()}
+              aria-label={recording ? (t("stopRecording") || "Stop recording") : (t("tapToSpeak") || "Tap to speak")}
+              aria-pressed={recording}
             >
-              {recording ? `■ ${t("stop")}` : `🎙️ ${t("listen")}`}
+              <span className="interview-mic-icon" aria-hidden="true">{recording ? "■" : "🎙️"}</span>
+              <span className="interview-mic-label">
+                {recording ? (t("stopRecording") || "Stop recording") : (t("tapToSpeak") || "Tap to speak")}
+              </span>
             </button>
           </div>
-        </>
+        </div>
       ) : (
-        <>
+        <div className="interview-answer-container">
           <div className="field">
             <label htmlFor="answer">{t("yourAnswer")}</label>
             <textarea
               id="answer"
               value={value}
+              placeholder={recording ? (t("voiceListeningArea") || "Listening to your answer…") : (t("assistantHint") || "Type your answer or tap the microphone to speak…")}
               onChange={(e) => setValue(e.target.value)}
             />
           </div>
-          <div className="actions">
-            <button
-              type="button"
-              className={`mic-button ${recording ? "live" : ""}`}
-              onClick={() => void voice()}
-            >
-              {recording ? `■ ${t("stop")}` : `🎙️ ${t("listen")}`}
-            </button>
-            <button
-              type="button"
-              className="primary"
-              disabled={!value.trim() || busy}
-              onClick={() => void save("KNOWN", value, "PATIENT")}
-            >
-              {t("saveAnswer")} →
-            </button>
+          <div className="interview-actions-cluster">
+            <div className="interview-primary-actions">
+              <button
+                type="button"
+                className={`interview-voice-trigger ${recording ? "live" : ""}`}
+                onClick={() => void voice()}
+                aria-label={recording ? (t("stopRecording") || "Stop recording") : (t("tapToSpeak") || "Tap to speak")}
+                aria-pressed={recording}
+              >
+                <span className="interview-mic-icon" aria-hidden="true">{recording ? "■" : "🎙️"}</span>
+                <span className="interview-mic-label">
+                  {recording ? (t("stopRecording") || "Stop recording") : (t("tapToSpeak") || "Tap to speak")}
+                </span>
+              </button>
+              <button
+                type="button"
+                className="primary interview-save-btn"
+                disabled={!value.trim() || busy}
+                onClick={() => void save("KNOWN", value, "PATIENT")}
+              >
+                {busy ? t("processing") : `${t("saveAnswer")} →`}
+              </button>
+            </div>
+            <div className="interview-skip-actions">
+              <button
+                type="button"
+                className="secondary"
+                onClick={() => void save("UNKNOWN")}
+              >
+                {t("unknown")}
+              </button>
+              <button
+                type="button"
+                className="secondary"
+                onClick={() => void save("DECLINED")}
+              >
+                {t("decline")}
+              </button>
+            </div>
           </div>
-          <div className="actions">
-            <button
-              type="button"
-              className="secondary"
-              onClick={() => void save("UNKNOWN")}
-            >
-              {t("unknown")}
-            </button>
-            <button
-              type="button"
-              className="secondary"
-              onClick={() => void save("DECLINED")}
-            >
-              {t("decline")}
-            </button>
-          </div>
-        </>
+        </div>
       )}
 
       <div className="contextual-helper-box">
