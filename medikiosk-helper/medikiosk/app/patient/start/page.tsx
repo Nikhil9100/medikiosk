@@ -1,0 +1,2 @@
+"use client";import { useEffect } from "react";import { useRouter } from "next/navigation";import { usePatient } from "../PatientShell";
+export default function Start(){const r=useRouter();const {sync}=usePatient();useEffect(()=>{void (async()=>{if(await sync({workflowStep:"complaint"}))r.replace("/patient/complaint")})();},[r,sync]);return <section className="flow-card reference-card"><div className="loading-card" role="status">Preparing your health concern step…</div></section>}

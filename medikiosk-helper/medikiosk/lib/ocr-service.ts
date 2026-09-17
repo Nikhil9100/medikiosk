@@ -1,0 +1,5 @@
+import { convert } from "pdf-raster";
+export type OcrPage={pageNumber:number;extractedText:string;confidence?:number;language:string};
+async function recognize(buffer:Buffer,language:string){const Tesseract=await import("tesseract.js");const worker=await Tesseract.createWorker(language,1,{logger:()=>{}});try{const r=await worker.recognize(buffer);return{text:r.data.text.trim(),confidence:r.data.confidence>0?r.data.confidence/100:undefined};}finally{await worker.terminate().catch(()=>{})}}
+const tessLang:Record<string,string>={en:"eng",hi:"hin",bn:"ben",te:"tel",ta:"tam",mr:"mar"};
+export async function runOcr(content:Buffer,mimeType:string,language:string):Promise<OcrPage[]>{const lang=tessLang[language]??"eng";if(mimeType==="application/pdf"){const pages=await convert(content,{dpi:250,outputFormat:"png"});const out:OcrPage[]=[];for(const p of pages.slice(0,20)){const x=await recognize(p.data,lang);out.push({pageNumber:p.pageIndex+1,extractedText:x.text,confidence:x.confidence,language});}return out;}const x=await recognize(content,lang);return[{pageNumber:1,extractedText:x.text,confidence:x.confidence,language}];}

@@ -1,0 +1,3 @@
+import { NextResponse } from "next/server";import { getActiveKioskSession } from "@/lib/db/session-scope";import { mapLanguage,speak } from "@/lib/sarvam";
+export const runtime="nodejs";
+export async function POST(req:Request){const s=await getActiveKioskSession();if(!s)return NextResponse.json({error:"No active session"},{status:404});const b=await req.json().catch(()=>null);if(typeof b?.text!=="string"||typeof b?.language!=="string"||!b.text.trim()||b.text.length>2500)return NextResponse.json({error:"Invalid speech request"},{status:400});try{return NextResponse.json(await speak(b.text,mapLanguage(b.language)),{headers:{"Cache-Control":"no-store, private"}});}catch{return NextResponse.json({error:"Voice unavailable"},{status:503});}}

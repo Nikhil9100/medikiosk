@@ -1,0 +1,106 @@
+import { NextResponse } from "next/server";
+import { requireStaff } from "@/lib/staff-guard";
+import { withStaffTx } from "@/lib/db/pool";
+
+export const dynamic = "force-dynamic";
+
+export async function GET(_: Request, { params }: { params: Promise<{ sessionId: string }> }) {
+  const g = await requireStaff("DOCTOR");
+  if (g.response) return g.response;
+
+  const { sessionId } = await params;
+  if (!/^[0-9a-f-]{36}$/i.test(sessionId)) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  const bundle = await withStaffTx(g.staff!.id, async (c) => {
+    const s = (
+      await c.query(
+        `SELECT id, case_id, case_status, language, consent_status, created_at, completed_at, summary, interview_data 
+         FROM patient_sessions WHERE id = $1`,
+        [sessionId]
+      )
+    ).rows[0];
+
+    if (!s) return null;
+
+    const [complaints, signals, documents, evidence, chat, dash, consultation, notes, identity] = await Promise.all([
+      c.query(
+        `SELECT id, position, complaint_text AS "complaintText", body_region AS "bodyRegion", body_subregion AS "bodySubregion", severity 
+         FROM complaints WHERE session_id = $1 AND status = 'ACTIVE' ORDER BY position`,
+        [sessionId]
+      ),
+      c.query(
+        `SELECT id, signal_type AS type, summary, reason, status, source 
+         FROM safety_signals WHERE session_id = $1 ORDER BY created_at`,
+        [sessionId]
+      ),
+      c.query(
+        `SELECT id, original_filename AS "originalFilename", mime_type AS "mimeType", processing_status AS "processingStatus", ocr_status AS "ocrStatus", extraction_status AS "extractionStatus", verification_status AS "verificationStatus" 
+         FROM documents WHERE session_id = $1 ORDER BY received_at`,
+        [sessionId]
+      ),
+      c.query(
+        `SELECT id, document_id AS "documentId", category, normalized_value AS "normalizedValue", original_wording AS "originalWording", page_number AS "pageNumber", extraction_method AS "extractionMethod", confidence, verification_state AS "verificationState", uncertainty_notes AS "uncertaintyNotes" 
+         FROM clinical_evidence WHERE session_id = $1 ORDER BY created_at`,
+        [sessionId]
+      ),
+      c.query(
+        `SELECT id, role, content, intent, provider, created_at AS "createdAt" 
+         FROM chat_messages WHERE session_id = $1 ORDER BY created_at, id`,
+        [sessionId]
+      ),
+      c.query(
+        `SELECT observation, value, state, note, recorded_at AS "recordedAt" 
+         FROM dashavidha_observations WHERE session_id = $1 ORDER BY observation`,
+        [sessionId]
+      ),
+      c.query(
+        `SELECT id, status, started_at AS "startedAt", completed_at AS "completedAt", doctor_id AS "doctorId",
+                (SELECT display_name FROM staff WHERE id = consultations.doctor_id) AS "doctorName",
+                (SELECT title FROM staff WHERE id = consultations.doctor_id) AS "doctorTitle"
+         FROM consultations WHERE session_id = $1 ORDER BY started_at DESC LIMIT 1`,
+        [sessionId]
+      ),
+      c.query(
+        `SELECT id, body, created_at AS "createdAt", author_id AS "authorId",
+                (SELECT display_name FROM staff WHERE id = doctor_notes.author_id) AS "authorName",
+                (SELECT title FROM staff WHERE id = doctor_notes.author_id) AS "authorTitle"
+         FROM doctor_notes WHERE session_id = $1 ORDER BY created_at DESC`,
+        [sessionId]
+      ),
+      c.query(
+        `SELECT status, abha_last4 AS "abhaLast4", abha_address_masked AS "abhaAddressMasked" 
+         FROM patient_identity_status WHERE session_id = $1`,
+        [sessionId]
+      ),
+    ]);
+
+    return {
+      case: {
+        caseId: s.case_id,
+        sessionId: s.id,
+        caseStatus: s.case_status,
+        language: s.language,
+        consentStatus: s.consent_status,
+        createdAt: s.created_at,
+        completedAt: s.completed_at,
+        summary: s.summary,
+        identity: identity.rows[0] ?? null,
+      },
+      complaints: complaints.rows,
+      signals: signals.rows,
+      documents: documents.rows,
+      evidence: evidence.rows,
+      interview: s.interview_data ?? {},
+      chat: chat.rows,
+      dashavidha: dash.rows,
+      consultation: consultation.rows[0] ?? null,
+      notes: notes.rows,
+    };
+  });
+
+  return bundle
+    ? NextResponse.json(bundle, { headers: { "Cache-Control": "no-store, private" } })
+    : NextResponse.json({ error: "Not found" }, { status: 404 });
+}
