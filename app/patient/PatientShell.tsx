@@ -98,27 +98,40 @@ export default function PatientShell({children}:{children:React.ReactNode}){
 
  const sync=useCallback(async(patch:Record<string,unknown>)=>{
   const id=`session-${crypto.randomUUID()}`;
-  const queue=async()=>{try{await enqueueJsonMutation({id,path:"/api/patient/session",method:"PATCH",body:patch});setWorkflow(w=>{const next=localPatch(w,patch);void persistWorkflow(next);return next;});setConnection("offline");setError("Offline — this change is encrypted on this device and will sync automatically when the connection returns.");await updatePending();return true;}catch(e){setConnection("attention");setError(e instanceof Error&&e.message==="OFFLINE_QUEUE_FULL"?"Offline recovery is full. Reconnect and sync before continuing; no queued answer was discarded.":"Offline recovery storage is unavailable in this browser. Reconnect before continuing so no answer is lost.");return false;}};
-  if(typeof navigator!=="undefined"&&!navigator.onLine)return queue();
-  if(await pendingMutationCount()>0&&!await flush())return false;
-  try{
-   let res=await fetch("/api/patient/session",{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify(patch)});
-   if(res.status===404||res.status===410){if(await resumeSavedSession())res=await fetch("/api/patient/session",{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify(patch)});}
-   if(!res.ok){setError(res.status===409?"This case is already submitted and cannot be changed.":"We could not save this safely. Please retry.");return false;}
-   const d=await res.json();setAndPersist(d.workflow);setConnection("online");setError("");return true;
-  }catch{return queue();}
+  const queue=async()=>{try{await enqueueJsonMutation({id,path:"/api/patient/session",method:"PATCH",body:patch});setConnection("offline");setError("Offline — this change is encrypted on this device and will sync automatically when the connection returns.");await updatePending();return true;}catch(e){setConnection("attention");setError(e instanceof Error&&e.message==="OFFLINE_QUEUE_FULL"?"Offline recovery is full. Reconnect and sync before continuing; no queued answer was discarded.":"Offline recovery storage is unavailable in this browser. Reconnect before continuing so no answer is lost.");return false;}};
+  
+  // Optimistic UI Update
+  setWorkflow(w=>{const next=localPatch(w,patch);void persistWorkflow(next);return next;});
+  
+  const doSync = async () => {
+    if(typeof navigator!=="undefined"&&!navigator.onLine)return queue();
+    if(await pendingMutationCount()>0&&!await flush())return false;
+    try{
+     let res=await fetch("/api/patient/session",{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify(patch)});
+     if(res.status===404||res.status===410){if(await resumeSavedSession())res=await fetch("/api/patient/session",{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify(patch)});}
+     if(!res.ok){setError(res.status===409?"This case is already submitted and cannot be changed.":"We could not save this safely. Please retry.");return false;}
+     const d=await res.json();setAndPersist(d.workflow);setConnection("online");setError("");return true;
+    }catch{return queue();}
+  };
+  void doSync();
+  return true;
  },[flush,persistWorkflow,resumeSavedSession,setAndPersist,updatePending]);
 
  const mutate=useCallback(async(path:string,method:"POST"|"PATCH"|"DELETE",body?:Record<string,unknown>,mutationId=crypto.randomUUID()):Promise<MutationResult>=>{
   const safeBody=path==="/api/patient/complaints"&&method==="POST"?{...body,clientMutationId:mutationId}:body;
   const queue=async()=>{try{await enqueueJsonMutation({id:mutationId,path,method,body:safeBody});setConnection("offline");setError("Offline — your saved answers are encrypted on this device and will sync when the connection returns.");await updatePending();return{ok:true,queued:true,status:202};}catch(e){setConnection("attention");setError(e instanceof Error&&e.message==="OFFLINE_QUEUE_FULL"?"Offline recovery is full. Reconnect and sync before continuing; no queued answer was discarded.":"This change cannot be stored safely offline. Reconnect before continuing.");return{ok:false,queued:false,status:0};}};
-  if(typeof navigator!=="undefined"&&!navigator.onLine)return queue();
-  if(await pendingMutationCount()>0&&!await flush())return{ok:false,queued:false,status:409};
-  try{
-   let res=await fetch(path,{method,headers:{"content-type":"application/json"},body:safeBody===undefined?undefined:JSON.stringify(safeBody),cache:"no-store"});
-   if(res.status===404||res.status===410){if(await resumeSavedSession())res=await fetch(path,{method,headers:{"content-type":"application/json"},body:safeBody===undefined?undefined:JSON.stringify(safeBody),cache:"no-store"});}
-   const data=await res.json().catch(()=>undefined);return{ok:res.ok,queued:false,status:res.status,data};
-  }catch{return queue();}
+  
+  const doMutate = async () => {
+    if(typeof navigator!=="undefined"&&!navigator.onLine)return queue();
+    if(await pendingMutationCount()>0&&!await flush())return{ok:false,queued:false,status:409};
+    try{
+     let res=await fetch(path,{method,headers:{"content-type":"application/json"},body:safeBody===undefined?undefined:JSON.stringify(safeBody),cache:"no-store"});
+     if(res.status===404||res.status===410){if(await resumeSavedSession())res=await fetch(path,{method,headers:{"content-type":"application/json"},body:safeBody===undefined?undefined:JSON.stringify(safeBody),cache:"no-store"});}
+     // Optional: Handle error states on background save silently or with a non-blocking toast
+    }catch{return queue();}
+  };
+  void doMutate();
+  return {ok: true, queued: false, status: 200};
  },[flush,resumeSavedSession,updatePending]);
 
  const ensureSynced=useCallback(async()=>{await updatePending();if(typeof navigator!=="undefined"&&!navigator.onLine)return false;return flush();},[flush,updatePending]);

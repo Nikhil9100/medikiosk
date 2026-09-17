@@ -365,54 +365,7 @@ export function IntakeSummaryCard({
         </div>
       )}
 
-      {/* 5. Official FHIR R4 Clinical Report (ABDM-Compliant Document Bundle) */}
-      {fhirJsonString && (
-        <div className="fhir-report-card">
-          <div className="fhir-report-header">
-            <div className="fhir-report-title-box">
-              <span className="fhir-badge-abdm">FHIR R4</span>
-              <h5>FHIR Clinical Report (ABDM Document Bundle)</h5>
-              <span className="fhir-badge-status">Bundle: document · final</span>
-            </div>
-            <div className="fhir-actions-row">
-              <button
-                type="button"
-                className="fhir-btn primary"
-                onClick={handleCopyFhir}
-                title="Copy FHIR JSON Bundle to clipboard"
-              >
-                {copiedFhir ? "Copied ✓" : "Copy FHIR JSON"}
-              </button>
-              <button
-                type="button"
-                className="fhir-btn secondary"
-                onClick={handleDownloadFhir}
-                title="Download FHIR Bundle as .json file"
-              >
-                ⬇ Download .json
-              </button>
-              {caseDetails?.sessionId && (
-                <a
-                  className="fhir-btn link"
-                  href={`/api/staff/case/${caseDetails.sessionId}/fhir`}
-                  target="_blank"
-                  rel="noreferrer"
-                  title="Open raw FHIR endpoint in new tab"
-                >
-                  ↗ Raw API
-                </a>
-              )}
-            </div>
-          </div>
 
-          <div className="fhir-report-body">
-            <p className="fhir-helper-text">
-              Official HL7 FHIR R4 document bundle containing Composition, Patient, Practitioner, and Encounter resources mapped for ABDM clinical record exchange.
-            </p>
-            <pre className="fhir-pre-box">{fhirJsonString}</pre>
-          </div>
-        </div>
-      )}
 
       {/* 6. Collapsible Internal Kiosk Intake Data (For internal kiosk audit) */}
       {rawJsonString && (

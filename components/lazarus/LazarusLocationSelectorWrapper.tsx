@@ -159,11 +159,13 @@ export function LazarusLocationSelectorWrapper({
   const imageSrc = front ? "/lazarus/neutralFront.png" : "/lazarus/neutralBack.png";
 
   const updateLocation = useCallback(
-    (x: number, y: number, isFront: boolean) => {
+    (x: number, y: number, isFront: boolean, emit: boolean = false) => {
       const part = determineLazarusBodyPart(x, y, selectorWidth, selectorHeight, isFront);
       setCurrentPart(part);
-      const mapped = mapLazarusToCanonical(part);
-      onSelectionChange(mapped.region, mapped.subregion, part);
+      if (emit) {
+        const mapped = mapLazarusToCanonical(part);
+        onSelectionChange(mapped.region, mapped.subregion, part);
+      }
     },
     [selectorWidth, selectorHeight, onSelectionChange],
   );
@@ -180,7 +182,7 @@ export function LazarusLocationSelectorWrapper({
     setSelectorX(newX);
     setSelectorY(newY);
     isDraggingRef.current = true;
-    updateLocation(newX, newY, front);
+    updateLocation(newX, newY, front, false);
   };
 
   const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -194,17 +196,18 @@ export function LazarusLocationSelectorWrapper({
 
     setSelectorX(newX);
     setSelectorY(newY);
-    updateLocation(newX, newY, front);
+    updateLocation(newX, newY, front, false);
   };
 
   const handlePointerUp = () => {
     isDraggingRef.current = false;
+    updateLocation(selectorX, selectorY, front, true);
   };
 
   const toggleFrontBack = () => {
     const nextFront = !front;
     setFront(nextFront);
-    updateLocation(selectorX, selectorY, nextFront);
+    updateLocation(selectorX, selectorY, nextFront, true);
   };
 
   return (

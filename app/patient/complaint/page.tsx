@@ -30,12 +30,18 @@ export default function Complaint() {
   const abort = useRef<AbortController | null>(null);
   const discard = useRef(false);
 
+  const speechRec = useRef<any>(null);
+  
   function cleanup() {
     if (timeout.current) clearTimeout(timeout.current);
     timeout.current = null;
     stream.current?.getTracks().forEach((x) => x.stop());
     stream.current = null;
     rec.current = null;
+    if (speechRec.current) {
+      speechRec.current.stop();
+      speechRec.current = null;
+    }
     setRecording(false);
   }
 
@@ -57,11 +63,61 @@ export default function Complaint() {
 
   async function toggle() {
     if (recording) {
-      rec.current?.stop();
+      if (speechRec.current) speechRec.current.stop();
+      if (rec.current && rec.current.state !== "inactive") rec.current.stop();
+      cleanup();
       return;
     }
     setVoice("");
     discard.current = false;
+    
+    const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (SpeechRec) {
+      try {
+        const recognition = new SpeechRec();
+        const localeMap: Record<string, string> = {
+          en: "en-US", hi: "hi-IN", mr: "mr-IN", te: "te-IN", bn: "bn-IN", ta: "ta-IN", kn: "kn-IN"
+        };
+        recognition.lang = localeMap[workflow.language] || "en-US";
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        
+        let finalTranscript = text ? text.trim() + " " : "";
+        
+        recognition.onresult = (event: any) => {
+          let interimTranscript = "";
+          for (let i = event.resultIndex; i < event.results.length; ++i) {
+            if (event.results[i].isFinal) {
+              finalTranscript += event.results[i][0].transcript + " ";
+            } else {
+              interimTranscript += event.results[i][0].transcript;
+            }
+          }
+          setText((finalTranscript + interimTranscript).trim());
+        };
+        
+        recognition.onerror = (e: any) => {
+          console.error("Speech error:", e);
+          if (e.error !== "no-speech") cleanup();
+        };
+        
+        recognition.onend = () => {
+          cleanup();
+        };
+
+        speechRec.current = recognition;
+        recognition.start();
+        setRecording(true);
+        
+        timeout.current = setTimeout(() => {
+          recognition.stop();
+        }, 30000);
+        return;
+      } catch (e) {
+        console.warn("SpeechRec failed, falling back", e);
+      }
+    }
+
     try {
       const s = await navigator.mediaDevices.getUserMedia({ audio: true });
       stream.current = s;
@@ -93,7 +149,7 @@ export default function Complaint() {
           });
           if (!res.ok) throw new Error();
           const d = (await res.json()) as { transcript: string };
-          setText(d.transcript);
+          setText((prev) => (prev ? prev + " " + d.transcript : d.transcript));
           setVoice("");
         } catch (e) {
           if ((e as Error).name !== "AbortError") {
@@ -185,7 +241,19 @@ export default function Complaint() {
             key={val}
             className={`quick-chip-pill ${text.toLowerCase().includes(val.toLowerCase()) ? "active" : ""}`}
             onClick={() => {
-              setText((prev) => (prev.trim() ? `${prev.trim()}, ${val}` : val));
+              setText((prev) => {
+                const lowerPrev = prev.toLowerCase();
+                const lowerVal = val.toLowerCase();
+                if (lowerPrev.includes(lowerVal)) {
+                  const regex = new RegExp(`(,\\s*)?${val}(,\\s*)?`, "gi");
+                  let updated = prev.replace(regex, (match, p1, p2) => {
+                    if (p1 && p2) return ", ";
+                    return "";
+                  });
+                  return updated.trim().replace(/^,\s*|\s*,$/g, "").trim();
+                }
+                return prev.trim() ? `${prev.trim()}, ${val}` : val;
+              });
             }}
           >
             {label}
