@@ -21,7 +21,7 @@ export async function POST(req: Request) {
   if (isDemoDoctorCred(email, password)) {
     if (databaseConfigured()) {
       try {
-        const result = await withStaffTx(undefined, (c) => login(c, "doctor@medikiosk.local", password));
+        const result = await withStaffTx(undefined, (c) => login(c, email.trim().toLowerCase(), password));
         if (result.kind === "ok") {
           const response = NextResponse.json({ staff: result.staff });
           setStaffCookie(response, result.token);
@@ -31,7 +31,7 @@ export async function POST(req: Request) {
         console.warn("Database unavailable during demo doctor login, using client session:", dbErr);
       }
     }
-    const response = NextResponse.json({ staff: DEMO_DOCTOR });
+    const response = NextResponse.json({ staff: { ...DEMO_DOCTOR, email: email.trim() } });
     setStaffCookie(response, "demo_staff_doctor_session");
     return response;
   }
@@ -40,7 +40,7 @@ export async function POST(req: Request) {
   if (isDemoHospitalCred(email, password)) {
     if (databaseConfigured()) {
       try {
-        const result = await withStaffTx(undefined, (c) => login(c, "hospital@medikiosk.local", password));
+        const result = await withStaffTx(undefined, (c) => login(c, email.trim().toLowerCase(), password));
         if (result.kind === "ok") {
           const response = NextResponse.json({ staff: result.staff });
           setStaffCookie(response, result.token);
@@ -50,7 +50,7 @@ export async function POST(req: Request) {
         console.warn("Database unavailable during demo hospital login, using client session:", dbErr);
       }
     }
-    const response = NextResponse.json({ staff: DEMO_HOSPITAL });
+    const response = NextResponse.json({ staff: { ...DEMO_HOSPITAL, email: email.trim() } });
     setStaffCookie(response, "demo_staff_hospital_session");
     return response;
   }

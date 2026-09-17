@@ -9,31 +9,31 @@ export type Staff={id:string;email:string;displayName:string;title:string|null;r
 
 export const DEMO_DOCTOR: Staff = {
   id: "demo-doc-01",
-  email: "doctor@medikiosk.local",
-  displayName: "Dr. Ananya Sharma",
+  email: "doc1",
+  displayName: "Dr. Doc1",
   title: "Consultant Physician",
   role: "DOCTOR",
 };
 
 export const DEMO_HOSPITAL: Staff = {
   id: "demo-hosp-01",
-  email: "hospital@medikiosk.local",
-  displayName: "OPD Command Centre",
+  email: "hs1",
+  displayName: "Hospital Hs1 Admin",
   title: "Operations Lead",
   role: "HOSPITAL",
 };
 
 export function isDemoDoctorCred(email: string, pass: string): boolean {
   const e = email.trim().toLowerCase();
-  const validEmails = ["doctor@medikiosk.local", "doctor@hospital.org", "doctor@hospital.com", "doctor"];
-  const validPass = ["doctor123", "doctor", "12345678", "123456", "doctor-demo-2026", "admin123"];
+  const validEmails = ["doc1", "doc1@medikiosk.local", "doctor@medikiosk.local", "doctor@hospital.org", "doctor@hospital.com", "doctor"];
+  const validPass = ["1234", "doctor123", "doctor", "12345678", "123456", "doctor-demo-2026", "admin123"];
   return validEmails.includes(e) && validPass.includes(pass);
 }
 
 export function isDemoHospitalCred(email: string, pass: string): boolean {
   const e = email.trim().toLowerCase();
-  const validEmails = ["hospital@medikiosk.local", "hospital@hospital.org", "hospital@hospital.com", "hospital", "admin@medikiosk.local", "admin"];
-  const validPass = ["hospital123", "hospital", "12345678", "123456", "hospital-demo-2026", "admin123", "admin"];
+  const validEmails = ["hs1", "hs1@medikiosk.local", "hospital@medikiosk.local", "hospital@hospital.org", "hospital@hospital.com", "hospital", "admin@medikiosk.local", "admin"];
+  const validPass = ["h1234", "hospital123", "hospital", "12345678", "123456", "hospital-demo-2026", "admin123", "admin"];
   return validEmails.includes(e) && validPass.includes(pass);
 }
 
@@ -44,10 +44,12 @@ export async function login(c:PoolClient,email:string,password:string){const nor
   let r=await c.query(`SELECT id,email,display_name,title,role,active,password_hash FROM staff WHERE email=$1`,[normalized]);
   let candidate=r.rows[0];
   if(isDemoDoctorCred(normalized, password)){
-    const ins=await c.query(`INSERT INTO staff(email,display_name,title,role,password_hash,active) VALUES($1,'Dr. Ananya Sharma','Consultant Physician','DOCTOR',$2,true) ON CONFLICT(email) DO UPDATE SET active=true,password_hash=$2 RETURNING id,email,display_name,title,role,active,password_hash`,[normalized,hashPassword(password)]);
+    const displayName = normalized.includes("doc1") ? "Dr. Doc1" : "Dr. Ananya Sharma";
+    const ins=await c.query(`INSERT INTO staff(email,display_name,title,role,password_hash,active) VALUES($1,$3,'Consultant Physician','DOCTOR',$2,true) ON CONFLICT(email) DO UPDATE SET active=true,password_hash=$2,display_name=$3 RETURNING id,email,display_name,title,role,active,password_hash`,[normalized,hashPassword(password),displayName]);
     candidate=ins.rows[0];
   } else if(isDemoHospitalCred(normalized, password)){
-    const ins=await c.query(`INSERT INTO staff(email,display_name,title,role,password_hash,active) VALUES($1,'OPD Command Centre','Operations Lead','HOSPITAL',$2,true) ON CONFLICT(email) DO UPDATE SET active=true,password_hash=$2 RETURNING id,email,display_name,title,role,active,password_hash`,[normalized,hashPassword(password)]);
+    const displayName = normalized.includes("hs1") ? "Hospital Hs1 Admin" : "OPD Command Centre";
+    const ins=await c.query(`INSERT INTO staff(email,display_name,title,role,password_hash,active) VALUES($1,$3,'Operations Lead','HOSPITAL',$2,true) ON CONFLICT(email) DO UPDATE SET active=true,password_hash=$2,display_name=$3 RETURNING id,email,display_name,title,role,active,password_hash`,[normalized,hashPassword(password),displayName]);
     candidate=ins.rows[0];
   }
   const ok=verifyPassword(password,candidate?.password_hash??DUMMY);if(!candidate||!candidate.active||!ok)return{kind:"invalid" as const}; await c.query(`DELETE FROM staff_login_attempts WHERE email_hash=$1`,[hash]);const token=randomBytes(32).toString("hex");await c.query(`INSERT INTO staff_sessions(staff_id,token_hash,expires_at) VALUES($1,$2,now()+interval '10 hours')`,[candidate.id,createHash("sha256").update(token).digest("hex")]);return{kind:"ok" as const,staff:row(candidate),token};}

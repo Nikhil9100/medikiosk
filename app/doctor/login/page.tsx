@@ -6,8 +6,8 @@ import Link from "next/link";
 
 export default function DoctorLogin() {
   const r = useRouter();
-  const [email, setEmail] = useState("doctor@medikiosk.local");
-  const [password, setPassword] = useState("doctor123");
+  const [email, setEmail] = useState("Doc1");
+  const [password, setPassword] = useState("1234");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -47,8 +47,8 @@ export default function DoctorLogin() {
   }
 
   function fillDemo() {
-    setEmail("doctor@medikiosk.local");
-    setPassword("doctor123");
+    setEmail("Doc1");
+    setPassword("1234");
     setError("");
   }
 
@@ -78,7 +78,7 @@ export default function DoctorLogin() {
           <div>
             <strong>💡 Quick Demo Access:</strong>
             <div style={{ fontFamily: "monospace", fontSize: "0.82rem", marginTop: 2 }}>
-              doctor@medikiosk.local · <strong>doctor123</strong>
+              Doc1 · <strong>1234</strong>
             </div>
           </div>
           <button
@@ -101,12 +101,12 @@ export default function DoctorLogin() {
 
         <form onSubmit={login} className="form-grid">
           <div className="field">
-            <label htmlFor="email">Email</label>
+            <label htmlFor="email">Username / Email</label>
             <input
               id="email"
               type="text"
               autoComplete="username"
-              placeholder="doctor@medikiosk.local"
+              placeholder="Doc1"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -118,7 +118,7 @@ export default function DoctorLogin() {
               id="password"
               type="password"
               autoComplete="current-password"
-              placeholder="doctor123"
+              placeholder="1234"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
